@@ -27,6 +27,8 @@ from osmclient.sol005 import vim
 from osmclient.sol005 import package
 from osmclient.sol005 import http
 from osmclient.sol005 import sdncontroller
+from osmclient.sol005 import project as projectmodule
+from osmclient.sol005 import user as usermodule
 from osmclient.common.exceptions import ClientException
 import json
 
@@ -36,15 +38,14 @@ class Client(object):
         self,
         host=None,
         so_port=9999,
-        so_project='admin',
-        ro_host=None,
-        ro_port=9090,
+        user='admin',
+        password='admin',
+        project='admin',
         **kwargs):
 
-        self._user = 'admin'
-        self._password = 'admin'
-        #self._project = so_project
-        self._project = 'admin'
+        self._user = user
+        self._password = password
+        self._project = project
         self._auth_endpoint = '/admin/v1/tokens'
         self._headers = {}
 
@@ -55,13 +56,6 @@ class Client(object):
         else:
             self._host = host
             self._so_port = so_port
-
-        if ro_host is None:
-            ro_host = host
-        ro_http_client = http.Http('http://{}:{}/openmano'.format(ro_host, ro_port))
-        ro_http_client.set_http_header(
-            ['Accept: application/json',
-             'Content-Type: application/json'])
 
         self._http_client = http.Http(
             'https://{}:{}/osm'.format(self._host,self._so_port))
@@ -86,6 +80,8 @@ class Client(object):
         self.vim = vim.Vim(self._http_client, client=self)
         self.sdnc = sdncontroller.SdnController(self._http_client, client=self)
         self.vnf = vnf.Vnf(self._http_client, client=self)
+        self.project = projectmodule.Project(self._http_client, client=self)
+        self.user = usermodule.User(self._http_client, client=self)
         '''
         self.vca = vca.Vca(http_client, client=self, **kwargs)
         self.utils = utils.Utils(http_client, **kwargs)
@@ -94,7 +90,7 @@ class Client(object):
     def get_token(self):
         postfields_dict = {'username': self._user,
                            'password': self._password,
-                           'project-id': self._project}
+                           'project_id': self._project}
         http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
                               postfields_dict=postfields_dict)
         if http_code not in (200, 201, 202, 204):

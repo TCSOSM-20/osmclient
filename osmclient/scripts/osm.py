@@ -50,6 +50,26 @@ def check_client_version(obj, what, version='sol005'):
               envvar='OSM_HOSTNAME',
               help='hostname of server.  ' +
                    'Also can set OSM_HOSTNAME in environment')
+@click.option('--sol005/--no-sol005',
+              default=True,
+              envvar='OSM_SOL005',
+              help='Use ETSI NFV SOL005 API (default) or the previous SO API. ' +
+                   'Also can set OSM_SOL005 in environment')
+@click.option('--user',
+              default=None,
+              envvar='OSM_USER',
+              help='user (only from Release FOUR, defaults to admin). ' +
+                   'Also can set OSM_USER in environment')
+@click.option('--password',
+              default=None,
+              envvar='OSM_PASSWORD',
+              help='password (only from Release FOUR, defaults to admin). ' +
+                   'Also can set OSM_PASSWORD in environment')
+@click.option('--project',
+              default=None,
+              envvar='OSM_PROJECT',
+              help='project (only from Release FOUR, defaults to admin). ' +
+                   'Also can set OSM_PROJECT in environment')
 @click.option('--so-port',
               default=None,
               envvar='OSM_SO_PORT',
@@ -66,16 +86,12 @@ def check_client_version(obj, what, version='sol005'):
               help='hostname of RO server.  ' +
               'Also can set OSM_RO_HOSTNAME in environment')
 @click.option('--ro-port',
-              default=9090,
+              default=None,
               envvar='OSM_RO_PORT',
               help='hostname of RO server.  ' +
                    'Also can set OSM_RO_PORT in environment')
-@click.option('--sol005/--no-sol005',
-              default=True,
-              envvar='OSM_SOL005',
-              help='Use ETSI NFV SOL005 API (default) or the previous SO API')
 @click.pass_context
-def cli(ctx, hostname, so_port, so_project, ro_hostname, ro_port, sol005):
+def cli(ctx, hostname, sol005, user, password, project, so_port, so_project, ro_hostname, ro_port):
     if hostname is None:
         print((
             "either hostname option or OSM_HOSTNAME " +
@@ -90,6 +106,12 @@ def cli(ctx, hostname, so_port, so_project, ro_hostname, ro_port, sol005):
         kwargs['ro_host']=ro_hostname
     if ro_port is not None:
         kwargs['ro_port']=ro_port
+    if user is not None:
+        kwargs['user']=user
+    if password is not None:
+        kwargs['password']=password
+    if project is not None:
+        kwargs['project']=project
 
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
 
@@ -1264,6 +1286,182 @@ def sdnc_show(ctx, name):
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in list(resp.items()):
+        table.add_row([k, json.dumps(v, indent=2)])
+    table.align = 'l'
+    print(table)
+
+
+####################
+# Project mgmt operations
+####################
+
+@cli.command(name='project-create')
+@click.argument('name')
+#@click.option('--description',
+#              default='no description',
+#              help='human readable description')
+@click.pass_context
+def project_create(ctx, name):
+    '''Creates a new project
+
+    NAME: name of the project
+    '''
+    project = {}
+    project['name'] = name
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.project.create(name, project)
+    except ClientException as inst:
+        print(inst.message)
+
+
+@cli.command(name='project-delete')
+@click.argument('name')
+#@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def project_delete(ctx, name):
+    '''deletes a project
+
+    NAME: name or ID of the project to be deleted
+    '''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.project.delete(name)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+
+@cli.command(name='project-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the projects matching the filter')
+@click.pass_context
+def project_list(ctx, filter):
+    '''list all projects'''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.project.list(filter)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+    table = PrettyTable(['name', 'id'])
+    for proj in resp:
+        table.add_row([proj['name'], proj['_id']])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='project-show')
+@click.argument('name')
+@click.pass_context
+def project_show(ctx, name):
+    '''shows the details of a project
+
+    NAME: name or ID of the project
+    '''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.project.get(name)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+    table = PrettyTable(['key', 'attribute'])
+    for k, v in resp.items():
+        table.add_row([k, json.dumps(v, indent=2)])
+    table.align = 'l'
+    print(table)
+
+
+####################
+# User mgmt operations
+####################
+
+@cli.command(name='user-create')
+@click.argument('username')
+@click.option('--password',
+              prompt=True,
+              hide_input=True,
+              confirmation_prompt=True,
+              help='user password')
+@click.option('--projects',
+              default=None,
+              help='list of project ids that the user belongs to')
+#@click.option('--description',
+#              default='no description',
+#              help='human readable description')
+@click.pass_context
+def user_create(ctx, username, password, projects):
+    '''Creates a new user
+
+    USERNAME: name of the user
+    '''
+    user = {}
+    user['username'] = username
+    user['password'] = password
+    user['projects'] = projects
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.user.create(username, user)
+    except ClientException as inst:
+        print(inst.message)
+
+
+@cli.command(name='user-delete')
+@click.argument('name')
+#@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def user_delete(ctx, name):
+    '''deletes a user
+
+    NAME: name or ID of the user to be deleted
+    '''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.user.delete(name)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+
+@cli.command(name='user-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the users matching the filter')
+@click.pass_context
+def user_list(ctx, filter):
+    '''list all users'''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.user.list(filter)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+    table = PrettyTable(['name', 'id'])
+    for user in resp:
+        table.add_row([user['name'], user['_id']])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='user-show')
+@click.argument('name')
+@click.pass_context
+def user_show(ctx, name):
+    '''shows the details of a user
+
+    NAME: name or ID of the user
+    '''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.user.get(name)
+        if 'password' in resp:
+            resp['password']='********'
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+    table = PrettyTable(['key', 'attribute'])
+    for k, v in resp.items():
         table.add_row([k, json.dumps(v, indent=2)])
     table.align = 'l'
     print(table)
