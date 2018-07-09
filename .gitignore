@@ -5,6 +5,7 @@ dist/
 *.gz
 *egg-info/
 .eggs
+.idea
 parts/
 prime/
 stage/
