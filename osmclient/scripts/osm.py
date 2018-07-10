@@ -89,7 +89,7 @@ def cli(ctx, hostname, so_port, so_project, ro_hostname, ro_port, sol005):
         kwargs['ro_host']=ro_hostname
     if ro_port is not None:
         kwargs['ro_port']=ro_port
-    
+
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
 
 
@@ -704,11 +704,13 @@ def vnfd_create2(ctx, filename, overwrite):
               help='administration status')
 @click.option('--ssh_keys',
               default=None,
-              help='comma separated list of keys to inject to vnfs')
+              help='comma separated list of public key files to inject to vnfs')
 @click.option('--config',
               default=None,
-              help='ns specific yaml configuration:\nvnf: [member-vnf-index: TEXT, vim_account: TEXT]\n'
-              'vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]')
+              help='ns specific yaml configuration')
+@click.option('--config_file',
+              default=None,
+              help='ns specific yaml configuration file')
 @click.pass_context
 def ns_create(ctx,
               nsd_name,
@@ -716,11 +718,16 @@ def ns_create(ctx,
               vim_account,
               admin_status,
               ssh_keys,
-              config):
+              config,
+              config_file):
     '''creates a new NS instance'''
     try:
-        # if config:
-        #     check_client_version(ctx.obj, '--config', 'v1')
+        if config_file:
+            check_client_version(ctx.obj, '--config_file')
+            if config:
+                raise ClientException('"--config" option is incompatible with "--config_file" option')
+            with open(config_file, 'r') as cf:
+                config=cf.read()
         ctx.obj.ns.create(
             nsd_name,
             ns_name,
@@ -904,7 +911,7 @@ def ns_delete(ctx, name, force):
 ####################
 # VIM operations
 ####################
- 
+
 @cli.command(name='vim-create')
 @click.option('--name',
               prompt=True,
