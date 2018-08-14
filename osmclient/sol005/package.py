@@ -21,6 +21,7 @@ OSM package API handling
 #from os import stat
 #from os.path import basename
 from osmclient.common.exceptions import ClientException
+from osmclient.common.exceptions import NotFound
 from osmclient.common import utils
 import json
 
@@ -32,6 +33,39 @@ class Package(object):
 
     def get_key_val_from_pkg(self, descriptor_file):
         return utils.get_key_val_from_pkg(descriptor_file)
+
+    def _wait_for_package(self, pkg_type):
+        if 'vnfd' in pkg_type['type']:
+            get_method = self._client.vnfd.get
+        elif 'nsd' in pkg_type['type']:
+            get_method = self._client.nsd.get
+        else:
+            raise ClientException("no valid package type found")
+
+        # helper method to check if pkg exists
+        def check_exists(func):
+            try:
+                func()
+            except NotFound:
+                return False
+            return True
+
+        return utils.wait_for_value(lambda:
+                                    check_exists(lambda:
+                                                 get_method(pkg_type['name'])))
+
+    def wait_for_upload(self, filename):
+        """wait(block) for an upload to succeed.
+           The filename passed is assumed to be a descriptor tarball.
+        """
+        pkg_type = utils.get_key_val_from_pkg(filename)
+
+        if pkg_type is None:
+            raise ClientException("Cannot determine package type")
+
+        if not self._wait_for_package(pkg_type):
+            raise ClientException("package {} failed to upload"
+                                  .format(filename))
 
     def upload(self, filename):
         pkg_type = utils.get_key_val_from_pkg(filename)
