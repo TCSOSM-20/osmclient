@@ -159,6 +159,11 @@ class Ns(object):
             self._apiResource = '/ns_instances_content'
             self._apiBase = '{}{}{}'.format(self._apiName,
                                             self._apiVersion, self._apiResource)
+            headers = self._client._headers
+            headers['Content-Type'] = 'application/yaml'
+            http_header = ['{}: {}'.format(key,val)
+                          for (key,val) in list(headers.items())]
+            self._http.set_http_header(http_header)
             http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=ns)
             #print 'HTTP CODE: {}'.format(http_code)
