@@ -2,7 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='osmclient',
-    version_command=('git describe --tags --long --dirty --match v*', 'pep440-git'),
+    version_command=('git describe --tags --long --dirty --match v*',
+                     'pep440-git'),
     author='Mike Marchetti',
     author_email='mmarchetti@sandvine.com',
     packages=find_packages(),
