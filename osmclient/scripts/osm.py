@@ -410,6 +410,128 @@ def ns_op_list(ctx, name):
     table.align = 'l'
     print(table)
 
+
+def nsi_list(ctx, filter):
+    '''list all Network Slice Instances'''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.nsi.list(filter)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+    table = PrettyTable(
+        ['netslice instance name',
+         'id',
+         'operational status',
+         'config status',
+         'detailed status'])
+    for nsi in resp:
+        nsi_name = nsi['name']
+        nsi_id = nsi['_id']
+        opstatus = nsi['operational-status'] if 'operational-status' in nsi else 'Not found'
+        configstatus = nsi['config-status'] if 'config-status' in nsi else 'Not found'
+        detailed_status = nsi['detailed-status'] if 'detailed-status' in nsi else 'Not found'
+        if configstatus == "config_not_needed":
+            configstatus = "configured (no charms)"
+        table.add_row(
+            [nsi_name,
+             nsi_id,
+             opstatus,
+             configstatus,
+             detailed_status])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='nsi-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the Network Slice Instances matching the filter')
+@click.pass_context
+def nsi_list1(ctx, filter):
+    '''list all Network Slice Instances (NSI)'''
+    nsi_list(ctx,filter)
+
+
+@cli.command(name='netslice-instance-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the Network Slice Instances matching the filter')
+@click.pass_context
+def nsi_list2(ctx, filter):
+    '''list all Network Slice Instances (NSI)'''
+    nsi_list(ctx,filter)
+
+
+def nst_list(ctx, filter):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.nst.list(filter)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+    #print yaml.safe_dump(resp)
+    table = PrettyTable(['nst name', 'id'])
+    for nst in resp:
+        name = nst['name'] if 'name' in nst else '-'
+        table.add_row([name, nst['_id']])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='nst-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the NST matching the filter')
+@click.pass_context
+def nst_list1(ctx, filter):
+    '''list all Network Slice Templates (NST) in the system'''
+    nst_list(ctx,filter)
+
+
+@cli.command(name='netslice-template-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the NST matching the filter')
+@click.pass_context
+def nst_list2(ctx, filter):
+    '''list all Network Slice Templates (NST) in the system'''
+    nst_list(ctx,filter)
+
+
+def nsi_op_list(ctx, name):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.nsi.list_op(name)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+    table = PrettyTable(['id', 'operation', 'status'])
+    for op in resp:
+         table.add_row([op['id'], op['lcmOperationType'],
+                        op['operationState']])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='nsi-op-list')
+@click.argument('name')
+@click.pass_context
+def nsi_op_list1(ctx, name):
+    '''shows the history of operations over a Network Slice Instance (NSI)
+
+    NAME: name or ID of the Network Slice Instance
+    '''
+    nsi_op_list(ctx,name)
+
+
+@cli.command(name='netslice-instance-op-list')
+@click.argument('name')
+@click.pass_context
+def nsi_op_list2(ctx, name):
+    '''shows the history of operations over a Network Slice Instance (NSI)
+
+    NAME: name or ID of the Network Slice Instance
+    '''
+    nsi_op_list(ctx,name)
+
+
 ####################
 # SHOW operations
 ####################
@@ -617,6 +739,7 @@ def ns_monitoring_show(ctx, ns_name):
     table.align = 'l'
     print(table)
 
+
 @cli.command(name='ns-op-show', short_help='shows the info of an operation')
 @click.argument('id')
 @click.option('--filter', default=None)
@@ -639,6 +762,142 @@ def ns_op_show(ctx, id, filter):
             table.add_row([k, json.dumps(v, indent=2)])
     table.align = 'l'
     print(table)
+
+
+def nst_show(ctx, name, literal):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.nst.get(name)
+        #resp = ctx.obj.nst.get_individual(name)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
+
+    table = PrettyTable(['field', 'value'])
+    for k, v in list(resp.items()):
+        table.add_row([k, json.dumps(v, indent=2)])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='nst-show', short_help='shows the content of a Network Slice Template (NST)')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.argument('name')
+@click.pass_context
+def nst_show1(ctx, name, literal):
+    '''shows the content of a Network Slice Template (NST)
+
+    NAME: name or ID of the NST
+    '''
+    nst_show(ctx, name, literal)
+
+
+@cli.command(name='netslice-template-show', short_help='shows the content of a Network Slice Template (NST)')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.argument('name')
+@click.pass_context
+def nst_show2(ctx, name, literal):
+    '''shows the content of a Network Slice Template (NST)
+
+    NAME: name or ID of the NST
+    '''
+    nst_show(ctx, name, literal)
+
+
+def nsi_show(ctx, name, literal, filter):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        nsi = ctx.obj.nsi.get(name)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+    if literal:
+        print(yaml.safe_dump(nsi))
+        return
+
+    table = PrettyTable(['field', 'value'])
+
+    for k, v in list(nsi.items()):
+        if filter is None or filter in k:
+            table.add_row([k, json.dumps(v, indent=2)])
+
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='nsi-show', short_help='shows the content of a Network Slice Instance (NSI)')
+@click.argument('name')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--filter', default=None)
+@click.pass_context
+def nsi_show1(ctx, name, literal, filter):
+    '''shows the content of a Network Slice Instance (NSI)
+
+    NAME: name or ID of the Network Slice Instance
+    '''
+    nsi_show(ctx, name, literal, filter)
+
+
+@cli.command(name='netslice-instance-show', short_help='shows the content of a Network Slice Instance (NSI)')
+@click.argument('name')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--filter', default=None)
+@click.pass_context
+def nsi_show2(ctx, name, literal, filter):
+    '''shows the content of a Network Slice Instance (NSI)
+
+    NAME: name or ID of the Network Slice Instance
+    '''
+    nsi_show(ctx, name, literal, filter)
+
+
+def nsi_op_show(ctx, id, filter):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        op_info = ctx.obj.nsi.get_op(id)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+    table = PrettyTable(['field', 'value'])
+    for k, v in list(op_info.items()):
+        if filter is None or filter in k:
+            table.add_row([k, json.dumps(v, indent=2)])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='nsi-op-show', short_help='shows the info of an operation over a Network Slice Instance(NSI)')
+@click.argument('id')
+@click.option('--filter', default=None)
+@click.pass_context
+def nsi_op_show1(ctx, id, filter):
+    '''shows the info of an operation over a Network Slice Instance(NSI)
+
+    ID: operation identifier
+    '''
+    nsi_op_show(ctx, id, filter)
+
+
+@cli.command(name='netslice-instance-op-show', short_help='shows the info of an operation over a Network Slice Instance(NSI)')
+@click.argument('id')
+@click.option('--filter', default=None)
+@click.pass_context
+def nsi_op_show2(ctx, id, filter):
+    '''shows the info of an operation over a Network Slice Instance(NSI)
+
+    ID: operation identifier
+    '''
+    nsi_op_show(ctx, id, filter)
 
 
 ####################
@@ -715,13 +974,13 @@ def vnfd_create2(ctx, filename, overwrite):
     vnfd_create(ctx, filename, overwrite)
 
 
-@cli.command(name='ns-create')
+@cli.command(name='ns-create', short_help='creates a new Network Service instance')
 @click.option('--ns_name',
-              prompt=True)
+              prompt=True, help='name of the NS instance')
 @click.option('--nsd_name',
-              prompt=True)
+              prompt=True, help='name of the NS descriptor')
 @click.option('--vim_account',
-              prompt=True)
+              prompt=True, help='default VIM account id or name for the deployment')
 @click.option('--admin_status',
               default='ENABLED',
               help='administration status')
@@ -762,6 +1021,94 @@ def ns_create(ctx,
         exit(1)
 
 
+def nst_create(ctx, filename, overwrite):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.nst.create(filename, overwrite)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+
+@cli.command(name='nst-create', short_help='creates a new Network Slice Template (NST)')
+@click.argument('filename')
+@click.option('--overwrite', default=None,
+              help='overwrites some fields in NST')
+@click.pass_context
+def nst_create1(ctx, filename, overwrite):
+    '''creates a new Network Slice Template (NST)
+
+    FILENAME: NST yaml file or NSTpkg tar.gz file
+    '''
+    nst_create(ctx, filename, overwrite)
+
+
+@cli.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
+@click.argument('filename')
+@click.option('--overwrite', default=None,
+              help='overwrites some fields in NST')
+@click.pass_context
+def nst_create2(ctx, filename, overwrite):
+    '''creates a new Network Slice Template (NST)
+
+    FILENAME: NST yaml file or NSTpkg tar.gz file
+    '''
+    nst_create(ctx, filename, overwrite)
+
+
+def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
+    '''creates a new Network Slice Instance (NSI)'''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
+            account=vim_account)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+
+@cli.command(name='nsi-create', short_help='creates a new Network Slice Instance')
+@click.option('--nsi_name', prompt=True, help='name of the Network Slice Instance')
+@click.option('--nst_name', prompt=True, help='name of the Network Slice Template')
+@click.option('--vim_account', prompt=True, help='default VIM account id or name for the deployment')
+@click.option('--ssh_keys', default=None,
+              help='comma separated list of keys to inject to vnfs')
+@click.option('--config', default=None,
+              help='Netslice specific yaml configuration:\n'
+              'netslice_subnet: [\n'
+                'id: TEXT, vim_account: TEXT,\n'
+                'vnf: [member-vnf-index: TEXT, vim_account: TEXT]\n'
+                'vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
+              '],\n'
+              'netslice-vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
+              )
+@click.pass_context
+def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
+    '''creates a new Network Slice Instance (NSI)'''
+    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config)
+
+
+@cli.command(name='netslice-instance-create', short_help='creates a new Network Slice Instance')
+@click.option('--nsi_name', prompt=True, help='name of the Network Slice Instance')
+@click.option('--nst_name', prompt=True, help='name of the Network Slice Template')
+@click.option('--vim_account', prompt=True, help='default VIM account id or name for the deployment')
+@click.option('--ssh_keys', default=None,
+              help='comma separated list of keys to inject to vnfs')
+@click.option('--config', default=None,
+              help='Netslice specific yaml configuration:\n'
+              'netslice_subnet: [\n'
+                'id: TEXT, vim_account: TEXT,\n'
+                'vnf: [member-vnf-index: TEXT, vim_account: TEXT]\n'
+                'vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
+              '],\n'
+              'netslice-vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
+              )
+@click.pass_context
+def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
+    '''creates a new Network Slice Instance (NSI)'''
+    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config)
+
+
 ####################
 # UPDATE operations
 ####################
@@ -773,6 +1120,7 @@ def nsd_update(ctx, name, content):
     except ClientException as inst:
         print((inst.message))
         exit(1)
+
 
 @cli.command(name='nsd-update', short_help='updates a NSD/NSpkg')
 @click.argument('name')
@@ -833,6 +1181,41 @@ def vnfd_update2(ctx, name, content):
     NAME: VNFD yaml file or VNFpkg tar.gz file
     '''
     vnfd_update(ctx, name, content)
+
+
+def nst_update(ctx, name, content):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.nst.update(name, content)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+
+@cli.command(name='nst-update', short_help='updates a Network Slice Template (NST)')
+@click.argument('name')
+@click.option('--content', default=None,
+              help='filename with the NST/NSTpkg replacing the current one')
+@click.pass_context
+def nst_update1(ctx, name, content):
+    '''updates a Network Slice Template (NST)
+
+    NAME: name or ID of the NSD/NSpkg
+    '''
+    nst_update(ctx, name, content)
+
+
+@cli.command(name='netslice-template-update', short_help='updates a Network Slice Template (NST)')
+@click.argument('name')
+@click.option('--content', default=None,
+              help='filename with the NST/NSTpkg replacing the current one')
+@click.pass_context
+def nst_update2(ctx, name, content):
+    '''updates a Network Slice Template (NST)
+
+    NAME: name or ID of the NSD/NSpkg
+    '''
+    nst_update(ctx, name, content)
 
 
 ####################
@@ -929,6 +1312,72 @@ def ns_delete(ctx, name, force):
     except ClientException as inst:
         print((inst.message))
         exit(1)
+
+
+def nst_delete(ctx, name, force):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.nst.delete(name, force)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+
+@cli.command(name='nst-delete', short_help='deletes a Network Slice Template (NST)')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def nst_delete1(ctx, name, force):
+    '''deletes a Network Slice Template (NST)
+
+    NAME: name or ID of the NST/NSTpkg to be deleted
+    '''
+    nst_delete(ctx, name, force)
+
+
+@cli.command(name='netslice-template-delete', short_help='deletes a Network Slice Template (NST)')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def nst_delete2(ctx, name, force):
+    '''deletes a Network Slice Template (NST)
+
+    NAME: name or ID of the NST/NSTpkg to be deleted
+    '''
+    nst_delete(ctx, name, force)
+
+
+def nsi_delete(ctx, name, force):
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.nsi.delete(name, force)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+
+@cli.command(name='nsi-delete', short_help='deletes a Network Slice Instance (NSI)')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def nsi_delete1(ctx, name, force):
+    '''deletes a Network Slice Instance (NSI)
+
+    NAME: name or ID of the Network Slice instance to be deleted
+    '''
+    nsi_delete(ctx, name, force)
+
+
+@cli.command(name='netslice-instance-delete', short_help='deletes a Network Slice Instance (NSI)')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def nsi_delete2(ctx, name, force):
+    '''deletes a Network Slice Instance (NSI)
+
+    NAME: name or ID of the Network Slice instance to be deleted
+    '''
+    nsi_delete(ctx, name, force)
 
 
 ####################

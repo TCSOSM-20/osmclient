@@ -21,6 +21,8 @@ OSM SOL005 client API
 #from osmclient.v1 import vca
 from osmclient.sol005 import vnfd
 from osmclient.sol005 import nsd
+from osmclient.sol005 import nst
+from osmclient.sol005 import nsi
 from osmclient.sol005 import ns
 from osmclient.sol005 import vnf
 from osmclient.sol005 import vim
@@ -75,8 +77,10 @@ class Client(object):
 
         self.vnfd = vnfd.Vnfd(self._http_client, client=self)
         self.nsd = nsd.Nsd(self._http_client, client=self)
+        self.nst = nst.Nst(self._http_client, client=self)
         self.package = package.Package(self._http_client, client=self)
         self.ns = ns.Ns(self._http_client, client=self)
+        self.nsi = nsi.Nsi(self._http_client, client=self)
         self.vim = vim.Vim(self._http_client, client=self)
         self.sdnc = sdncontroller.SdnController(self._http_client, client=self)
         self.vnf = vnf.Vnf(self._http_client, client=self)
