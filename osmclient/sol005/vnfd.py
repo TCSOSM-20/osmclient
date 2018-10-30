@@ -23,8 +23,9 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common import utils
 import json
 import magic
+from os.path import basename
 #from os import stat
-#from os.path import basename
+
 
 class Vnfd(object):
 
@@ -125,8 +126,9 @@ class Vnfd(object):
             raise ClientException(
                      "failed to guess MIME type for file '{}'".format(filename))
         headers= self._client._headers
-        if mime_type in ['application/yaml', 'text/plain']:
-            headers['Content-Type'] = 'application/yaml'
+        headers['Content-Filename'] = basename(filename)
+        if mime_type in ['application/yaml', 'text/plain', 'application/json']:
+            headers['Content-Type'] = 'text/plain'
         elif mime_type in ['application/gzip', 'application/x-gzip']:
             headers['Content-Type'] = 'application/gzip'
             #headers['Content-Type'] = 'application/binary'
