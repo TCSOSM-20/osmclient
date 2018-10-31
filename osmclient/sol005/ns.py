@@ -168,7 +168,7 @@ class Ns(object):
                 if not resp or 'id' not in resp:
                     raise ClientException('unexpected response from server - {} '.format(
                                       resp))
-                print(resp['id'])
+                return resp['id']
             else:
                 msg = ""
                 if resp:
@@ -368,3 +368,12 @@ class Ns(object):
                     exc.message)
             raise ClientException(message)
 
+    def get_field(self, ns_name, field):
+        nsr = self.get(ns_name)
+        if nsr is None:
+            raise NotFound("failed to retrieve ns {}".format(ns_name))
+
+        if field in nsr:
+            return nsr[field]
+
+        raise NotFound("failed to find {} in ns {}".format(field, ns_name))
