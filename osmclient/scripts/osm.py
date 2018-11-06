@@ -25,6 +25,7 @@ from prettytable import PrettyTable
 import yaml
 import json
 import time
+import pycurl
 
 def check_client_version(obj, what, version='sol005'):
     '''
@@ -45,7 +46,7 @@ def check_client_version(obj, what, version='sol005'):
 
 @click.group()
 @click.option('--hostname',
-              default=None,
+              default="127.0.0.1",
               envvar='OSM_HOSTNAME',
               help='hostname of server.  ' +
                    'Also can set OSM_HOSTNAME in environment')
@@ -1567,4 +1568,11 @@ def ns_action(ctx,
 
 
 if __name__ == '__main__':
-    cli()
+    try:
+        cli()
+    except pycurl.error as e:
+        print(e)
+        print('Maybe "--hostname" option or OSM_HOSTNAME' +
+            'environment variable needs to be specified')
+        exit(1)
+
