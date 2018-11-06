@@ -31,6 +31,7 @@ from osmclient.sol005 import http
 from osmclient.sol005 import sdncontroller
 from osmclient.sol005 import project as projectmodule
 from osmclient.sol005 import user as usermodule
+from osmclient.sol005 import pdud
 from osmclient.common.exceptions import ClientException
 import json
 
@@ -86,6 +87,7 @@ class Client(object):
         self.vnf = vnf.Vnf(self._http_client, client=self)
         self.project = projectmodule.Project(self._http_client, client=self)
         self.user = usermodule.User(self._http_client, client=self)
+        self.pdu = pdud.Pdu(self._http_client, client=self)
         '''
         self.vca = vca.Vca(http_client, client=self, **kwargs)
         self.utils = utils.Utils(http_client, **kwargs)

@@ -532,6 +532,44 @@ def nsi_op_list2(ctx, name):
     nsi_op_list(ctx,name)
 
 
+@cli.command(name='pdu-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the Physical Deployment Units matching the filter')
+@click.pass_context
+def pdu_list(ctx, filter):
+    '''list all Physical Deployment Units (PDU)'''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.pdu.list(filter)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+    table = PrettyTable(
+        ['pdu name',
+         'id',
+         'type',
+         'shared',
+         'mgmt ip address'])
+    for pdu in resp:
+        pdu_name = pdu['name']
+        pdu_id = pdu['_id']
+        pdu_type = pdu['type']
+        pdu_shared = pdu['shared']
+        pdu_ipaddress = "None"
+        for iface in pdu['interfaces']:
+            if iface['mgmt']:
+                pdu_ipaddress = iface['ip-address']
+                break
+        table.add_row(
+            [pdu_name,
+             pdu_id,
+             pdu_type,
+             pdu_shared,
+             pdu_ipaddress])
+    table.align = 'l'
+    print(table)
+
+
 ####################
 # SHOW operations
 ####################
@@ -900,6 +938,38 @@ def nsi_op_show2(ctx, id, filter):
     nsi_op_show(ctx, id, filter)
 
 
+@cli.command(name='pdu-show', short_help='shows the content of a Physical Deployment Unit (PDU)')
+@click.argument('name')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--filter', default=None)
+@click.pass_context
+def pdu_show(ctx, name, literal, filter):
+    '''shows the content of a Physical Deployment Unit (PDU)
+
+    NAME: name or ID of the PDU
+    '''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        pdu = ctx.obj.pdu.get(name)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+    if literal:
+        print(yaml.safe_dump(pdu))
+        return
+
+    table = PrettyTable(['field', 'value'])
+
+    for k, v in list(pdu.items()):
+        if filter is None or filter in k:
+            table.add_row([k, json.dumps(v, indent=2)])
+
+    table.align = 'l'
+    print(table)
+
+
 ####################
 # CREATE operations
 ####################
@@ -1118,6 +1188,50 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
 def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
     '''creates a new Network Slice Instance (NSI)'''
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
+
+
+@cli.command(name='pdu-create', short_help='adds a new Physical Deployment Unit to the catalog')
+@click.option('--name', help='name of the Physical Deployment Unit')
+@click.option('--pdu_type', help='type of PDU (e.g. router, firewall, FW001)')
+@click.option('--interface',
+              help='interface(s) of the PDU: name=<NAME>,mgmt=<true|false>,ip-address=<IP_ADDRESS>'+
+                   '[,type=<overlay|underlay>][,mac-address=<MAC_ADDRESS>][,vim-network-name=<VIM_NET_NAME>]',
+              multiple=True)
+@click.option('--description', help='human readable description')
+@click.option('--shared', is_flag=True, help='flag to indicate if the PDU is shared')
+@click.option('--vimAccounts', help='list of VIM accounts where this PDU is physically connected')
+@click.option('--descriptor_file', default=None, help='PDU descriptor file (as an alternative to using the other arguments')
+@click.pass_context
+#TODO
+def pdu_create(ctx, name, pdu_type, interface, description, shared, vimAccounts, descriptor_file):
+    '''creates a new Physical Deployment Unit (PDU)'''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        pdu = {}
+        if not descriptor_file:
+            if not name:
+                raise ClientException('in absence of descriptor file, option "--name" is mandatory')
+            if not pdu_type:
+                raise ClientException('in absence of descriptor file, option "--pdu_type" is mandatory')
+            if not interface:
+                raise ClientException('in absence of descriptor file, option "--interface" is mandatory (at least once)')
+        else:
+            with open(descriptor_file, 'r') as df:
+                pdu = yaml.load(df.read())
+        if name: pdu["name"] = name
+        if pdu_type: pdu["type"] = pdu_type
+        if description: pdu["description"] = description
+        if shared: pdu["shared"] = shared
+        if vimAccounts: pdu["vim_accounts"] = yaml.load(vimAccounts)
+        if interface:
+            ifaces_list = []
+            for iface in interface:
+                ifaces_list.append({k:v for k,v in [i.split('=') for i in iface.split(',')]})
+            pdu["interfaces"] = ifaces_list
+        ctx.obj.pdu.create(pdu)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
 
 
 ####################
@@ -1389,6 +1503,23 @@ def nsi_delete2(ctx, name, force):
     NAME: name or ID of the Network Slice instance to be deleted
     '''
     nsi_delete(ctx, name, force)
+
+
+@cli.command(name='pdu-delete', short_help='deletes a Physical Deployment Unit (PDU)')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def pdu_delete(ctx, name, force):
+    '''deletes a Physical Deployment Unit (PDU)
+
+    NAME: name or ID of the PDU to be deleted
+    '''
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.pdu.delete(name, force)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
 
 
 ####################
