@@ -33,13 +33,18 @@ class Vnf(object):
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
 
-    def list(self, ns=None):
+    def list(self, ns=None, filter=None):
         """Returns a list of VNF instances
         """
         filter_string = ''
+        if filter:
+            filter_string = '?{}'.format(filter)
         if ns:
             ns_instance = self._client.ns.get(ns)
-            filter_string = '?nsr-id-ref={}'.format(ns_instance['_id'])
+            if filter_string:
+                filter_string += ',nsr-id-ref={}'.format(ns_instance['_id'])
+            else:
+                filter_string = '?nsr-id-ref={}'.format(ns_instance['_id'])
         resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
         #print 'RESP: {}'.format(resp)
         if resp:

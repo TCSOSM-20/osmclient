@@ -99,10 +99,56 @@ def cli(ctx, hostname, so_port, so_project, ro_hostname, ro_port, sol005):
 
 @cli.command(name='ns-list')
 @click.option('--filter', default=None,
-              help='restricts the list to the NS instances matching the filter')
+              help='restricts the list to the NS instances matching the filter.')
 @click.pass_context
 def ns_list(ctx, filter):
-    '''list all NS instances'''
+    '''list all NS instances
+
+    \b
+    Options:
+      --filter filterExpr    Restricts the list to the NS instances matching the filter
+
+    \b
+    filterExpr consists of one or more strings formatted according to "simpleFilterExpr",
+    concatenated using the "&" character:
+
+      \b
+      filterExpr := <simpleFilterExpr>["&"<simpleFilterExpr>]*
+      simpleFilterExpr := <attrName>["."<attrName>]*["."<op>]"="<value>[","<value>]*
+      op := "eq" | "neq" | "gt" | "lt" | "gte" | "lte" | "cont" | "ncont"
+      attrName := string
+      value := scalar value
+
+    \b
+    where:
+      * zero or more occurrences
+      ? zero or one occurrence
+      [] grouping of expressions to be used with ? and *
+      "" quotation marks for marking string constants
+      <> name separator
+
+    \b
+    "AttrName" is the name of one attribute in the data type that defines the representation
+    of the resource. The dot (".") character in "simpleFilterExpr" allows concatenation of
+    <attrName> entries to filter by attributes deeper in the hierarchy of a structured document.
+    "Op" stands for the comparison operator. If the expression has concatenated <attrName>
+    entries, it means that the operator "op" is applied to the attribute addressed by the last
+    <attrName> entry included in the concatenation. All simple filter expressions are combined
+    by the "AND" logical operator. In a concatenation of <attrName> entries in a <simpleFilterExpr>,
+    the rightmost "attrName" entry in a "simpleFilterExpr" is called "leaf attribute". The
+    concatenation of all "attrName" entries except the leaf attribute is called the "attribute
+    prefix". If an attribute referenced in an expression is an array, an object that contains a
+    corresponding array shall be considered to match the expression if any of the elements in the
+    array matches all expressions that have the same attribute prefix.
+
+    \b
+    Filter examples:
+       --filter  admin-status=ENABLED
+       --filter  nsd-ref=<NSD_NAME>
+       --filter  nsd.vendor=<VENDOR>
+       --filter  nsd.vendor=<VENDOR>&nsd-ref=<NSD_NAME>
+       --filter  nsd.constituent-vnfd.vnfd-id-ref=<VNFD_NAME>
+     '''
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.ns.list(filter)
@@ -218,13 +264,64 @@ def vnfd_list2(ctx, filter):
 
 @cli.command(name='vnf-list')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the VNF list')
+@click.option('--filter', default=None,
+              help='restricts the list to the VNF instances matching the filter.')
 @click.pass_context
-def vnf_list(ctx, ns):
-    ''' list all VNF instances'''
+def vnf_list(ctx, ns, filter):
+    '''list all VNF instances
+
+    \b
+    Options:
+      --ns     TEXT           NS instance id or name to restrict the VNF list
+      --filter filterExpr     Restricts the list to the VNF instances matching the filter
+
+    \b
+    filterExpr consists of one or more strings formatted according to "simpleFilterExpr",
+    concatenated using the "&" character:
+
+      \b
+      filterExpr := <simpleFilterExpr>["&"<simpleFilterExpr>]*
+      simpleFilterExpr := <attrName>["."<attrName>]*["."<op>]"="<value>[","<value>]*
+      op := "eq" | "neq" | "gt" | "lt" | "gte" | "lte" | "cont" | "ncont"
+      attrName := string
+      value := scalar value
+
+    \b
+    where:
+      * zero or more occurrences
+      ? zero or one occurrence
+      [] grouping of expressions to be used with ? and *
+      "" quotation marks for marking string constants
+      <> name separator
+
+    \b
+    "AttrName" is the name of one attribute in the data type that defines the representation
+    of the resource. The dot (".") character in "simpleFilterExpr" allows concatenation of
+    <attrName> entries to filter by attributes deeper in the hierarchy of a structured document.
+    "Op" stands for the comparison operator. If the expression has concatenated <attrName>
+    entries, it means that the operator "op" is applied to the attribute addressed by the last
+    <attrName> entry included in the concatenation. All simple filter expressions are combined
+    by the "AND" logical operator. In a concatenation of <attrName> entries in a <simpleFilterExpr>,
+    the rightmost "attrName" entry in a "simpleFilterExpr" is called "leaf attribute". The
+    concatenation of all "attrName" entries except the leaf attribute is called the "attribute
+    prefix". If an attribute referenced in an expression is an array, an object that contains a
+    corresponding array shall be considered to match the expression if any of the elements in the
+    array matches all expressions that have the same attribute prefix.
+
+    \b
+    Filter examples:
+       --filter  vim-account-id=<VIM_ACCOUNT_ID>
+       --filter  vnfd-ref=<VNFD_NAME>
+       --filter  vdur.ip-address=<IP_ADDRESS>
+       --filter  vnfd-ref=<VNFD_NAME>,vdur.ip-address=<IP_ADDRESS>
+    '''
     try:
-        if ns:
-            check_client_version(ctx.obj, '--ns')
-            resp = ctx.obj.vnf.list(ns)
+        if ns or filter:
+            if ns:
+                check_client_version(ctx.obj, '--ns')
+            if filter:
+                check_client_version(ctx.obj, '--filter')
+            resp = ctx.obj.vnf.list(ns, filter)
         else:
             resp = ctx.obj.vnf.list()
     except ClientException as inst:
