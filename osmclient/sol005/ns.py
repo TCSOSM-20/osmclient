@@ -287,6 +287,27 @@ class Ns(object):
                     exc.message)
             raise ClientException(message)
 
+    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out):
+        """Scales a VNF by adding/removing VDUs
+        """
+        try:
+            op_data={}
+            op_data["scaleType"] = "SCALE_VNF"
+            op_data["scaleVnfData"] = {}
+            if scale_in:
+                op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_IN"
+            else:
+                op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_OUT"
+            op_data["scaleVnfData"]["scaleByStepData"] = {
+                "member-vnf-index": vnf_name,
+                "scaling-group-descriptor": scaling_group,
+            }
+            self.exec_op(ns_name, op_name='scale', op_data=op_data)
+        except ClientException as exc:
+            message="failed to scale vnf {} of ns {}:\nerror:\n{}".format(
+                    vnf_name, ns_name, exc.message)
+            raise ClientException(message)
+
     def create_alarm(self, alarm):
         data = {}
         data["create_alarm_request"] = {}
