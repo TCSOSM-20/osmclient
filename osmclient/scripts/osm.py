@@ -1567,6 +1567,46 @@ def ns_action(ctx,
         exit(1)
 
 
+@cli.command(name='ns-scale-vdu')
+@click.argument('ns_name' )
+@click.option('--vnf-name', prompt=True, help="member-vnf-index to scale")
+@click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
+@click.option('--scale-in', default=False, is_flag=True, help="performs a scale in operation")
+@click.option('--scale-out', default=False, is_flag=True, help="performs a scale out operation (by default)")
+@click.pass_context
+def ns_scale_vdu(ctx,
+              ns_name,
+              vnf_name,
+              scaling_group,
+              scale_in,
+              scale_out):
+    """executes a VNF VDU scale over a NS instance
+
+    NS_NAME: name or ID of the NS instance
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        op_data={}
+        if not scale_in and not scale_out:
+            scale_out = True
+            # print("You must provide scale type with option '--vnf-scale-in' or '--vnf-scale-out'")
+            # exit(1)
+        op_data["scaleType"] = "SCALE_VNF"
+        op_data["scaleVnfData"] = {}
+        if scale_in:
+            op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_IN"
+        else:
+            op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_OUT"
+        op_data["scaleVnfData"]["scaleByStepData"] = {
+            "member-vnf-index": vnf_name,
+            "scaling-group-descriptor": scaling_group,
+        }
+        ctx.obj.ns.exec_op(ns_name, op_name='scale', op_data=op_data)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
+
+
 if __name__ == '__main__':
     try:
         cli()
