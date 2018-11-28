@@ -1568,23 +1568,24 @@ def ns_action(ctx,
 
 
 @cli.command(name='vnf-scale')
-@click.argument('ns_name' )
-@click.option('vnf-name', prompt=True, help="member-vnf-index to scale")
+@click.argument('ns_name')
+@click.argument('vnf_name')
 @click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
 @click.option('--scale-in', default=False, is_flag=True, help="performs a scale in operation")
 @click.option('--scale-out', default=False, is_flag=True, help="performs a scale out operation (by default)")
 @click.pass_context
-def ns_scale_vdu(ctx,
+def vnf_scale(ctx,
               ns_name,
               vnf_name,
               scaling_group,
               scale_in,
               scale_out):
-    """executes a VNF scale (adding/removing VDUs)
+    '''executes a VNF scale (adding/removing VDUs)
 
-    NS_NAME: name or ID of the NS instance
-    VNF_NAME: member-vnf-index in the NS to be scaled
-    """
+    \b
+    NS_NAME: name or ID of the NS instance.
+    VNF_NAME: member-vnf-index in the NS to be scaled.
+    '''
     try:
         check_client_version(ctx.obj, ctx.command.name)
         if not scale_in and not scale_out:
