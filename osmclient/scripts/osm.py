@@ -1056,10 +1056,15 @@ def nst_create2(ctx, filename, overwrite):
     nst_create(ctx, filename, overwrite)
 
 
-def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
+def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
     '''creates a new Network Slice Instance (NSI)'''
     try:
         check_client_version(ctx.obj, ctx.command.name)
+        if config_file:
+            if config:
+                raise ClientException('"--config" option is incompatible with "--config_file" option')
+            with open(config_file, 'r') as cf:
+                config=cf.read()
         ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
             account=vim_account)
     except ClientException as inst:
@@ -1082,10 +1087,13 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
               '],\n'
               'netslice-vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
               )
+@click.option('--config_file',
+              default=None,
+              help='nsi specific yaml configuration file')
 @click.pass_context
-def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
+def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
     '''creates a new Network Slice Instance (NSI)'''
-    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config)
+    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
 
 
 @cli.command(name='netslice-instance-create', short_help='creates a new Network Slice Instance')
@@ -1103,10 +1111,13 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
               '],\n'
               'netslice-vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
               )
+@click.option('--config_file',
+              default=None,
+              help='nsi specific yaml configuration file')
 @click.pass_context
-def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config):
+def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
     '''creates a new Network Slice Instance (NSI)'''
-    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config)
+    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
 
 
 ####################
