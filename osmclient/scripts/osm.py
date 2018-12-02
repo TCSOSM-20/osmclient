@@ -286,12 +286,30 @@ def vnfd_list2(ctx, filter):
 
 
 @cli.command(name='nfpkg-list')
+@click.option('--nf_type', help='type of NFPKG (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the xNFpkg matching the filter')
 @click.pass_context
-def nfpkg_list(ctx, filter):
+def nfpkg_list(ctx, nf_type, filter):
     '''list all NFpkg (VNFpkg, PNFpkg, HNFpkg) in the system'''
-    vnfd_list(ctx,filter)
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        check_client_version(ctx.obj)
+        if nf_type:
+            if nf_type == "vnf":
+                nf_filter = "_admin.type=vnfd"
+            elif nf_type == "pnf":
+                nf_filter = "_admin.type=pnfd"
+            elif nf_type == "hnf":
+                nf_filter = "_admin.type=hnfd"
+            else:
+                raise ClientException('wrong value for "--nf_type" option, allowed values: vnf, pnf, hnf')
+            if filter:
+                filter = '{}&{}'.format(nf_filter, filter)
+        vnfd_list(ctx,filter)
+    except ClientException as inst:
+        print((inst.message))
+        exit(1)
 
 
 @cli.command(name='vnf-list')
