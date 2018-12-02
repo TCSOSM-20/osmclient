@@ -2,6 +2,8 @@
 .cache
 deb_dist/
 dist/
+dists/
+pool/
 *.gz
 *egg-info/
 .eggs
