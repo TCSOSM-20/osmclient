@@ -285,6 +285,15 @@ def vnfd_list2(ctx, filter):
     vnfd_list(ctx,filter)
 
 
+@cli.command(name='nfpkg-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the xNFpkg matching the filter')
+@click.pass_context
+def nfpkg_list(ctx, filter):
+    '''list all NFpkg (VNFpkg, PNFpkg, HNFpkg) in the system'''
+    vnfd_list(ctx,filter)
+
+
 @cli.command(name='vnf-list')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the VNF list')
 @click.option('--filter', default=None,
@@ -660,6 +669,19 @@ def vnfd_show2(ctx, name, literal):
     '''shows the content of a VNFD
 
     NAME: name or ID of the VNFD/VNFpkg
+    '''
+    vnfd_show(ctx, name, literal)
+
+
+@cli.command(name='nfpkg-show', short_help='shows the content of a NF Descriptor')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.argument('name')
+@click.pass_context
+def nfpkg_show(ctx, name, literal):
+    '''shows the content of a NF Descriptor
+
+    NAME: name or ID of the NFpkg
     '''
     vnfd_show(ctx, name, literal)
 
@@ -1044,6 +1066,19 @@ def vnfd_create2(ctx, filename, overwrite):
     vnfd_create(ctx, filename, overwrite)
 
 
+@cli.command(name='nfpkg-create', short_help='creates a new NFpkg')
+@click.argument('filename')
+@click.option('--overwrite', default=None,
+              help='overwrites some fields in NFD')
+@click.pass_context
+def nfpkg_create(ctx, filename, overwrite):
+    '''creates a new NFpkg
+
+    FILENAME: NF Descriptor yaml file or NFpkg tar.gz file
+    '''
+    vnfd_create(ctx, filename, overwrite)
+
+
 @cli.command(name='ns-create', short_help='creates a new Network Service instance')
 @click.option('--ns_name',
               prompt=True, help='name of the NS instance')
@@ -1308,6 +1343,19 @@ def vnfd_update2(ctx, name, content):
     vnfd_update(ctx, name, content)
 
 
+@cli.command(name='nfpkg-update', short_help='updates a NFpkg')
+@click.argument('name')
+@click.option('--content', default=None,
+              help='filename with the NFpkg replacing the current one')
+@click.pass_context
+def nfpkg_update(ctx, name, content):
+    '''updates a NFpkg
+
+    NAME: NF Descriptor yaml file or NFpkg tar.gz file
+    '''
+    vnfd_update(ctx, name, content)
+
+
 def nst_update(ctx, name, content):
     try:
         check_client_version(ctx.obj, ctx.command.name)
@@ -1415,6 +1463,18 @@ def vnfd_delete2(ctx, name, force):
     '''deletes a VNFD/VNFpkg
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
+    '''
+    vnfd_delete(ctx, name, force)
+
+
+@cli.command(name='nfpkg-delete', short_help='deletes a NFpkg')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def nfpkg_delete(ctx, name, force):
+    '''deletes a NFpkg
+
+    NAME: name or ID of the NFpkg to be deleted
     '''
     vnfd_delete(ctx, name, force)
 
