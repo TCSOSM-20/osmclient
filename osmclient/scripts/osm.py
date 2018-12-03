@@ -290,7 +290,7 @@ def vnfd_list(ctx, nf_type, filter):
 @click.pass_context
 def vnfd_list1(ctx, nf_type, filter):
     '''list all VNFD/VNFpkg in the system'''
-    vnfd_list(ctx,nf_type,filter)
+    vnfd_list(ctx, nf_type, filter)
 
 
 @cli.command(name='vnfpkg-list')
@@ -300,7 +300,7 @@ def vnfd_list1(ctx, nf_type, filter):
 @click.pass_context
 def vnfd_list2(ctx, nf_type, filter):
     '''list all VNFD/VNFpkg in the system'''
-    vnfd_list(ctx,nf_type,filter)
+    vnfd_list(ctx, nf_type, filter)
 
 
 @cli.command(name='nfpkg-list')
@@ -318,11 +318,6 @@ def nfpkg_list(ctx, nf_type, filter):
         exit(1)
 
 
-@cli.command(name='vnf-list')
-@click.option('--ns', default=None, help='NS instance id or name to restrict the VNF list')
-@click.option('--filter', default=None,
-              help='restricts the list to the VNF instances matching the filter.')
-@click.pass_context
 def vnf_list(ctx, ns, filter):
     '''list all VNF instances
 
@@ -420,6 +415,25 @@ def vnf_list(ctx, ns, filter):
                  vnfr['config-status']])
     table.align = 'l'
     print(table)
+
+
+@cli.command(name='vnf-list')
+@click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
+@click.option('--filter', default=None,
+              help='restricts the list to the NF instances matching the filter.')
+@click.pass_context
+def vnf_list1(ctx, ns, filter):
+    vnf_list(ctx, ns, filter)
+
+
+@cli.command(name='nf-list')
+@click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
+@click.option('--filter', default=None,
+              help='restricts the list to the NF instances matching the filter.')
+@click.pass_context
+def nf_list(ctx, ns, filter):
+    vnf_list(ctx, ns, filter)
+
 
 @cli.command(name='ns-op-list')
 @click.argument('name')
