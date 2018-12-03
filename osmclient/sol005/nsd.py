@@ -166,6 +166,8 @@ class Nsd(object):
                 raise ClientException('unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
+        elif http_code == 204:
+            print('Updated')
         else:
             msg = "Error {}".format(http_code)
             if resp:

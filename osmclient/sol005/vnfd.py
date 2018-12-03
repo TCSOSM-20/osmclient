@@ -158,13 +158,15 @@ class Vnfd(object):
             http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
         #print 'HTTP CODE: {}'.format(http_code)
         #print 'RESP: {}'.format(resp)
-        if http_code in (200, 201, 202, 204):
+        if http_code in (200, 201, 202):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
                 raise ClientException('unexpected response from server: '.format(
                                       resp))
             print(resp['id'])
+        elif http_code == 204:
+            print('Updated')
         else:
             msg = "Error {}".format(http_code)
             if resp:
@@ -176,6 +178,6 @@ class Vnfd(object):
 
     def update(self, name, filename):
         vnfd = self.get(name)
-        endpoint = '{}/{}/vnfd_content'.format(self._apiBase, vnfd['_id'])
+        endpoint = '{}/{}/package_content'.format(self._apiBase, vnfd['_id'])
         self.create(filename=filename, update_endpoint=endpoint)
 
