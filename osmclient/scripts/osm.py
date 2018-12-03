@@ -294,7 +294,6 @@ def nfpkg_list(ctx, nf_type, filter):
     '''list all NFpkg (VNFpkg, PNFpkg, HNFpkg) in the system'''
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        check_client_version(ctx.obj)
         if nf_type:
             if nf_type == "vnf":
                 nf_filter = "_admin.type=vnfd"
@@ -575,13 +574,11 @@ def pdu_list(ctx, filter):
         ['pdu name',
          'id',
          'type',
-         'shared',
          'mgmt ip address'])
     for pdu in resp:
         pdu_name = pdu['name']
         pdu_id = pdu['_id']
         pdu_type = pdu['type']
-        pdu_shared = pdu['shared']
         pdu_ipaddress = "None"
         for iface in pdu['interfaces']:
             if iface['mgmt']:
@@ -591,7 +588,6 @@ def pdu_list(ctx, filter):
             [pdu_name,
              pdu_id,
              pdu_type,
-             pdu_shared,
              pdu_ipaddress])
     table.align = 'l'
     print(table)
@@ -1251,12 +1247,10 @@ def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
                    '[,type=<overlay|underlay>][,mac-address=<MAC_ADDRESS>][,vim-network-name=<VIM_NET_NAME>]',
               multiple=True)
 @click.option('--description', help='human readable description')
-@click.option('--shared', is_flag=True, help='flag to indicate if the PDU is shared')
-@click.option('--vimAccounts', help='list of VIM accounts where this PDU is physically connected')
+@click.option('--vim_account', help='list of VIM accounts (in the same VIM) that can reach this PDU', multiple=True)
 @click.option('--descriptor_file', default=None, help='PDU descriptor file (as an alternative to using the other arguments')
 @click.pass_context
-#TODO
-def pdu_create(ctx, name, pdu_type, interface, description, shared, vimAccounts, descriptor_file):
+def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descriptor_file):
     '''creates a new Physical Deployment Unit (PDU)'''
     try:
         check_client_version(ctx.obj, ctx.command.name)
@@ -1268,18 +1262,21 @@ def pdu_create(ctx, name, pdu_type, interface, description, shared, vimAccounts,
                 raise ClientException('in absence of descriptor file, option "--pdu_type" is mandatory')
             if not interface:
                 raise ClientException('in absence of descriptor file, option "--interface" is mandatory (at least once)')
+            if not vim_account:
+                raise ClientException('in absence of descriptor file, option "--vim_account" is mandatory (at least once)')
         else:
             with open(descriptor_file, 'r') as df:
                 pdu = yaml.load(df.read())
         if name: pdu["name"] = name
         if pdu_type: pdu["type"] = pdu_type
         if description: pdu["description"] = description
-        if shared: pdu["shared"] = shared
-        if vimAccounts: pdu["vim_accounts"] = yaml.load(vimAccounts)
+        if vim_account: pdu["vim_accounts"] = vim_account
         if interface:
             ifaces_list = []
             for iface in interface:
-                ifaces_list.append({k:v for k,v in [i.split('=') for i in iface.split(',')]})
+                new_iface={k:v for k,v in [i.split('=') for i in iface.split(',')]}
+                new_iface["mgmt"] = (new_iface.get("mgmt","false").lower() == "true")
+                ifaces_list.append(new_iface)
             pdu["interfaces"] = ifaces_list
         ctx.obj.pdu.create(pdu)
     except ClientException as inst:

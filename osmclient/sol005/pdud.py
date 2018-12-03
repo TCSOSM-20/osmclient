@@ -89,16 +89,13 @@ class Pdu(object):
 
     def create(self, pdu, update_endpoint=None):
         headers= self._client._headers
-        headers['Content-Type'] = 'text/plain'
+        headers['Content-Type'] = 'application/yaml'
         http_header = ['{}: {}'.format(key,val)
                       for (key,val) in list(headers.items())]
         self._http.set_http_header(http_header)
         if update_endpoint:
             http_code, resp = self._http.put_cmd(endpoint=update_endpoint, postfields_dict=pdu)
         else:
-            self._apiResource = '/pdu_descriptors_content'
-            self._apiBase = '{}{}{}'.format(self._apiName,
-                                            self._apiVersion, self._apiResource)
             endpoint = self._apiBase
             #endpoint = '{}{}'.format(self._apiBase,ow_string)
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=pdu)
