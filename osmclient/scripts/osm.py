@@ -247,9 +247,25 @@ def nsd_list2(ctx, filter):
     nsd_list(ctx,filter)
 
 
-def vnfd_list(ctx, filter):
-    if filter:
+def vnfd_list(ctx, nf_type, filter):
+    if nf_type:
+        check_client_version(ctx.obj, '--nf_type')
+    elif filter:
         check_client_version(ctx.obj, '--filter')
+    if nf_type:
+        if nf_type == "vnf":
+            nf_filter = "_admin.type=vnfd"
+        elif nf_type == "pnf":
+            nf_filter = "_admin.type=pnfd"
+        elif nf_type == "hnf":
+            nf_filter = "_admin.type=hnfd"
+        else:
+            raise ClientException('wrong value for "--nf_type" option, allowed values: vnf, pnf, hnf')
+        if filter:
+            filter = '{}&{}'.format(nf_filter, filter)
+        else:
+            filter = nf_filter
+    if filter:
         resp = ctx.obj.vnfd.list(filter)
     else:
         resp = ctx.obj.vnfd.list()
@@ -268,44 +284,35 @@ def vnfd_list(ctx, filter):
 
 
 @cli.command(name='vnfd-list')
+@click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
-              help='restricts the list to the VNFD/VNFpkg matching the filter')
+              help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
-def vnfd_list1(ctx, filter):
+def vnfd_list1(ctx, nf_type, filter):
     '''list all VNFD/VNFpkg in the system'''
-    vnfd_list(ctx,filter)
+    vnfd_list(ctx,nf_type,filter)
 
 
 @cli.command(name='vnfpkg-list')
+@click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
-              help='restricts the list to the VNFD/VNFpkg matching the filter')
+              help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
-def vnfd_list2(ctx, filter):
+def vnfd_list2(ctx, nf_type, filter):
     '''list all VNFD/VNFpkg in the system'''
-    vnfd_list(ctx,filter)
+    vnfd_list(ctx,nf_type,filter)
 
 
 @cli.command(name='nfpkg-list')
-@click.option('--nf_type', help='type of NFPKG (vnf, pnf, hnf)')
+@click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
-              help='restricts the list to the xNFpkg matching the filter')
+              help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def nfpkg_list(ctx, nf_type, filter):
     '''list all NFpkg (VNFpkg, PNFpkg, HNFpkg) in the system'''
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        if nf_type:
-            if nf_type == "vnf":
-                nf_filter = "_admin.type=vnfd"
-            elif nf_type == "pnf":
-                nf_filter = "_admin.type=pnfd"
-            elif nf_type == "hnf":
-                nf_filter = "_admin.type=hnfd"
-            else:
-                raise ClientException('wrong value for "--nf_type" option, allowed values: vnf, pnf, hnf')
-            if filter:
-                filter = '{}&{}'.format(nf_filter, filter)
-        vnfd_list(ctx,filter)
+        vnfd_list(ctx,nf_type,filter)
     except ClientException as inst:
         print((inst.message))
         exit(1)
