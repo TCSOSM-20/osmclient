@@ -147,7 +147,25 @@ class Ns(object):
                         vnf["vimAccountId"] = get_vim_account_id(vnf.pop("vim_account"))
                 ns["vnf"] = ns_config["vnf"]
 
-        #print yaml.safe_dump(ns)
+            if "additionalParamsForNs" in ns_config:
+                ns["additionalParamsForNs"] = ns_config.pop("additionalParamsForNs")
+                if not isinstance(ns["additionalParamsForNs"], dict):
+                    raise ValueError("Error at --config 'additionalParamsForNs' must be a dictionary")
+            if "additionalParamsForVnf" in ns_config:
+                ns["additionalParamsForVnf"] = ns_config.pop("additionalParamsForVnf")
+                if not isinstance(ns["additionalParamsForVnf"], list):
+                    raise ValueError("Error at --config 'additionalParamsForVnf' must be a list")
+                for additional_param_vnf in ns["additionalParamsForVnf"]:
+                    if not isinstance(additional_param_vnf, dict):
+                        raise ValueError("Error at --config 'additionalParamsForVnf' items must be dictionaries")
+                    if not additional_param_vnf.get("member-vnf-index"):
+                        raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
+                                         "'member-vnf-index'")
+                    if not additional_param_vnf.get("additionalParams"):
+                        raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
+                                         "'additionalParams'")
+
+        # print yaml.safe_dump(ns)
         try:
             self._apiResource = '/ns_instances_content'
             self._apiBase = '{}{}{}'.format(self._apiName,

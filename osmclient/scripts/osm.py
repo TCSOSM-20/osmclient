@@ -1207,9 +1207,9 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
             with open(config_file, 'r') as cf:
                 config=cf.read()
         ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
-            account=vim_account)
+                           account=vim_account)
     except ClientException as inst:
-        print((inst.message))
+        print(inst.message)
         exit(1)
 
 
@@ -1224,7 +1224,9 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
               'netslice_subnet: [\n'
                 'id: TEXT, vim_account: TEXT,\n'
                 'vnf: [member-vnf-index: TEXT, vim_account: TEXT]\n'
-                'vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
+                'vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]\n'
+                'additionalParamsForNsi: {param: value, ...}\n'
+                'additionalParamsForsubnet: [{id: SUBNET_ID, additionalParamsForNs: {}, additionalParamsForVnf: {}}]\n'
               '],\n'
               'netslice-vld: [name: TEXT, vim-network-name: TEXT or DICT with vim_account, vim_net entries]'
               )
