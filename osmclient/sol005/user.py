@@ -23,7 +23,7 @@ from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
-import yaml
+# import yaml
 
 
 class User(object):
@@ -39,8 +39,6 @@ class User(object):
     def create(self, name, user):
         """Creates a new OSM user
         """
-        if 'projects' in user and user['projects'] is not None:
-            user['projects'] = yaml.safe_load(user['projects'])
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=user)
         #print('HTTP CODE: {}'.format(http_code))
@@ -132,7 +130,7 @@ class User(object):
                     return user
         else:
             for user in self.list():
-                if name == user['name']:
+                if name == user['username']:
                     return user
         raise NotFound("User {} not found".format(name))
 

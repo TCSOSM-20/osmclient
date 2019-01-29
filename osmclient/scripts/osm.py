@@ -2236,7 +2236,8 @@ def project_show(ctx, name):
               confirmation_prompt=True,
               help='user password')
 @click.option('--projects',
-              default=None,
+              prompt=True,
+              multiple=True,
               help='list of project ids that the user belongs to')
 #@click.option('--description',
 #              default='no description',
@@ -2289,7 +2290,7 @@ def user_list(ctx, filter):
         exit(1)
     table = PrettyTable(['name', 'id'])
     for user in resp:
-        table.add_row([user['name'], user['_id']])
+        table.add_row([user['username'], user['_id']])
     table.align = 'l'
     print(table)
 
