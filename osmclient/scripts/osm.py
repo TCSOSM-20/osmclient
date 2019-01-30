@@ -270,7 +270,7 @@ def vnfd_list(ctx, nf_type, filter):
     else:
         resp = ctx.obj.vnfd.list()
     #print yaml.safe_dump(resp)
-    table = PrettyTable(['vnfd name', 'id'])
+    table = PrettyTable(['nfpkg name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
         for vnfd in resp:
