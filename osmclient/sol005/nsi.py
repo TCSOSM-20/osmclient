@@ -161,7 +161,25 @@ class Nsi(object):
                                 vnf["vimAccountId"] = get_vim_account_id(vnf.pop("vim_account"))
                 nsi["netslice-subnet"] = nsi_config["netslice-subnet"]
 
-        #print yaml.safe_dump(nsi)
+            if "additionalParamsForNsi" in nsi_config:
+                nsi["additionalParamsForNsi"] = nsi_config.pop("additionalParamsForNsi")
+                if not isinstance(nsi["additionalParamsForNsi"], dict):
+                    raise ValueError("Error at --config 'additionalParamsForNsi' must be a dictionary")
+            if "additionalParamsForSubnet" in nsi_config:
+                nsi["additionalParamsForSubnet"] = nsi_config.pop("additionalParamsForSubnet")
+                if not isinstance(nsi["additionalParamsForSubnet"], list):
+                    raise ValueError("Error at --config 'additionalParamsForSubnet' must be a list")
+                for additional_param_subnet in nsi["additionalParamsForSubnet"]:
+                    if not isinstance(additional_param_subnet, dict):
+                        raise ValueError("Error at --config 'additionalParamsForSubnet' items must be dictionaries")
+                    if not additional_param_subnet.get("id"):
+                        raise ValueError("Error at --config 'additionalParamsForSubnet' items must contain subnet 'id'")
+                    if not additional_param_subnet.get("additionalParamsForNs") and\
+                            not additional_param_subnet.get("additionalParamsForVnf"):
+                        raise ValueError("Error at --config 'additionalParamsForSubnet' items must contain "
+                                         "'additionalParamsForNs' and/or 'additionalParamsForVnf'")
+
+        # print yaml.safe_dump(nsi)
         try:
             self._apiResource = '/netslice_instances_content'
             self._apiBase = '{}{}{}'.format(self._apiName,
