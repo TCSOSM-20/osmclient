@@ -39,6 +39,8 @@ class User(object):
     def create(self, name, user):
         """Creates a new OSM user
         """
+        if len(user["projects"]) == 1:
+            user["projects"] = user["projects"][0].split(",")
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=user)
         #print('HTTP CODE: {}'.format(http_code))

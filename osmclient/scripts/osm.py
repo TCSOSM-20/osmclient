@@ -2236,8 +2236,9 @@ def project_show(ctx, name):
               confirmation_prompt=True,
               help='user password')
 @click.option('--projects',
-              prompt=True,
+              prompt="Comma separate list of projects",
               multiple=True,
+              callback=lambda ctx, param, value: ''.join(value).split(',') if all(len(x)==1 for x in value) else value,
               help='list of project ids that the user belongs to')
 #@click.option('--description',
 #              default='no description',
