@@ -96,13 +96,14 @@ class Ns(object):
                     msg = resp
             raise ClientException("failed to delete ns {} - {}".format(name, msg))
 
-    def create(self, nsd_name, nsr_name, account, config=None,
+    def create(self, nsd_name, nsr_name, account, wim_account=None, config=None,
                ssh_keys=None, description='default description',
                admin_status='ENABLED'):
 
         nsd = self._client.nsd.get(nsd_name)
 
         vim_account_id = {}
+        wim_account_id = {}
 
         def get_vim_account_id(vim_account):
             if vim_account_id.get(vim_account):
@@ -114,11 +115,25 @@ class Ns(object):
             vim_account_id[vim_account] = vim['_id']
             return vim['_id']
 
+        def get_wim_account_id(wim_account):
+            if not isinstance(wim_account, str):
+                return wim_account
+            if wim_account_id.get(wim_account):
+                return wim_account_id[wim_account]
+
+            wim = self._client.wim.get(wim_account)
+            if wim is None:
+                raise NotFound("cannot find wim account '{}'".format(wim_account))
+            wim_account_id[wim_account] = wim['_id']
+            return wim['_id']
+
         ns = {}
         ns['nsdId'] = nsd['_id']
         ns['nsName'] = nsr_name
         ns['nsDescription'] = description
         ns['vimAccountId'] = get_vim_account_id(account)
+        if wim_account:   # at this point is a string or None
+            ns['wimAccountId'] = get_wim_account_id(yaml.load(wim_account))
         #ns['userdata'] = {}
         #ns['userdata']['key1']='value1'
         #ns['userdata']['key2']='value2'
@@ -140,6 +155,8 @@ class Ns(object):
                             for vim_account, vim_net in list(vld["vim-network-name"].items()):
                                 vim_network_name_dict[get_vim_account_id(vim_account)] = vim_net
                             vld["vim-network-name"] = vim_network_name_dict
+                    if "wim_account" in vld and vld["wim_account"] is not None:
+                        vld["wimAccountId"] = get_wim_account_id(vld.pop("wim_account"))
                 ns["vld"] = ns_config["vld"]
             if "vnf" in ns_config:
                 for vnf in ns_config["vnf"]:

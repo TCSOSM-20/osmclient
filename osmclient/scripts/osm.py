@@ -1122,6 +1122,8 @@ def nfpkg_create(ctx, filename, overwrite):
               prompt=True, help='name of the NS descriptor')
 @click.option('--vim_account',
               prompt=True, help='default VIM account id or name for the deployment')
+@click.option('--wim_account',
+              default=None, help='default WIM account for intersite connectivity. False to not use a WIM')
 @click.option('--admin_status',
               default='ENABLED',
               help='administration status')
@@ -1139,6 +1141,7 @@ def ns_create(ctx,
               nsd_name,
               ns_name,
               vim_account,
+              wim_account,
               admin_status,
               ssh_keys,
               config,
@@ -1156,7 +1159,8 @@ def ns_create(ctx,
             ns_name,
             config=config,
             ssh_keys=ssh_keys,
-            account=vim_account)
+            account=vim_account,
+            wim_account=wim_account)
     except ClientException as inst:
         print((inst.message))
         exit(1)
