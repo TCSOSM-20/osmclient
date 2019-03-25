@@ -96,7 +96,7 @@ class Ns(object):
                     msg = resp
             raise ClientException("failed to delete ns {} - {}".format(name, msg))
 
-    def create(self, nsd_name, nsr_name, account, wim_account=None, config=None,
+    def create(self, nsd_name, nsr_name, account, config=None,
                ssh_keys=None, description='default description',
                admin_status='ENABLED'):
 
@@ -132,8 +132,6 @@ class Ns(object):
         ns['nsName'] = nsr_name
         ns['nsDescription'] = description
         ns['vimAccountId'] = get_vim_account_id(account)
-        if wim_account:   # at this point is a string or None
-            ns['wimAccountId'] = get_wim_account_id(yaml.load(wim_account))
         #ns['userdata'] = {}
         #ns['userdata']['key1']='value1'
         #ns['userdata']['key2']='value2'
@@ -181,6 +179,10 @@ class Ns(object):
                     if not additional_param_vnf.get("additionalParams"):
                         raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
                                          "'additionalParams'")
+            if "wim_account" in ns_config:
+                wim_account = ns_config.pop("wim_account")
+                if wim_account is not None:
+                    ns['wimAccountId'] = get_wim_account_id(wim_account)
 
         # print yaml.safe_dump(ns)
         try:

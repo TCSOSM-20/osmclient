@@ -69,7 +69,7 @@ class Ns(object):
                     ns_name,
                     resp))
 
-    def create(self, nsd_name, nsr_name, account, wim_account=None, config=None,
+    def create(self, nsd_name, nsr_name, account, config=None,
                ssh_keys=None, description='default description',
                admin_status='ENABLED'):
         postdata = {}
