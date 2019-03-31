@@ -39,7 +39,7 @@ class Project(object):
         """Creates a new OSM project
         """
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                       postfields_dict=project)
+                                              postfields_dict=project)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
@@ -63,7 +63,7 @@ class Project(object):
         """
         proj = self.get(name)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,proj['_id']),
-                                       postfields_dict=project)
+                                             postfields_dict=project)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
@@ -90,7 +90,7 @@ class Project(object):
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                         project['_id'], querystring))
+                                                project['_id'], querystring))
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         if http_code == 202:

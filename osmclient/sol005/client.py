@@ -32,9 +32,11 @@ from osmclient.sol005 import http
 from osmclient.sol005 import sdncontroller
 from osmclient.sol005 import project as projectmodule
 from osmclient.sol005 import user as usermodule
+from osmclient.sol005 import role
 from osmclient.sol005 import pdud
 from osmclient.common.exceptions import ClientException
 import json
+
 
 class Client(object):
 
@@ -65,8 +67,8 @@ class Client(object):
             'https://{}:{}/osm'.format(self._host,self._so_port))
         self._headers['Accept'] = 'application/json'
         self._headers['Content-Type'] = 'application/yaml'
-        http_header = ['{}: {}'.format(key,val)
-                      for (key,val) in list(self._headers.items())]
+        http_header = ['{}: {}'.format(key, val)
+                       for (key, val) in list(self._headers.items())]
         self._http_client.set_http_header(http_header)
 
         token = self.get_token()
@@ -89,6 +91,7 @@ class Client(object):
         self.vnf = vnf.Vnf(self._http_client, client=self)
         self.project = projectmodule.Project(self._http_client, client=self)
         self.user = usermodule.User(self._http_client, client=self)
+        self.role = role.Role(self._http_client, client=self)
         self.pdu = pdud.Pdu(self._http_client, client=self)
         '''
         self.vca = vca.Vca(http_client, client=self, **kwargs)
@@ -100,7 +103,7 @@ class Client(object):
                            'password': self._password,
                            'project_id': self._project}
         http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
-                              postfields_dict=postfields_dict)
+                                                     postfields_dict=postfields_dict)
         if http_code not in (200, 201, 202, 204):
             raise ClientException(resp)
         token = json.loads(resp) if resp else None

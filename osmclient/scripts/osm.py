@@ -27,15 +27,16 @@ import json
 import time
 import pycurl
 
+
 def check_client_version(obj, what, version='sol005'):
-    '''
+    """
     Checks the version of the client object and raises error if it not the expected.
 
     :param obj: the client object
     :what: the function or command under evaluation (used when an error is raised)
     :return: -
     :raises ClientError: if the specified version does not match the client version
-    '''
+    """
     fullclassname = obj.__module__ + "." + obj.__class__.__name__
     message = 'The following commands or options are only supported with the option "--sol005": {}'.format(what)
     if version == 'v1':
@@ -43,6 +44,7 @@ def check_client_version(obj, what, version='sol005'):
     if fullclassname != 'osmclient.{}.client.Client'.format(version):
         raise ClientException(message)
     return
+
 
 @click.group()
 @click.option('--hostname',
@@ -125,7 +127,7 @@ def cli(ctx, hostname, sol005, user, password, project, so_port, so_project, ro_
               help='restricts the list to the NS instances matching the filter.')
 @click.pass_context
 def ns_list(ctx, filter):
-    '''list all NS instances
+    """list all NS instances
 
     \b
     Options:
@@ -171,7 +173,7 @@ def ns_list(ctx, filter):
        --filter  nsd.vendor=<VENDOR>
        --filter  nsd.vendor=<VENDOR>&nsd-ref=<NSD_NAME>
        --filter  nsd.constituent-vnfd.vnfd-id-ref=<VNFD_NAME>
-     '''
+    """
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.ns.list(filter)
@@ -215,7 +217,7 @@ def nsd_list(ctx, filter):
         resp = ctx.obj.nsd.list(filter)
     else:
         resp = ctx.obj.nsd.list()
-    #print yaml.safe_dump(resp)
+    # print yaml.safe_dump(resp)
     table = PrettyTable(['nsd name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
@@ -234,8 +236,8 @@ def nsd_list(ctx, filter):
               help='restricts the list to the NSD/NSpkg matching the filter')
 @click.pass_context
 def nsd_list1(ctx, filter):
-    '''list all NSD/NSpkg in the system'''
-    nsd_list(ctx,filter)
+    """list all NSD/NS pkg in the system"""
+    nsd_list(ctx, filter)
 
 
 @cli.command(name='nspkg-list')
@@ -243,8 +245,8 @@ def nsd_list1(ctx, filter):
               help='restricts the list to the NSD/NSpkg matching the filter')
 @click.pass_context
 def nsd_list2(ctx, filter):
-    '''list all NSD/NSpkg in the system'''
-    nsd_list(ctx,filter)
+    """list all NSD/NS pkg in the system"""
+    nsd_list(ctx, filter)
 
 
 def vnfd_list(ctx, nf_type, filter):
@@ -269,7 +271,7 @@ def vnfd_list(ctx, nf_type, filter):
         resp = ctx.obj.vnfd.list(filter)
     else:
         resp = ctx.obj.vnfd.list()
-    #print yaml.safe_dump(resp)
+    # print yaml.safe_dump(resp)
     table = PrettyTable(['nfpkg name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
@@ -286,10 +288,10 @@ def vnfd_list(ctx, nf_type, filter):
 @cli.command(name='vnfd-list')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
-              help='restricts the list to the NFpkg matching the filter')
+              help='restricts the list to the NF pkg matching the filter')
 @click.pass_context
 def vnfd_list1(ctx, nf_type, filter):
-    '''list all VNFD/VNFpkg in the system'''
+    """list all VNFD/VNF pkg in the system"""
     vnfd_list(ctx, nf_type, filter)
 
 
@@ -299,7 +301,7 @@ def vnfd_list1(ctx, nf_type, filter):
               help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def vnfd_list2(ctx, nf_type, filter):
-    '''list all VNFD/VNFpkg in the system'''
+    """list all VNFD/VNF pkg in the system"""
     vnfd_list(ctx, nf_type, filter)
 
 
@@ -309,10 +311,10 @@ def vnfd_list2(ctx, nf_type, filter):
               help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def nfpkg_list(ctx, nf_type, filter):
-    '''list all NFpkg (VNFpkg, PNFpkg, HNFpkg) in the system'''
+    """list all NF pkg (VNF pkg, PNF pkg, HNF pkg) in the system"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        vnfd_list(ctx,nf_type,filter)
+        vnfd_list(ctx, nf_type, filter)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -376,7 +378,7 @@ def vnf_list(ctx, ns, filter):
               help='restricts the list to the NF instances matching the filter.')
 @click.pass_context
 def vnf_list1(ctx, ns, filter):
-    '''list all NF instances'''
+    """list all NF instances"""
     vnf_list(ctx, ns, filter)
 
 
@@ -386,7 +388,7 @@ def vnf_list1(ctx, ns, filter):
               help='restricts the list to the NF instances matching the filter.')
 @click.pass_context
 def nf_list(ctx, ns, filter):
-    '''list all NF instances
+    """list all NF instances
 
     \b
     Options:
@@ -432,7 +434,7 @@ def nf_list(ctx, ns, filter):
        --filter  vnfd-ref=<VNFD_NAME>
        --filter  vdur.ip-address=<IP_ADDRESS>
        --filter  vnfd-ref=<VNFD_NAME>,vdur.ip-address=<IP_ADDRESS>
-    '''
+    """
     vnf_list(ctx, ns, filter)
 
 
@@ -440,10 +442,10 @@ def nf_list(ctx, ns, filter):
 @click.argument('name')
 @click.pass_context
 def ns_op_list(ctx, name):
-    '''shows the history of operations over a NS instance
+    """shows the history of operations over a NS instance
 
     NAME: name or ID of the NS instance
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.ns.list_op(name)
@@ -453,14 +455,14 @@ def ns_op_list(ctx, name):
 
     table = PrettyTable(['id', 'operation', 'status'])
     for op in resp:
-         table.add_row([op['id'], op['lcmOperationType'],
-                        op['operationState']])
+        table.add_row([op['id'], op['lcmOperationType'],
+                       op['operationState']])
     table.align = 'l'
     print(table)
 
 
 def nsi_list(ctx, filter):
-    '''list all Network Slice Instances'''
+    """list all Network Slice Instances"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.nsi.list(filter)
@@ -496,8 +498,8 @@ def nsi_list(ctx, filter):
               help='restricts the list to the Network Slice Instances matching the filter')
 @click.pass_context
 def nsi_list1(ctx, filter):
-    '''list all Network Slice Instances (NSI)'''
-    nsi_list(ctx,filter)
+    """list all Network Slice Instances (NSI)"""
+    nsi_list(ctx, filter)
 
 
 @cli.command(name='netslice-instance-list')
@@ -505,8 +507,8 @@ def nsi_list1(ctx, filter):
               help='restricts the list to the Network Slice Instances matching the filter')
 @click.pass_context
 def nsi_list2(ctx, filter):
-    '''list all Network Slice Instances (NSI)'''
-    nsi_list(ctx,filter)
+    """list all Network Slice Instances (NSI)"""
+    nsi_list(ctx, filter)
 
 
 def nst_list(ctx, filter):
@@ -516,7 +518,7 @@ def nst_list(ctx, filter):
     except ClientException as inst:
         print((inst.message))
         exit(1)
-    #print yaml.safe_dump(resp)
+    # print yaml.safe_dump(resp)
     table = PrettyTable(['nst name', 'id'])
     for nst in resp:
         name = nst['name'] if 'name' in nst else '-'
@@ -530,8 +532,8 @@ def nst_list(ctx, filter):
               help='restricts the list to the NST matching the filter')
 @click.pass_context
 def nst_list1(ctx, filter):
-    '''list all Network Slice Templates (NST) in the system'''
-    nst_list(ctx,filter)
+    """list all Network Slice Templates (NST) in the system"""
+    nst_list(ctx, filter)
 
 
 @cli.command(name='netslice-template-list')
@@ -539,8 +541,8 @@ def nst_list1(ctx, filter):
               help='restricts the list to the NST matching the filter')
 @click.pass_context
 def nst_list2(ctx, filter):
-    '''list all Network Slice Templates (NST) in the system'''
-    nst_list(ctx,filter)
+    """list all Network Slice Templates (NST) in the system"""
+    nst_list(ctx, filter)
 
 
 def nsi_op_list(ctx, name):
@@ -552,8 +554,8 @@ def nsi_op_list(ctx, name):
         exit(1)
     table = PrettyTable(['id', 'operation', 'status'])
     for op in resp:
-         table.add_row([op['id'], op['lcmOperationType'],
-                        op['operationState']])
+        table.add_row([op['id'], op['lcmOperationType'],
+                       op['operationState']])
     table.align = 'l'
     print(table)
 
@@ -562,22 +564,22 @@ def nsi_op_list(ctx, name):
 @click.argument('name')
 @click.pass_context
 def nsi_op_list1(ctx, name):
-    '''shows the history of operations over a Network Slice Instance (NSI)
+    """shows the history of operations over a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice Instance
-    '''
-    nsi_op_list(ctx,name)
+    """
+    nsi_op_list(ctx, name)
 
 
 @cli.command(name='netslice-instance-op-list')
 @click.argument('name')
 @click.pass_context
 def nsi_op_list2(ctx, name):
-    '''shows the history of operations over a Network Slice Instance (NSI)
+    """shows the history of operations over a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice Instance
-    '''
-    nsi_op_list(ctx,name)
+    """
+    nsi_op_list(ctx, name)
 
 
 @cli.command(name='pdu-list')
@@ -585,7 +587,7 @@ def nsi_op_list2(ctx, name):
               help='restricts the list to the Physical Deployment Units matching the filter')
 @click.pass_context
 def pdu_list(ctx, filter):
-    '''list all Physical Deployment Units (PDU)'''
+    """list all Physical Deployment Units (PDU)"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.pdu.list(filter)
@@ -622,7 +624,7 @@ def pdu_list(ctx, filter):
 def nsd_show(ctx, name, literal):
     try:
         resp = ctx.obj.nsd.get(name)
-        #resp = ctx.obj.nsd.get_individual(name)
+        # resp = ctx.obj.nsd.get_individual(name)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -644,10 +646,10 @@ def nsd_show(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def nsd_show1(ctx, name, literal):
-    '''shows the content of a NSD
+    """shows the content of a NSD
 
     NAME: name or ID of the NSD/NSpkg
-    '''
+    """
     nsd_show(ctx, name, literal)
 
 
@@ -657,17 +659,17 @@ def nsd_show1(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def nsd_show2(ctx, name, literal):
-    '''shows the content of a NSD
+    """shows the content of a NSD
 
     NAME: name or ID of the NSD/NSpkg
-    '''
+    """
     nsd_show(ctx, name, literal)
 
 
 def vnfd_show(ctx, name, literal):
     try:
         resp = ctx.obj.vnfd.get(name)
-        #resp = ctx.obj.vnfd.get_individual(name)
+        # resp = ctx.obj.vnfd.get_individual(name)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -689,10 +691,10 @@ def vnfd_show(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def vnfd_show1(ctx, name, literal):
-    '''shows the content of a VNFD
+    """shows the content of a VNFD
 
     NAME: name or ID of the VNFD/VNFpkg
-    '''
+    """
     vnfd_show(ctx, name, literal)
 
 
@@ -702,10 +704,10 @@ def vnfd_show1(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def vnfd_show2(ctx, name, literal):
-    '''shows the content of a VNFD
+    """shows the content of a VNFD
 
     NAME: name or ID of the VNFD/VNFpkg
-    '''
+    """
     vnfd_show(ctx, name, literal)
 
 
@@ -715,10 +717,10 @@ def vnfd_show2(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def nfpkg_show(ctx, name, literal):
-    '''shows the content of a NF Descriptor
+    """shows the content of a NF Descriptor
 
     NAME: name or ID of the NFpkg
-    '''
+    """
     vnfd_show(ctx, name, literal)
 
 
@@ -729,10 +731,10 @@ def nfpkg_show(ctx, name, literal):
 @click.option('--filter', default=None)
 @click.pass_context
 def ns_show(ctx, name, literal, filter):
-    '''shows the info of a NS instance
+    """shows the info of a NS instance
 
     NAME: name or ID of the NS instance
-    '''
+    """
     try:
         ns = ctx.obj.ns.get(name)
     except ClientException as inst:
@@ -767,10 +769,10 @@ def ns_show(ctx, name, literal, filter):
 @click.option('--filter', default=None)
 @click.pass_context
 def vnf_show(ctx, name, literal, filter):
-    '''shows the info of a VNF instance
+    """shows the info of a VNF instance
 
     NAME: name or ID of the VNF instance
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.vnf.get(name)
@@ -841,10 +843,10 @@ def ns_monitoring_show(ctx, ns_name):
 @click.option('--filter', default=None)
 @click.pass_context
 def ns_op_show(ctx, id, filter):
-    '''shows the detailed info of an operation
+    """shows the detailed info of an operation
 
     ID: operation identifier
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         op_info = ctx.obj.ns.get_op(id)
@@ -886,10 +888,10 @@ def nst_show(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def nst_show1(ctx, name, literal):
-    '''shows the content of a Network Slice Template (NST)
+    """shows the content of a Network Slice Template (NST)
 
     NAME: name or ID of the NST
-    '''
+    """
     nst_show(ctx, name, literal)
 
 
@@ -899,10 +901,10 @@ def nst_show1(ctx, name, literal):
 @click.argument('name')
 @click.pass_context
 def nst_show2(ctx, name, literal):
-    '''shows the content of a Network Slice Template (NST)
+    """shows the content of a Network Slice Template (NST)
 
     NAME: name or ID of the NST
-    '''
+    """
     nst_show(ctx, name, literal)
 
 
@@ -935,10 +937,10 @@ def nsi_show(ctx, name, literal, filter):
 @click.option('--filter', default=None)
 @click.pass_context
 def nsi_show1(ctx, name, literal, filter):
-    '''shows the content of a Network Slice Instance (NSI)
+    """shows the content of a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice Instance
-    '''
+    """
     nsi_show(ctx, name, literal, filter)
 
 
@@ -949,10 +951,10 @@ def nsi_show1(ctx, name, literal, filter):
 @click.option('--filter', default=None)
 @click.pass_context
 def nsi_show2(ctx, name, literal, filter):
-    '''shows the content of a Network Slice Instance (NSI)
+    """shows the content of a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice Instance
-    '''
+    """
     nsi_show(ctx, name, literal, filter)
 
 
@@ -977,10 +979,10 @@ def nsi_op_show(ctx, id, filter):
 @click.option('--filter', default=None)
 @click.pass_context
 def nsi_op_show1(ctx, id, filter):
-    '''shows the info of an operation over a Network Slice Instance(NSI)
+    """shows the info of an operation over a Network Slice Instance(NSI)
 
     ID: operation identifier
-    '''
+    """
     nsi_op_show(ctx, id, filter)
 
 
@@ -989,10 +991,10 @@ def nsi_op_show1(ctx, id, filter):
 @click.option('--filter', default=None)
 @click.pass_context
 def nsi_op_show2(ctx, id, filter):
-    '''shows the info of an operation over a Network Slice Instance(NSI)
+    """shows the info of an operation over a Network Slice Instance(NSI)
 
     ID: operation identifier
-    '''
+    """
     nsi_op_show(ctx, id, filter)
 
 
@@ -1003,10 +1005,10 @@ def nsi_op_show2(ctx, id, filter):
 @click.option('--filter', default=None)
 @click.pass_context
 def pdu_show(ctx, name, literal, filter):
-    '''shows the content of a Physical Deployment Unit (PDU)
+    """shows the content of a Physical Deployment Unit (PDU)
 
     NAME: name or ID of the PDU
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         pdu = ctx.obj.pdu.get(name)
@@ -1047,10 +1049,10 @@ def nsd_create(ctx, filename, overwrite):
               help='overwrites some fields in NSD')
 @click.pass_context
 def nsd_create1(ctx, filename, overwrite):
-    '''creates a new NSD/NSpkg
+    """creates a new NSD/NSpkg
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
-    '''
+    """
     nsd_create(ctx, filename, overwrite)
 
 
@@ -1060,10 +1062,10 @@ def nsd_create1(ctx, filename, overwrite):
               help='overwrites some fields in NSD')
 @click.pass_context
 def nsd_create2(ctx, filename, overwrite):
-    '''creates a new NSD/NSpkg
+    """creates a new NSD/NSpkg
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
-    '''
+    """
     nsd_create(ctx, filename, overwrite)
 
 
@@ -1082,10 +1084,10 @@ def vnfd_create(ctx, filename, overwrite):
               help='overwrites some fields in VNFD')
 @click.pass_context
 def vnfd_create1(ctx, filename, overwrite):
-    '''creates a new VNFD/VNFpkg
+    """creates a new VNFD/VNFpkg
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
-    '''
+    """
     vnfd_create(ctx, filename, overwrite)
 
 
@@ -1095,10 +1097,10 @@ def vnfd_create1(ctx, filename, overwrite):
               help='overwrites some fields in VNFD')
 @click.pass_context
 def vnfd_create2(ctx, filename, overwrite):
-    '''creates a new VNFD/VNFpkg
+    """creates a new VNFD/VNFpkg
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
-    '''
+    """
     vnfd_create(ctx, filename, overwrite)
 
 
@@ -1108,10 +1110,10 @@ def vnfd_create2(ctx, filename, overwrite):
               help='overwrites some fields in NFD')
 @click.pass_context
 def nfpkg_create(ctx, filename, overwrite):
-    '''creates a new NFpkg
+    """creates a new NFpkg
 
     FILENAME: NF Descriptor yaml file or NFpkg tar.gz file
-    '''
+    """
     vnfd_create(ctx, filename, overwrite)
 
 
@@ -1143,7 +1145,7 @@ def ns_create(ctx,
               ssh_keys,
               config,
               config_file):
-    '''creates a new NS instance'''
+    """creates a new NS instance"""
     try:
         if config_file:
             check_client_version(ctx.obj, '--config_file')
@@ -1177,10 +1179,10 @@ def nst_create(ctx, filename, overwrite):
               help='overwrites some fields in NST')
 @click.pass_context
 def nst_create1(ctx, filename, overwrite):
-    '''creates a new Network Slice Template (NST)
+    """creates a new Network Slice Template (NST)
 
     FILENAME: NST yaml file or NSTpkg tar.gz file
-    '''
+    """
     nst_create(ctx, filename, overwrite)
 
 
@@ -1190,15 +1192,15 @@ def nst_create1(ctx, filename, overwrite):
               help='overwrites some fields in NST')
 @click.pass_context
 def nst_create2(ctx, filename, overwrite):
-    '''creates a new Network Slice Template (NST)
+    """creates a new Network Slice Template (NST)
 
     FILENAME: NST yaml file or NSTpkg tar.gz file
-    '''
+    """
     nst_create(ctx, filename, overwrite)
 
 
 def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
-    '''creates a new Network Slice Instance (NSI)'''
+    """creates a new Network Slice Instance (NSI)"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         if config_file:
@@ -1235,7 +1237,7 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
               help='nsi specific yaml configuration file')
 @click.pass_context
 def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
-    '''creates a new Network Slice Instance (NSI)'''
+    """creates a new Network Slice Instance (NSI)"""
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
 
 
@@ -1259,7 +1261,7 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
               help='nsi specific yaml configuration file')
 @click.pass_context
 def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
-    '''creates a new Network Slice Instance (NSI)'''
+    """creates a new Network Slice Instance (NSI)"""
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
 
 
@@ -1275,7 +1277,7 @@ def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
 @click.option('--descriptor_file', default=None, help='PDU descriptor file (as an alternative to using the other arguments')
 @click.pass_context
 def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descriptor_file):
-    '''creates a new Physical Deployment Unit (PDU)'''
+    """creates a new Physical Deployment Unit (PDU)"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         pdu = {}
@@ -1327,10 +1329,10 @@ def nsd_update(ctx, name, content):
               help='filename with the NSD/NSpkg replacing the current one')
 @click.pass_context
 def nsd_update1(ctx, name, content):
-    '''updates a NSD/NSpkg
+    """updates a NSD/NSpkg
 
     NAME: name or ID of the NSD/NSpkg
-    '''
+    """
     nsd_update(ctx, name, content)
 
 
@@ -1340,10 +1342,10 @@ def nsd_update1(ctx, name, content):
               help='filename with the NSD/NSpkg replacing the current one')
 @click.pass_context
 def nsd_update2(ctx, name, content):
-    '''updates a NSD/NSpkg
+    """updates a NSD/NSpkg
 
     NAME: name or ID of the NSD/NSpkg
-    '''
+    """
     nsd_update(ctx, name, content)
 
 
@@ -1362,10 +1364,10 @@ def vnfd_update(ctx, name, content):
               help='filename with the VNFD/VNFpkg replacing the current one')
 @click.pass_context
 def vnfd_update1(ctx, name, content):
-    '''updates a VNFD/VNFpkg
+    """updates a VNFD/VNFpkg
 
     NAME: name or ID of the VNFD/VNFpkg
-    '''
+    """
     vnfd_update(ctx, name, content)
 
 
@@ -1375,10 +1377,10 @@ def vnfd_update1(ctx, name, content):
               help='filename with the VNFD/VNFpkg replacing the current one')
 @click.pass_context
 def vnfd_update2(ctx, name, content):
-    '''updates a VNFD/VNFpkg
+    """updates a VNFD/VNFpkg
 
     NAME: VNFD yaml file or VNFpkg tar.gz file
-    '''
+    """
     vnfd_update(ctx, name, content)
 
 
@@ -1388,10 +1390,10 @@ def vnfd_update2(ctx, name, content):
               help='filename with the NFpkg replacing the current one')
 @click.pass_context
 def nfpkg_update(ctx, name, content):
-    '''updates a NFpkg
+    """updates a NFpkg
 
     NAME: NF Descriptor yaml file or NFpkg tar.gz file
-    '''
+    """
     vnfd_update(ctx, name, content)
 
 
@@ -1410,10 +1412,10 @@ def nst_update(ctx, name, content):
               help='filename with the NST/NSTpkg replacing the current one')
 @click.pass_context
 def nst_update1(ctx, name, content):
-    '''updates a Network Slice Template (NST)
+    """updates a Network Slice Template (NST)
 
     NAME: name or ID of the NSD/NSpkg
-    '''
+    """
     nst_update(ctx, name, content)
 
 
@@ -1423,10 +1425,10 @@ def nst_update1(ctx, name, content):
               help='filename with the NST/NSTpkg replacing the current one')
 @click.pass_context
 def nst_update2(ctx, name, content):
-    '''updates a Network Slice Template (NST)
+    """updates a Network Slice Template (NST)
 
     NAME: name or ID of the NSD/NSpkg
-    '''
+    """
     nst_update(ctx, name, content)
 
 
@@ -1451,10 +1453,10 @@ def nsd_delete(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nsd_delete1(ctx, name, force):
-    '''deletes a NSD/NSpkg
+    """deletes a NSD/NSpkg
 
     NAME: name or ID of the NSD/NSpkg to be deleted
-    '''
+    """
     nsd_delete(ctx, name, force)
 
 
@@ -1463,10 +1465,10 @@ def nsd_delete1(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nsd_delete2(ctx, name, force):
-    '''deletes a NSD/NSpkg
+    """deletes a NSD/NSpkg
 
     NAME: name or ID of the NSD/NSpkg to be deleted
-    '''
+    """
     nsd_delete(ctx, name, force)
 
 
@@ -1487,10 +1489,10 @@ def vnfd_delete(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def vnfd_delete1(ctx, name, force):
-    '''deletes a VNFD/VNFpkg
+    """deletes a VNFD/VNFpkg
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
-    '''
+    """
     vnfd_delete(ctx, name, force)
 
 
@@ -1499,10 +1501,10 @@ def vnfd_delete1(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def vnfd_delete2(ctx, name, force):
-    '''deletes a VNFD/VNFpkg
+    """deletes a VNFD/VNFpkg
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
-    '''
+    """
     vnfd_delete(ctx, name, force)
 
 
@@ -1511,10 +1513,10 @@ def vnfd_delete2(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nfpkg_delete(ctx, name, force):
-    '''deletes a NFpkg
+    """deletes a NFpkg
 
     NAME: name or ID of the NFpkg to be deleted
-    '''
+    """
     vnfd_delete(ctx, name, force)
 
 
@@ -1523,10 +1525,10 @@ def nfpkg_delete(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def ns_delete(ctx, name, force):
-    '''deletes a NS instance
+    """deletes a NS instance
 
     NAME: name or ID of the NS instance to be deleted
-    '''
+    """
     try:
         if not force:
             ctx.obj.ns.delete(name)
@@ -1552,10 +1554,10 @@ def nst_delete(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nst_delete1(ctx, name, force):
-    '''deletes a Network Slice Template (NST)
+    """deletes a Network Slice Template (NST)
 
     NAME: name or ID of the NST/NSTpkg to be deleted
-    '''
+    """
     nst_delete(ctx, name, force)
 
 
@@ -1564,10 +1566,10 @@ def nst_delete1(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nst_delete2(ctx, name, force):
-    '''deletes a Network Slice Template (NST)
+    """deletes a Network Slice Template (NST)
 
     NAME: name or ID of the NST/NSTpkg to be deleted
-    '''
+    """
     nst_delete(ctx, name, force)
 
 
@@ -1585,10 +1587,10 @@ def nsi_delete(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nsi_delete1(ctx, name, force):
-    '''deletes a Network Slice Instance (NSI)
+    """deletes a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice instance to be deleted
-    '''
+    """
     nsi_delete(ctx, name, force)
 
 
@@ -1597,10 +1599,10 @@ def nsi_delete1(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def nsi_delete2(ctx, name, force):
-    '''deletes a Network Slice Instance (NSI)
+    """deletes a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice instance to be deleted
-    '''
+    """
     nsi_delete(ctx, name, force)
 
 
@@ -1609,10 +1611,10 @@ def nsi_delete2(ctx, name, force):
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def pdu_delete(ctx, name, force):
-    '''deletes a Physical Deployment Unit (PDU)
+    """deletes a Physical Deployment Unit (PDU)
 
     NAME: name or ID of the PDU to be deleted
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.pdu.delete(name, force)
@@ -1666,8 +1668,7 @@ def vim_create(ctx,
                description,
                sdn_controller,
                sdn_port_mapping):
-    '''creates a new VIM account
-    '''
+    """creates a new VIM account"""
     try:
         if sdn_controller:
             check_client_version(ctx.obj, '--sdn_controller')
@@ -1715,10 +1716,10 @@ def vim_update(ctx,
                description,
                sdn_controller,
                sdn_port_mapping):
-    '''updates a VIM account
+    """updates a VIM account
 
     NAME: name or ID of the VIM account
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         vim = {}
@@ -1741,10 +1742,10 @@ def vim_update(ctx,
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def vim_delete(ctx, name, force):
-    '''deletes a VIM account
+    """deletes a VIM account
 
     NAME: name or ID of the VIM account to be deleted
-    '''
+    """
     try:
         if not force:
             ctx.obj.vim.delete(name)
@@ -1764,7 +1765,7 @@ def vim_delete(ctx, name, force):
               help='restricts the list to the VIM accounts matching the filter')
 @click.pass_context
 def vim_list(ctx, ro_update, filter):
-    '''list all VIM accounts'''
+    """list all VIM accounts"""
     if filter:
         check_client_version(ctx.obj, '--filter')
     if ro_update:
@@ -1785,10 +1786,10 @@ def vim_list(ctx, ro_update, filter):
 @click.argument('name')
 @click.pass_context
 def vim_show(ctx, name):
-    '''shows the details of a VIM account
+    """shows the details of a VIM account
 
     NAME: name or ID of the VIM account
-    '''
+    """
     try:
         resp = ctx.obj.vim.get(name)
         if 'vim_password' in resp:
@@ -1841,8 +1842,7 @@ def wim_create(ctx,
                wim_type,
                description,
                wim_port_mapping):
-    '''creates a new WIM account
-    '''
+    """creates a new WIM account"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         # if sdn_controller:
@@ -1884,10 +1884,10 @@ def wim_update(ctx,
                wim_type,
                description,
                wim_port_mapping):
-    '''updates a WIM account
+    """updates a WIM account
 
     NAME: name or ID of the WIM account
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         wim = {}
@@ -1910,10 +1910,10 @@ def wim_update(ctx,
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def wim_delete(ctx, name, force):
-    '''deletes a WIM account
+    """deletes a WIM account
 
     NAME: name or ID of the WIM account to be deleted
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.wim.delete(name, force)
@@ -1927,7 +1927,7 @@ def wim_delete(ctx, name, force):
               help='restricts the list to the WIM accounts matching the filter')
 @click.pass_context
 def wim_list(ctx, filter):
-    '''list all WIM accounts'''
+    """list all WIM accounts"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.wim.list(filter)
@@ -1945,10 +1945,10 @@ def wim_list(ctx, filter):
 @click.argument('name')
 @click.pass_context
 def wim_show(ctx, name):
-    '''shows the details of a WIM account
+    """shows the details of a WIM account
 
     NAME: name or ID of the WIM account
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.wim.get(name)
@@ -2006,8 +2006,7 @@ def sdnc_create(ctx,
                switch_dpid,
                user,
                password):
-    '''creates a new SDN controller
-    '''
+    """creates a new SDN controller"""
     sdncontroller = {}
     sdncontroller['name'] = name
     sdncontroller['type'] = type
@@ -2050,10 +2049,10 @@ def sdnc_update(ctx,
                switch_dpid,
                user,
                password):
-    '''updates an SDN controller
+    """updates an SDN controller
 
     NAME: name or ID of the SDN controller
-    '''
+    """
     sdncontroller = {}
     if newname: sdncontroller['name'] = newname
     if type: sdncontroller['type'] = type
@@ -2089,10 +2088,10 @@ def sdnc_update(ctx,
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def sdnc_delete(ctx, name, force):
-    '''deletes an SDN controller
+    """deletes an SDN controller
 
     NAME: name or ID of the SDN controller to be deleted
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.sdnc.delete(name, force)
@@ -2106,7 +2105,7 @@ def sdnc_delete(ctx, name, force):
               help='restricts the list to the SDN controllers matching the filter')
 @click.pass_context
 def sdnc_list(ctx, filter):
-    '''list all SDN controllers'''
+    """list all SDN controllers"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.sdnc.list(filter)
@@ -2124,10 +2123,10 @@ def sdnc_list(ctx, filter):
 @click.argument('name')
 @click.pass_context
 def sdnc_show(ctx, name):
-    '''shows the details of an SDN controller
+    """shows the details of an SDN controller
 
     NAME: name or ID of the SDN controller
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.sdnc.get(name)
@@ -2153,10 +2152,10 @@ def sdnc_show(ctx, name):
 #              help='human readable description')
 @click.pass_context
 def project_create(ctx, name):
-    '''Creates a new project
+    """Creates a new project
 
     NAME: name of the project
-    '''
+    """
     project = {}
     project['name'] = name
     try:
@@ -2171,10 +2170,10 @@ def project_create(ctx, name):
 #@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def project_delete(ctx, name):
-    '''deletes a project
+    """deletes a project
 
     NAME: name or ID of the project to be deleted
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.project.delete(name)
@@ -2188,7 +2187,7 @@ def project_delete(ctx, name):
               help='restricts the list to the projects matching the filter')
 @click.pass_context
 def project_list(ctx, filter):
-    '''list all projects'''
+    """list all projects"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.project.list(filter)
@@ -2206,10 +2205,10 @@ def project_list(ctx, filter):
 @click.argument('name')
 @click.pass_context
 def project_show(ctx, name):
-    '''shows the details of a project
+    """shows the details of a project
 
     NAME: name or ID of the project
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.project.get(name)
@@ -2240,22 +2239,75 @@ def project_show(ctx, name):
               multiple=True,
               callback=lambda ctx, param, value: ''.join(value).split(',') if all(len(x)==1 for x in value) else value,
               help='list of project ids that the user belongs to')
-#@click.option('--description',
-#              default='no description',
-#              help='human readable description')
+@click.option('--project-role-mapping', 'project_role_mappings',
+              default=None, multiple=True,
+              help='creating user project/role(s) mapping')
 @click.pass_context
-def user_create(ctx, username, password, projects):
-    '''Creates a new user
+def user_create(ctx, username, password, projects, project_role_mappings):
+    """Creates a new user
 
+    \b
     USERNAME: name of the user
-    '''
+    PASSWORD: password of the user
+    PROJECTS: projects assigned to user (internal only)
+    PROJECT_ROLE_MAPPING: roles in projects assigned to user (keystone)
+    """
     user = {}
     user['username'] = username
     user['password'] = password
     user['projects'] = projects
+    user['project-role-mappings'] = project_role_mappings
+    
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.user.create(username, user)
+    except ClientException as inst:
+        print(inst.message)
+
+
+@cli.command(name='user-update')
+@click.argument('username')
+@click.option('--password',
+              prompt=True,
+              hide_input=True,
+              confirmation_prompt=True,
+              help='user password')
+@click.option('--set-project', 'set_project',
+              default=None, multiple=True,
+              help='create/replace the project,role(s) mapping for this project: \'project,role1,role2,...\'')
+@click.option('--remove-project', 'remove_project',
+              default=None, multiple=True,
+              help='removes project from user: \'project\'')
+@click.option('--add-project-role', 'add_project_role',
+              default=None, multiple=True,
+              help='adds project,role(s) mapping: \'project,role1,role2,...\'')
+@click.option('--remove-project-role', 'remove_project_role',
+              default=None, multiple=True,
+              help='removes project,role(s) mapping: \'project,role1,role2,...\'')
+@click.pass_context
+def user_update(ctx, username, password, set_project, remove_project,
+                add_project_role, remove_project_role):
+    """Update a user information
+
+    \b
+    USERNAME: name of the user
+    PASSWORD: new password
+    SET_PROJECT: creating mappings for project/role(s)
+    REMOVE_PROJECT: deleting mappings for project/role(s)
+    ADD_PROJECT_ROLE: adding mappings for project/role(s)
+    REMOVE_PROJECT_ROLE: removing mappings for project/role(s)
+    """
+    user = {}
+    user['username'] = username
+    user['password'] = password
+    user['set-project'] = set_project
+    user['remove-project'] = remove_project
+    user['add-project-role'] = add_project_role
+    user['remove-project-role'] = remove_project_role
+    
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.user.update(username, user)
     except ClientException as inst:
         print(inst.message)
 
@@ -2265,10 +2317,11 @@ def user_create(ctx, username, password, projects):
 #@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
 def user_delete(ctx, name):
-    '''deletes a user
+    """deletes a user
 
+    \b
     NAME: name or ID of the user to be deleted
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.user.delete(name)
@@ -2282,7 +2335,7 @@ def user_delete(ctx, name):
               help='restricts the list to the users matching the filter')
 @click.pass_context
 def user_list(ctx, filter):
-    '''list all users'''
+    """list all users"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.user.list(filter)
@@ -2300,10 +2353,10 @@ def user_list(ctx, filter):
 @click.argument('name')
 @click.pass_context
 def user_show(ctx, name):
-    '''shows the details of a user
+    """shows the details of a user
 
     NAME: name or ID of the user
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.user.get(name)
@@ -2344,7 +2397,7 @@ def user_show(ctx, name):
 @click.pass_context
 def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
                     threshold_value, threshold_operator, statistic):
-    '''creates a new alarm for a NS instance'''
+    """creates a new alarm for a NS instance"""
     ns_instance = ctx.obj.ns.get(ns)
     alarm = {}
     alarm['alarm_name'] = name
@@ -2398,8 +2451,7 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
 @click.option('--interval', help='periodic interval (seconds) to export metrics continuously')
 @click.pass_context
 def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
-    '''exports a metric to the internal OSM bus, which can be read by other apps
-    '''
+    """exports a metric to the internal OSM bus, which can be read by other apps"""
     ns_instance = ctx.obj.ns.get(ns)
     metric_data = {}
     metric_data['ns_id'] = ns_instance['_id']
@@ -2432,10 +2484,10 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
 @click.argument('filename')
 @click.pass_context
 def upload_package(ctx, filename):
-    '''uploads a VNF package or NS package
+    """uploads a VNF package or NS package
 
     FILENAME: VNF or NS package file (tar.gz)
-    '''
+    """
     try:
         ctx.obj.package.upload(filename)
         fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
@@ -2450,10 +2502,10 @@ def upload_package(ctx, filename):
 @click.argument('ns_name')
 @click.pass_context
 def show_ns_scaling(ctx, ns_name):
-    '''shows the status of a NS scaling operation
+    """shows the status of a NS scaling operation
 
     NS_NAME: name of the NS instance being scaled
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name, 'v1')
         resp = ctx.obj.ns.list()
@@ -2494,10 +2546,10 @@ def show_ns_scaling(ctx, ns_name):
 @click.option('--index', prompt=True)
 @click.pass_context
 def ns_scale(ctx, ns_name, ns_scale_group, index):
-    '''scales NS
+    """scales NS
 
     NS_NAME: name of the NS instance to be scaled
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name, 'v1')
         ctx.obj.ns.scale(ns_name, ns_scale_group, index)
@@ -2509,7 +2561,7 @@ def ns_scale(ctx, ns_name, ns_scale_group, index):
 @cli.command(name='config-agent-list')
 @click.pass_context
 def config_agent_list(ctx):
-    '''list config agents'''
+    """list config agents"""
     try:
         check_client_version(ctx.obj, ctx.command.name, 'v1')
     except ClientException as inst:
@@ -2529,10 +2581,10 @@ def config_agent_list(ctx):
 @click.argument('name')
 @click.pass_context
 def config_agent_delete(ctx, name):
-    '''deletes a config agent
+    """deletes a config agent
 
     NAME: name of the config agent to be deleted
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name, 'v1')
         ctx.obj.vca.delete(name)
@@ -2556,7 +2608,7 @@ def config_agent_delete(ctx, name):
               confirmation_prompt=True)
 @click.pass_context
 def config_agent_add(ctx, name, account_type, server, user, secret):
-    '''adds a config agent'''
+    """adds a config agent"""
     try:
         check_client_version(ctx.obj, ctx.command.name, 'v1')
         ctx.obj.vca.create(name, account_type, server, user, secret)
@@ -2564,10 +2616,11 @@ def config_agent_add(ctx, name, account_type, server, user, secret):
         print((inst.message))
         exit(1)
 
+
 @cli.command(name='ro-dump')
 @click.pass_context
 def ro_dump(ctx):
-    '''shows RO agent information'''
+    """shows RO agent information"""
     check_client_version(ctx.obj, ctx.command.name, 'v1')
     resp = ctx.obj.vim.get_resource_orchestrator()
     table = PrettyTable(['key', 'attribute'])
@@ -2600,10 +2653,10 @@ def ns_action(ctx,
               vnf_name,
               action_name,
               params):
-    '''executes an action/primitive over a NS instance
+    """executes an action/primitive over a NS instance
 
     NS_NAME: name or ID of the NS instance
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         op_data={}
@@ -2631,12 +2684,13 @@ def vnf_scale(ctx,
               scaling_group,
               scale_in,
               scale_out):
-    '''executes a VNF scale (adding/removing VDUs)
+    """
+    Executes a VNF scale (adding/removing VDUs)
 
     \b
     NS_NAME: name or ID of the NS instance.
     VNF_NAME: member-vnf-index in the NS to be scaled.
-    '''
+    """
     try:
         check_client_version(ctx.obj, ctx.command.name)
         if not scale_in and not scale_out:
@@ -2647,12 +2701,130 @@ def vnf_scale(ctx,
         exit(1)
 
 
+##############################
+# Role Management Operations #
+##############################
+
+@cli.command(name='role-create', short_help='creates a role')
+@click.argument('name')
+@click.option('--definition',
+              default=None,
+              help='role definition using a dictionary')
+@click.pass_context
+def role_create(ctx, name, definition):
+    """
+    Creates a new role.
+
+    \b
+    NAME: Name or ID of the role.
+    DEFINITION: Definition of grant/denial of access to resources.
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.role.create(name, definition)
+    except ClientException as inst:
+        print(inst.message)
+
+
+@cli.command(name='role-update', short_help='updates a role')
+@click.argument('name')
+@click.option('--definition',
+              default=None,
+              help='add a new definition to the role')
+@click.option('--add',
+              default=None,
+              help='add a resource access grant/denial')
+@click.option('--remove',
+              default=None,
+              help='remove a resource access grant/denial')
+@click.pass_context
+def role_update(ctx, name, definition, add, remove):
+    """
+    Updates a role.
+
+    \b
+    NAME: Name or ID of the role.
+    DEFINITION: Definition overwrites the old definition.
+    ADD: Grant/denial of access to resource to add.
+    REMOVE: Grant/denial of access to resource to remove.
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.role.update(name, definition, add, remove)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+
+@cli.command(name='role-delete', short_help='deletes a role')
+@click.argument('name')
+# @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.pass_context
+def role_delete(ctx, name):
+    """
+    Deletes a role.
+
+    \b
+    NAME: Name or ID of the role.
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.role.delete(name)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+
+@cli.command(name='role-list', short_help='list all roles')
+@click.option('--filter', default=None,
+              help='restricts the list to the projects matching the filter')
+@click.pass_context
+def role_list(ctx, filter):
+    """
+    List all roles.
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.role.list(filter)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+    table = PrettyTable(['name', 'id'])
+    for role in resp:
+        table.add_row([role['name'], role['_id']])
+    table.align = 'l'
+    print(table)
+
+
+@cli.command(name='role-show', short_help='show specific role')
+@click.argument('name')
+@click.pass_context
+def role_show(ctx, name):
+    """
+    Shows the details of a role.
+
+    \b
+    NAME: Name or ID of the role.
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.role.get(name)
+    except ClientException as inst:
+        print(inst.message)
+        exit(1)
+
+    table = PrettyTable(['key', 'attribute'])
+    for k, v in resp.items():
+        table.add_row([k, json.dumps(v, indent=2)])
+    table.align = 'l'
+    print(table)
+
+
 if __name__ == '__main__':
     try:
         cli()
     except pycurl.error as e:
         print(e)
         print('Maybe "--hostname" option or OSM_HOSTNAME' +
-            'environment variable needs to be specified')
+              'environment variable needs to be specified')
         exit(1)
-

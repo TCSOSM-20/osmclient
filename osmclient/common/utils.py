@@ -21,6 +21,7 @@ import tarfile
 import re
 import yaml
 
+
 def wait_for_value(func, result=True, wait_time=10, catch_exception=None):
     maxtime = time.time() + wait_time
     while time.time() < maxtime:
@@ -53,13 +54,13 @@ def md5(fname):
 
 
 def get_key_val_from_pkg(descriptor_file):
-# method opens up a package and finds the name of the resulting
-# descriptor (vnfd or nsd name)
+    # method opens up a package and finds the name of the resulting
+    # descriptor (vnfd or nsd name)
     tar = tarfile.open(descriptor_file)
     yamlfile = None
     for member in tar.getmembers():
         if (re.match('.*.yaml', member.name) and
-           len(member.name.split('/')) == 2):
+                len(member.name.split('/')) == 2):
             yamlfile = member.name
             break
     if yamlfile is None:
@@ -87,4 +88,3 @@ def get_key_val_from_pkg(descriptor_file):
                     result[key_name] = v3
     tar.close()
     return result
-

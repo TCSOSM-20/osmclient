@@ -22,6 +22,7 @@ OSM client entry point
 from osmclient.v1 import client as client
 from osmclient.sol005 import client as sol005client
 
+
 def Client(version=1, host=None, sol005=False, *args, **kwargs):
     if not sol005:
         if version == 1:
@@ -33,4 +34,3 @@ def Client(version=1, host=None, sol005=False, *args, **kwargs):
             return sol005client.Client(host, *args, **kwargs)
         else:
             raise Exception("Unsupported client version")
-

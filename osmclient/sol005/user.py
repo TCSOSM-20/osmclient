@@ -23,7 +23,6 @@ from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
-# import yaml
 
 
 class User(object):
@@ -41,6 +40,22 @@ class User(object):
         """
         if len(user["projects"]) == 1:
             user["projects"] = user["projects"][0].split(",")
+
+        if user["project-role-mappings"]:
+            project_role_mappings = []
+
+            for set_mapping in user["project-role-mappings"]:
+                set_mapping_clean = [m.trim() for m in set_mapping.split(",")]
+                project, roles = set_mapping_clean[0], set_mapping_clean[1:]
+
+                for role in roles:
+                    mapping = [project, role]
+
+                    if mapping not in project_role_mappings: 
+                        project_role_mappings.append(mapping)
+            
+            user["project-role-mappings"] = project_role_mappings
+
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=user)
         #print('HTTP CODE: {}'.format(http_code))
@@ -65,8 +80,61 @@ class User(object):
         """Updates an existing OSM user identified by name
         """
         myuser  = self.get(name)
+        update_user = {
+            "_id": myuser["_id"],
+            "name": myuser["user"],
+            "project_role_mappings": myuser["project_role_mappings"]
+        }
+
+        # if password is defined, update the password
+        if user["password"]:
+            update_user["password"] = user["password"]
+        
+        if user["set-project"]:
+            for set_project in user["set-project"]:
+                set_project_clean = [m.trim() for m in set_project.split(",")]
+                project, roles = set_project_clean[0], set_project_clean[1:]
+
+                update_user["project_role_mappings"] = [mapping for mapping 
+                                                        in update_user["project_role_mappings"]
+                                                        if mapping[0] != project]
+
+                for role in roles:
+                    update_user["project_role_mappings"].append([project, role])
+        
+        if user["remove-project"]:
+            for remove_project in user["remove-project"]:
+                update_user["project_role_mappings"] = [mapping for mapping 
+                                                        in update_user["project_role_mappings"]
+                                                        if mapping[0] != remove_project]
+        
+        if user["add-project-role"]:
+            for add_project_role in user["add-project-role"]:
+                add_project_role_clean = [m.trim() for m in add_project_role.split(",")]
+                project, roles = add_project_role_clean[0], add_project_role_clean[1:]
+
+                for role in roles:
+                    mapping = [project, role]
+                    if mapping not in update_user["project_role_mappings"]:
+                        update_user["project_role_mappings"].append(mapping)
+        
+        if user["remove-project-role"]:
+            for remove_project_role in user["remove-project-role"]:
+                remove_project_role_clean = [m.trim() for m in remove_project_role.split(",")]
+                project, roles = remove_project_role_clean[0], remove_project_role_clean[1:]
+
+                for role in roles:
+                    mapping_to_remove = [project, role]
+                    update_user["project_role_mappings"] = [mapping for mapping 
+                                                            in update_user["project_role_mappings"]
+                                                            if mapping != mapping_to_remove]
+
+        if not user["password"] and not user["set-project"] and not user["remove-project"] \
+            and not user["add-project-role"] and not user["remove-project-role"]:
+            raise ClientException("At least one parameter should be defined.")
+
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,myuser['_id']),
-                                       postfields_dict=user)
+                                             postfields_dict=update_user)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):

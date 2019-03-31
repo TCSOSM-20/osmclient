@@ -16,3 +16,4 @@ stage/
 *venv3/
 .tox/
 snap/.snapcraft/
+.vscode
