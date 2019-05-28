@@ -116,7 +116,7 @@ class Nsd(object):
             msg = ""
             if resp:
                 try:
-                    resp = json.loads(resp)
+                    msg = json.loads(resp)
                 except ValueError:
                     msg = resp
             raise ClientException("failed to delete nsd {} - {}".format(name, msg))
