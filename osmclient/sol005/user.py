@@ -49,7 +49,7 @@ class User(object):
                 project, roles = set_mapping_clean[0], set_mapping_clean[1:]
 
                 for role in roles:
-                    mapping = [project, role]
+                    mapping = {"project": project, "role": role}
 
                     if mapping not in project_role_mappings: 
                         project_role_mappings.append(mapping)
@@ -97,16 +97,17 @@ class User(object):
 
                 update_user["project_role_mappings"] = [mapping for mapping 
                                                         in update_user["project_role_mappings"]
-                                                        if mapping[0] != project]
+                                                        if mapping["project"] != project]
 
                 for role in roles:
-                    update_user["project_role_mappings"].append([project, role])
+                    mapping = {"project": project, "role": role}
+                    update_user["project_role_mappings"].append(mapping)
         
         if user["remove-project"]:
             for remove_project in user["remove-project"]:
                 update_user["project_role_mappings"] = [mapping for mapping 
                                                         in update_user["project_role_mappings"]
-                                                        if mapping[0] != remove_project]
+                                                        if mapping["project"] != remove_project]
         
         if user["add-project-role"]:
             for add_project_role in user["add-project-role"]:
@@ -114,7 +115,7 @@ class User(object):
                 project, roles = add_project_role_clean[0], add_project_role_clean[1:]
 
                 for role in roles:
-                    mapping = [project, role]
+                    mapping = {"project": project, "role": role}
                     if mapping not in update_user["project_role_mappings"]:
                         update_user["project_role_mappings"].append(mapping)
         
@@ -124,7 +125,7 @@ class User(object):
                 project, roles = remove_project_role_clean[0], remove_project_role_clean[1:]
 
                 for role in roles:
-                    mapping_to_remove = [project, role]
+                    mapping_to_remove = {"project": project, "role": role}
                     update_user["project_role_mappings"] = [mapping for mapping 
                                                             in update_user["project_role_mappings"]
                                                             if mapping != mapping_to_remove]
