@@ -19,6 +19,7 @@ OSM vim API handling
 """
 
 from osmclient.common import utils
+from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
@@ -34,7 +35,20 @@ class Vim(object):
         self._apiResource = '/vim_accounts'
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
-    def create(self, name, vim_access, sdn_controller=None, sdn_port_mapping=None):
+    # VIM '--wait' option
+    def _wait(self, id, deleteFlag=False):
+        # Endpoint to get operation status
+        apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/vim_accounts')
+        # Wait for status for VIM instance creation/deletion
+        WaitForStatus.wait_for_status(
+            'VIM',
+            str(id),
+            WaitForStatus.TIMEOUT_VIM_OPERATION,
+            apiUrlStatus,
+            self._http.get2_cmd,
+            deleteFlag=deleteFlag)
+
+    def create(self, name, vim_access, sdn_controller=None, sdn_port_mapping=None, wait=False):
         if 'vim-type' not in vim_access:
             #'openstack' not in vim_access['vim-type']):
             raise Exception("vim type not provided")
@@ -66,6 +80,9 @@ class Vim(object):
             if not resp or 'id' not in resp:
                 raise ClientException('unexpected response from server - {}'.format(
                                       resp))
+            if wait:
+                # Wait for status for VIM instance creation
+                self._wait(resp.get('id'))
             print(resp['id'])
         else:
             msg = ""
@@ -76,7 +93,7 @@ class Vim(object):
                     msg = resp
             raise ClientException("failed to create vim {} - {}".format(name, msg))
 
-    def update(self, vim_name, vim_account, sdn_controller, sdn_port_mapping):
+    def update(self, vim_name, vim_account, sdn_controller, sdn_port_mapping, wait=False):
         vim = self.get(vim_name)
 
         vim_config = {}
@@ -105,6 +122,9 @@ class Vim(object):
             if not resp or 'id' not in resp:
                 raise ClientException('unexpected response from server - {}'.format(
                                       resp))
+            if wait:
+                # Wait for status for VIM instance update
+                self._wait(resp.get('id'))
             print(resp['id'])
         else:
             msg = ""
@@ -132,7 +152,7 @@ class Vim(object):
                 return vim['uuid']
         raise NotFound("vim {} not found".format(name))
 
-    def delete(self, vim_name, force=False):
+    def delete(self, vim_name, force=False, wait=False):
         vim_id = vim_name
         if not utils.validate_uuid4(vim_name):
             vim_id = self.get_id(vim_name)
@@ -144,7 +164,17 @@ class Vim(object):
         #print 'HTTP CODE: {}'.format(http_code)
         #print 'RESP: {}'.format(resp)
         if http_code == 202:
-            print('Deletion in progress')
+            if wait:
+                # When deleting an account, 'resp' may be None.
+                # In such a case, the 'id' from 'resp' cannot be used, so use 'vim_id' instead
+                wait_id = vim_id
+                if resp:
+                    resp = json.loads(resp)
+                    wait_id = resp.get('id')
+                # Wait for status for VIM account deletion
+                self._wait(wait_id, deleteFlag=True)
+            else:
+                print('Deletion in progress')
         elif http_code == 204:
             print('Deleted')
         else:

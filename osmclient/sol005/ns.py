@@ -19,6 +19,7 @@ OSM ns API handling
 """
 
 from osmclient.common import utils
+from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
@@ -35,6 +36,19 @@ class Ns(object):
         self._apiResource = '/ns_instances_content'
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
+
+    # NS '--wait' option
+    def _wait(self, id, deleteFlag=False):
+        # Endpoint to get operation status
+        apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/ns_lcm_op_occs')
+        # Wait for status for NS instance creation/update/deletion
+        WaitForStatus.wait_for_status(
+            'NS',
+            str(id),
+            WaitForStatus.TIMEOUT_NS_OPERATION,
+            apiUrlStatus,
+            self._http.get2_cmd,
+            deleteFlag=deleteFlag)
 
     def list(self, filter=None):
         """Returns a list of NS
@@ -74,17 +88,22 @@ class Ns(object):
             return resp
         raise NotFound("ns {} not found".format(name))
 
-    def delete(self, name, force=False):
+    def delete(self, name, force=False, wait=False):
         ns = self.get(name)
         querystring = ''
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                         ns['_id'], querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+                                                 ns['_id'], querystring))
+        # print 'HTTP CODE: {}'.format(http_code)
+        # print 'RESP: {}'.format(resp)
         if http_code == 202:
-            print('Deletion in progress')
+            if wait and resp:
+                resp = json.loads(resp)
+                # For the 'delete' operation, '_id' is used
+                self._wait(resp.get('_id'), deleteFlag=True)
+            else:
+                print('Deletion in progress')
         elif http_code == 204:
             print('Deleted')
         else:
@@ -98,7 +117,7 @@ class Ns(object):
 
     def create(self, nsd_name, nsr_name, account, config=None,
                ssh_keys=None, description='default description',
-               admin_status='ENABLED'):
+               admin_status='ENABLED', wait=False):
 
         nsd = self._client.nsd.get(nsd_name)
 
@@ -196,14 +215,17 @@ class Ns(object):
             self._http.set_http_header(http_header)
             http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=ns)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            # print 'HTTP CODE: {}'.format(http_code)
+            # print 'RESP: {}'.format(resp)
             if http_code in (200, 201, 202, 204):
                 if resp:
                     resp = json.loads(resp)
                 if not resp or 'id' not in resp:
                     raise ClientException('unexpected response from server - {} '.format(
                                       resp))
+                if wait:
+                    # Wait for status for NS instance creation
+                    self._wait(resp.get('nslcmop_id'))
                 return resp['id']
             else:
                 msg = ""
@@ -288,7 +310,7 @@ class Ns(object):
                     exc.message)
             raise ClientException(message)
 
-    def exec_op(self, name, op_name, op_data=None):
+    def exec_op(self, name, op_name, op_data=None, wait=False):
         """Executes an operation on a NS
         """
         ns = self.get(name)
@@ -308,6 +330,10 @@ class Ns(object):
                 if not resp or 'id' not in resp:
                     raise ClientException('unexpected response from server - {}'.format(
                                       resp))
+                if wait:
+                    # Wait for status for NS instance action
+                    # For the 'action' operation, 'id' is used
+                    self._wait(resp.get('id'))
                 print(resp['id'])
             else:
                 msg = ""
@@ -323,7 +349,7 @@ class Ns(object):
                     exc.message)
             raise ClientException(message)
 
-    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out):
+    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
         """Scales a VNF by adding/removing VDUs
         """
         try:
@@ -338,7 +364,7 @@ class Ns(object):
                 "member-vnf-index": vnf_name,
                 "scaling-group-descriptor": scaling_group,
             }
-            self.exec_op(ns_name, op_name='scale', op_data=op_data)
+            self.exec_op(ns_name, op_name='scale', op_data=op_data, wait=wait)
         except ClientException as exc:
             message="failed to scale vnf {} of ns {}:\nerror:\n{}".format(
                     vnf_name, ns_name, exc.message)

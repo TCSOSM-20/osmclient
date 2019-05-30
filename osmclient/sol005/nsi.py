@@ -19,6 +19,7 @@ OSM NSI (Network Slice Instance) API handling
 """
 
 from osmclient.common import utils
+from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
@@ -35,6 +36,19 @@ class Nsi(object):
         self._apiResource = '/netslice_instances_content'
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
+
+    # NSI '--wait' option
+    def _wait(self, id, deleteFlag=False):
+        # Endpoint to get operation status
+        apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/nsi_lcm_op_occs')
+        # Wait for status for NSI instance creation/update/deletion
+        WaitForStatus.wait_for_status(
+            'NSI',
+            str(id),
+            WaitForStatus.TIMEOUT_NSI_OPERATION,
+            apiUrlStatus,
+            self._http.get2_cmd,
+            deleteFlag=deleteFlag)
 
     def list(self, filter=None):
         """Returns a list of NSI
@@ -74,17 +88,23 @@ class Nsi(object):
             return resp
         raise NotFound("nsi {} not found".format(name))
 
-    def delete(self, name, force=False):
+    def delete(self, name, force=False, wait=False):
         nsi = self.get(name)
         querystring = ''
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          nsi['_id'], querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        # print 'HTTP CODE: {}'.format(http_code)
+        # print 'RESP: {}'.format(resp)
         if http_code == 202:
-            print('Deletion in progress')
+            if wait and resp:
+                resp = json.loads(resp)
+                # Wait for status for NSI instance deletion
+                # For the 'delete' operation, '_id' is used
+                self._wait(resp.get('_id'), deleteFlag=True)
+            else:
+                print('Deletion in progress')
         elif http_code == 204:
             print('Deleted')
         else:
@@ -98,7 +118,7 @@ class Nsi(object):
 
     def create(self, nst_name, nsi_name, account, config=None,
                ssh_keys=None, description='default description',
-               admin_status='ENABLED'):
+               admin_status='ENABLED', wait=False):
 
         nst = self._client.nst.get(nst_name)
 
@@ -199,6 +219,9 @@ class Nsi(object):
                 if not resp or 'id' not in resp:
                     raise ClientException('unexpected response from server - {} '.format(
                                       resp))
+                if wait:
+                    # Wait for status for NSI instance creation
+                    self._wait(resp.get('nsilcmop_id'))
                 print(resp['id'])
             else:
                 msg = ""

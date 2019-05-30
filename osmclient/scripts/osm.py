@@ -1136,6 +1136,12 @@ def nfpkg_create(ctx, filename, overwrite):
 @click.option('--config_file',
               default=None,
               help='ns specific yaml configuration file')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def ns_create(ctx,
               nsd_name,
@@ -1144,7 +1150,8 @@ def ns_create(ctx,
               admin_status,
               ssh_keys,
               config,
-              config_file):
+              config_file,
+              wait):
     """creates a new NS instance"""
     try:
         if config_file:
@@ -1158,7 +1165,8 @@ def ns_create(ctx,
             ns_name,
             config=config,
             ssh_keys=ssh_keys,
-            account=vim_account)
+            account=vim_account,
+            wait=wait)
     except ClientException as inst:
         print(inst.message)
         exit(1)
@@ -1199,7 +1207,7 @@ def nst_create2(ctx, filename, overwrite):
     nst_create(ctx, filename, overwrite)
 
 
-def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
+def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
@@ -1209,7 +1217,7 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
             with open(config_file, 'r') as cf:
                 config=cf.read()
         ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
-                           account=vim_account)
+                           account=vim_account, wait=wait)
     except ClientException as inst:
         print(inst.message)
         exit(1)
@@ -1235,10 +1243,16 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
 @click.option('--config_file',
               default=None,
               help='nsi specific yaml configuration file')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
+def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
-    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
+    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait=wait)
 
 
 @cli.command(name='netslice-instance-create', short_help='creates a new Network Slice Instance')
@@ -1259,10 +1273,16 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
 @click.option('--config_file',
               default=None,
               help='nsi specific yaml configuration file')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file):
+def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
-    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file)
+    nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait=wait)
 
 
 @cli.command(name='pdu-create', short_help='adds a new Physical Deployment Unit to the catalog')
@@ -1523,18 +1543,24 @@ def nfpkg_delete(ctx, name, force):
 @cli.command(name='ns-delete', short_help='deletes a NS instance')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def ns_delete(ctx, name, force):
+def ns_delete(ctx, name, force, wait):
     """deletes a NS instance
 
     NAME: name or ID of the NS instance to be deleted
     """
     try:
         if not force:
-            ctx.obj.ns.delete(name)
+            ctx.obj.ns.delete(name, wait=wait)
         else:
             check_client_version(ctx.obj, '--force')
-            ctx.obj.ns.delete(name, force)
+            ctx.obj.ns.delete(name, force, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1573,10 +1599,10 @@ def nst_delete2(ctx, name, force):
     nst_delete(ctx, name, force)
 
 
-def nsi_delete(ctx, name, force):
+def nsi_delete(ctx, name, force, wait):
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nsi.delete(name, force)
+        ctx.obj.nsi.delete(name, force, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1585,25 +1611,31 @@ def nsi_delete(ctx, name, force):
 @cli.command(name='nsi-delete', short_help='deletes a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def nsi_delete1(ctx, name, force):
+def nsi_delete1(ctx, name, force, wait):
     """deletes a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice instance to be deleted
     """
-    nsi_delete(ctx, name, force)
+    nsi_delete(ctx, name, force, wait=wait)
 
 
 @cli.command(name='netslice-instance-delete', short_help='deletes a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
-def nsi_delete2(ctx, name, force):
+def nsi_delete2(ctx, name, force, wait):
     """deletes a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice instance to be deleted
     """
-    nsi_delete(ctx, name, force)
+    nsi_delete(ctx, name, force, wait=wait)
 
 
 @cli.command(name='pdu-delete', short_help='deletes a Physical Deployment Unit (PDU)')
@@ -1656,6 +1688,12 @@ def pdu_delete(ctx, name, force):
               help='human readable description')
 @click.option('--sdn_controller', default=None, help='Name or id of the SDN controller associated to this VIM account')
 @click.option('--sdn_port_mapping', default=None, help="File describing the port mapping between compute nodes' ports and switch ports")
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def vim_create(ctx,
                name,
@@ -1667,7 +1705,8 @@ def vim_create(ctx,
                account_type,
                description,
                sdn_controller,
-               sdn_port_mapping):
+               sdn_port_mapping,
+               wait):
     """creates a new VIM account"""
     try:
         if sdn_controller:
@@ -1683,9 +1722,9 @@ def vim_create(ctx,
         vim['description'] = description
         vim['config'] = config
         if sdn_controller or sdn_port_mapping:
-            ctx.obj.vim.create(name, vim, sdn_controller, sdn_port_mapping)
+            ctx.obj.vim.create(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
         else:
-            ctx.obj.vim.create(name, vim)
+            ctx.obj.vim.create(name, vim, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1703,6 +1742,12 @@ def vim_create(ctx,
 @click.option('--description', help='human readable description')
 @click.option('--sdn_controller', default=None, help='Name or id of the SDN controller associated to this VIM account')
 @click.option('--sdn_port_mapping', default=None, help="File describing the port mapping between compute nodes' ports and switch ports")
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def vim_update(ctx,
                name,
@@ -1715,7 +1760,8 @@ def vim_update(ctx,
                account_type,
                description,
                sdn_controller,
-               sdn_port_mapping):
+               sdn_port_mapping,
+               wait):
     """updates a VIM account
 
     NAME: name or ID of the VIM account
@@ -1731,7 +1777,7 @@ def vim_update(ctx,
         if account_type: vim['vim_type'] = account_type
         if description: vim['description'] = description
         if config: vim['config'] = config
-        ctx.obj.vim.update(name, vim, sdn_controller, sdn_port_mapping)
+        ctx.obj.vim.update(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1740,18 +1786,24 @@ def vim_update(ctx,
 @cli.command(name='vim-delete')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def vim_delete(ctx, name, force):
+def vim_delete(ctx, name, force, wait):
     """deletes a VIM account
 
     NAME: name or ID of the VIM account to be deleted
     """
     try:
         if not force:
-            ctx.obj.vim.delete(name)
+            ctx.obj.vim.delete(name, wait=wait)
         else:
             check_client_version(ctx.obj, '--force')
-            ctx.obj.vim.delete(name, force)
+            ctx.obj.vim.delete(name, force, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1831,6 +1883,12 @@ def vim_show(ctx, name):
               default='no description',
               help='human readable description')
 @click.option('--wim_port_mapping', default=None, help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge (WAN service endpoint id and info)")
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def wim_create(ctx,
                name,
@@ -1841,7 +1899,8 @@ def wim_create(ctx,
                config,
                wim_type,
                description,
-               wim_port_mapping):
+               wim_port_mapping,
+               wait):
     """creates a new WIM account"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
@@ -1857,7 +1916,7 @@ def wim_create(ctx,
         wim['wim_type'] = wim_type
         if description: wim['description'] = description
         if config: wim['config'] = config
-        ctx.obj.wim.create(name, wim, wim_port_mapping)
+        ctx.obj.wim.create(name, wim, wim_port_mapping, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1873,6 +1932,12 @@ def wim_create(ctx,
 @click.option('--wim_type', help='WIM type')
 @click.option('--description', help='human readable description')
 @click.option('--wim_port_mapping', default=None, help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge (WAN service endpoint id and info)")
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def wim_update(ctx,
                name,
@@ -1883,7 +1948,8 @@ def wim_update(ctx,
                config,
                wim_type,
                description,
-               wim_port_mapping):
+               wim_port_mapping,
+               wait):
     """updates a WIM account
 
     NAME: name or ID of the WIM account
@@ -1899,7 +1965,7 @@ def wim_update(ctx,
         if wim_type: wim['wim_type'] = wim_type
         if description: wim['description'] = description
         if config: wim['config'] = config
-        ctx.obj.wim.update(name, wim, wim_port_mapping)
+        ctx.obj.wim.update(name, wim, wim_port_mapping, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1908,15 +1974,21 @@ def wim_update(ctx,
 @cli.command(name='wim-delete')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def wim_delete(ctx, name, force):
+def wim_delete(ctx, name, force, wait):
     """deletes a WIM account
 
     NAME: name or ID of the WIM account to be deleted
     """
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.wim.delete(name, force)
+        ctx.obj.wim.delete(name, force, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -1977,7 +2049,7 @@ def wim_show(ctx, name):
               prompt=True,
               help='SDN controller type')
 @click.option('--sdn_controller_version',
-              help='SDN controller username')
+              help='SDN controller version')
 @click.option('--ip_address',
               prompt=True,
               help='SDN controller IP address')
@@ -1996,16 +2068,23 @@ def wim_show(ctx, name):
 #@click.option('--description',
 #              default='no description',
 #              help='human readable description')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def sdnc_create(ctx,
-               name,
-               type,
-               sdn_controller_version,
-               ip_address,
-               port,
-               switch_dpid,
-               user,
-               password):
+                name,
+                type,
+                sdn_controller_version,
+                ip_address,
+                port,
+                switch_dpid,
+                user,
+                password,
+                wait):
     """creates a new SDN controller"""
     sdncontroller = {}
     sdncontroller['name'] = name
@@ -2022,7 +2101,7 @@ def sdnc_create(ctx,
 #    sdncontroller['description'] = description
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.create(name, sdncontroller)
+        ctx.obj.sdnc.create(name, sdncontroller, wait=wait)
     except ClientException as inst:
         print((inst.message))
 
@@ -2038,17 +2117,24 @@ def sdnc_create(ctx,
 @click.option('--user', help='SDN controller username')
 @click.option('--password', help='SDN controller password')
 #@click.option('--description',  default=None, help='human readable description')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def sdnc_update(ctx,
-               name,
-               newname,
-               type,
-               sdn_controller_version,
-               ip_address,
-               port,
-               switch_dpid,
-               user,
-               password):
+                name,
+                newname,
+                type,
+                sdn_controller_version,
+                ip_address,
+                port,
+                switch_dpid,
+                user,
+                password,
+                wait):
     """updates an SDN controller
 
     NAME: name or ID of the SDN controller
@@ -2077,7 +2163,7 @@ def sdnc_update(ctx,
             sdncontroller['password'] = user
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.update(name, sdncontroller)
+        ctx.obj.sdnc.update(name, sdncontroller, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -2086,15 +2172,21 @@ def sdnc_update(ctx,
 @cli.command(name='sdnc-delete')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def sdnc_delete(ctx, name, force):
+def sdnc_delete(ctx, name, force, wait):
     """deletes an SDN controller
 
     NAME: name or ID of the SDN controller to be deleted
     """
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.delete(name, force)
+        ctx.obj.sdnc.delete(name, force, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -2422,10 +2514,10 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
 #@click.argument('name')
 #@click.pass_context
 #def ns_alarm_delete(ctx, name):
-#    '''deletes an alarm
+#    """deletes an alarm
 #
 #    NAME: name of the alarm to be deleted
-#    '''
+#    """
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name)
 #        ctx.obj.ns.delete_alarm(name)
@@ -2544,15 +2636,21 @@ def show_ns_scaling(ctx, ns_name):
 @click.argument('ns_name')
 @click.option('--ns_scale_group', prompt=True)
 @click.option('--index', prompt=True)
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
-def ns_scale(ctx, ns_name, ns_scale_group, index):
+def ns_scale(ctx, ns_name, ns_scale_group, index, wait):
     """scales NS
 
     NS_NAME: name of the NS instance to be scaled
     """
     try:
         check_client_version(ctx.obj, ctx.command.name, 'v1')
-        ctx.obj.ns.scale(ns_name, ns_scale_group, index)
+        ctx.obj.ns.scale(ns_name, ns_scale_group, index, wait=wait)
     except ClientException as inst:
         print((inst.message))
         exit(1)
@@ -2647,12 +2745,19 @@ def vcs_list(ctx):
 @click.option('--vnf_name', default=None)
 @click.option('--action_name', prompt=True)
 @click.option('--params', prompt=True)
+@click.option('--wait',
+              required=False,
+              default=False,
+              is_flag=True,
+              help='do not return the control immediately, but keep it \
+              until the operation is completed, or timeout')
 @click.pass_context
 def ns_action(ctx,
               ns_name,
               vnf_name,
               action_name,
-              params):
+              params,
+              wait):
     """executes an action/primitive over a NS instance
 
     NS_NAME: name or ID of the NS instance
@@ -2664,7 +2769,7 @@ def ns_action(ctx,
             op_data['vnf_member_index'] = vnf_name
         op_data['primitive'] = action_name
         op_data['primitive_params'] = yaml.load(params)
-        ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data)
+        ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait)
 
     except ClientException as inst:
         print((inst.message))

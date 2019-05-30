@@ -19,6 +19,7 @@ OSM wim API handling
 """
 
 from osmclient.common import utils
+from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
@@ -34,7 +35,30 @@ class Wim(object):
         self._apiResource = '/wim_accounts'
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
-    def create(self, name, wim_input, wim_port_mapping=None):
+    # WIM '--wait' option
+    def _wait(self, id, deleteFlag=False):
+        # Endpoint to get operation status
+        apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/wim_accounts')
+        # Wait for status for WIM instance creation/deletion
+        WaitForStatus.wait_for_status(
+            'WIM',
+            str(id),
+            WaitForStatus.TIMEOUT_WIM_OPERATION,
+            apiUrlStatus,
+            self._http.get2_cmd,
+            deleteFlag=deleteFlag)
+
+    def _get_id_for_wait(self, name):
+        # Returns id of name, or the id itself if given as argument
+        for wim in self.list():
+            if name == wim['name']:
+                return wim['uuid']
+        for wim in self.list():
+            if name == wim['uuid']:
+                return wim['uuid']
+        return ''
+
+    def create(self, name, wim_input, wim_port_mapping=None, wait=False):
         if 'wim_type' not in wim_input:
             raise Exception("wim type not provided")
 
@@ -61,6 +85,9 @@ class Wim(object):
             if not resp or 'id' not in resp:
                 raise ClientException('unexpected response from server - {}'.format(
                                       resp))
+            if wait:
+                # Wait for status for WIM instance creation
+                self._wait(resp.get('id'))
             print(resp['id'])
         else:
             msg = ""
@@ -71,9 +98,9 @@ class Wim(object):
                     msg = resp
             raise ClientException("failed to create wim {} - {}".format(name, msg))
 
-    def update(self, wim_name, wim_account, wim_port_mapping=None):
+    def update(self, wim_name, wim_account, wim_port_mapping=None, wait=False):
         wim = self.get(wim_name)
-
+        wim_id_for_wait = self._get_id_for_wait(wim_name)
         wim_config = {}
         if 'config' in wim_account:
             if wim_account.get('config')=="" and (wim_port_mapping):
@@ -92,7 +119,18 @@ class Wim(object):
         #print 'HTTP CODE: {}'.format(http_code)
         #print 'RESP: {}'.format(resp)
         if http_code in (200, 201, 202, 204):
-            pass
+            if wait:
+                # 'resp' may be None.
+                # In that case, 'resp['id']' cannot be used.
+                # In that case, 'resp['id']' cannot be used, so use the previously obtained id instead
+                wait_id = wim_id_for_wait
+                if resp:
+                    resp = json.loads(resp)
+                    wait_id = resp.get('id')
+                # Wait for status for WIM instance update
+                self._wait(wait_id)
+            else:
+                pass
         else:
             msg = ""
             if resp:
@@ -112,15 +150,16 @@ class Wim(object):
         return wim_account
 
     def get_id(self, name):
-        """Returns a VIM id from a VIM name
+        """Returns a WIM id from a WIM name
         """
         for wim in self.list():
             if name == wim['name']:
                 return wim['uuid']
         raise NotFound("wim {} not found".format(name))
 
-    def delete(self, wim_name, force=False):
+    def delete(self, wim_name, force=False, wait=False):
         wim_id = wim_name
+        wim_id_for_wait = self._get_id_for_wait(wim_name)
         if not utils.validate_uuid4(wim_name):
             wim_id = self.get_id(wim_name)
         querystring = ''
@@ -128,10 +167,21 @@ class Wim(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          wim_id, querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        # print 'HTTP CODE: {}'.format(http_code)
+        # print 'RESP: {}'.format(resp)
+        # print 'WIM_ID: {}'.format(wim_id)
         if http_code == 202:
-            print('Deletion in progress')
+            if wait:
+                # 'resp' may be None.
+                # In that case, 'resp['id']' cannot be used, so use the previously obtained id instead
+                wait_id = wim_id_for_wait
+                if resp:
+                    resp = json.loads(resp)
+                    wait_id = resp.get('id')
+                # Wait for status for WIM account deletion
+                self._wait(wait_id, deleteFlag=True)
+            else:
+                print('Deletion in progress')
         elif http_code == 204:
             print('Deleted')
         else:
@@ -171,4 +221,3 @@ class Wim(object):
         else:
             return resp
         raise NotFound("wim {} not found".format(name))
-
