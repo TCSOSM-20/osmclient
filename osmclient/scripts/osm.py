@@ -2203,7 +2203,7 @@ def sdnc_list(ctx, filter):
     except ClientException as inst:
         print((inst.message))
         exit(1)
-    table = PrettyTable(['name', 'id'])
+    table = PrettyTable(['sdnc name', 'id'])
     for sdnc in resp:
         table.add_row([sdnc['name'], sdnc['_id']])
     table.align = 'l'

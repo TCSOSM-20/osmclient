@@ -48,6 +48,16 @@ class Vim(object):
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
 
+    def _get_id_for_wait(self, name):
+        # Returns id of name, or the id itself if given as argument
+        for vim in self.list():
+            if name == vim['uuid']:
+                return vim['uuid']
+        for vim in self.list():
+            if name == vim['name']:
+                return vim['uuid']
+        return ''
+
     def create(self, name, vim_access, sdn_controller=None, sdn_port_mapping=None, wait=False):
         if 'vim-type' not in vim_access:
             #'openstack' not in vim_access['vim-type']):
@@ -95,7 +105,7 @@ class Vim(object):
 
     def update(self, vim_name, vim_account, sdn_controller, sdn_port_mapping, wait=False):
         vim = self.get(vim_name)
-
+        vim_id_for_wait = self._get_id_for_wait(vim_name)
         vim_config = {}
         if 'config' in vim_account:
             if vim_account.get('config')=="" and (sdn_controller or sdn_port_mapping):
@@ -114,18 +124,17 @@ class Vim(object):
         #vim_account['config'] = json.dumps(vim_config)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,vim['_id']),
                                        postfields_dict=vim_account)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        # print 'HTTP CODE: {}'.format(http_code)
+        # print 'RESP: {}'.format(resp)
         if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
             if wait:
-                # Wait for status for VIM instance update
-                self._wait(resp.get('id'))
-            print(resp['id'])
+                # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
+                # Use the previously obtained id instead.
+                wait_id = vim_id_for_wait
+                # Wait for status for VI instance update
+                self._wait(wait_id)
+            else:
+                pass
         else:
             msg = ""
             if resp:

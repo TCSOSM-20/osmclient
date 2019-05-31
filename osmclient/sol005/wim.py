@@ -51,10 +51,10 @@ class Wim(object):
     def _get_id_for_wait(self, name):
         # Returns id of name, or the id itself if given as argument
         for wim in self.list():
-            if name == wim['name']:
+            if name == wim['uuid']:
                 return wim['uuid']
         for wim in self.list():
-            if name == wim['uuid']:
+            if name == wim['name']:
                 return wim['uuid']
         return ''
 
@@ -120,13 +120,9 @@ class Wim(object):
         #print 'RESP: {}'.format(resp)
         if http_code in (200, 201, 202, 204):
             if wait:
-                # 'resp' may be None.
-                # In that case, 'resp['id']' cannot be used.
-                # In that case, 'resp['id']' cannot be used, so use the previously obtained id instead
+                # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
+                # Use the previously obtained id instead.
                 wait_id = wim_id_for_wait
-                if resp:
-                    resp = json.loads(resp)
-                    wait_id = resp.get('id')
                 # Wait for status for WIM instance update
                 self._wait(wait_id)
             else:

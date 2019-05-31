@@ -51,10 +51,10 @@ class SdnController(object):
     def _get_id_for_wait(self, name):
         # Returns id of name, or the id itself if given as argument
         for sdnc in self.list():
-            if name == sdnc['name']:
-                return sdnc['_id']
-        for wim in self.list():
             if name == sdnc['_id']:
+                return sdnc['_id']
+        for sdnc in self.list():
+            if name == sdnc['name']:
                 return sdnc['_id']
         return ''
 
@@ -87,18 +87,17 @@ class SdnController(object):
         sdnc_id_for_wait = self._get_id_for_wait(name)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
                                        postfields_dict=sdn_controller)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        # print 'HTTP CODE: {}'.format(http_code)
+        # print 'RESP: {}'.format(resp)
         if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
             if wait:
-                # Wait for status for SDNC instance update
-                self._wait(sdnc_id_for_wait)
-            print(resp['id'])
+                # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
+                # Use the previously obtained id instead.
+                wait_id = sdnc_id_for_wait
+                # Wait for status for VI instance update
+                self._wait(wait_id)
+            else:
+                pass
         else:
             msg = ""
             if resp:

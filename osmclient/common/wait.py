@@ -30,9 +30,7 @@ TIMEOUT_SDNC_OPERATION = TIMEOUT_GENERIC_OPERATION
 TIMEOUT_VIM_OPERATION = TIMEOUT_GENERIC_OPERATION
 TIMEOUT_WIM_OPERATION = TIMEOUT_GENERIC_OPERATION
 TIMEOUT_NS_OPERATION = 3600
-
 POLLING_TIME_INTERVAL = 1
-
 MAX_DELETE_ATTEMPTS = 3
 
 def _show_detailed_status(old_detailed_status, new_detailed_status):
@@ -66,7 +64,7 @@ def _get_operational_state(resp, entity):
         return resp.get('_admin', {}).get('operationalState')
 
 def _op_has_finished(resp, entity):
-    # _op_has_finished() returns:
+    # This function returns:
     # 0 on success (operation has finished)
     # 1 on pending (operation has not finished)
     # -1 on error (bad response)
@@ -113,6 +111,7 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
     detailed_status_deleted = None
     time_to_return = False
     delete_attempts_left = MAX_DELETE_ATTEMPTS
+    wait_for_404 = False
     try:
         while True:
             http_code, resp_unicode = http_cmd('{}/{}'.format(apiUrlStatus, entity_id))
@@ -127,6 +126,10 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
                 # Display 'detailed-status: Deleted' and return
                 time_to_return = True
                 detailed_status_deleted = 'Deleted'
+            elif deleteFlag and http_code in (200, 201, 202, 204):
+                # In case of deletion and HTTP Status = 20* OK, deletion may be PROCESSING or COMPLETED
+                # If this is the case, we should keep on polling until 404 (deleted) is returned.
+                wait_for_404 = True
             elif http_code not in (200, 201, 202, 204):
                 raise ClientException(str(resp))
             if not time_to_return:
@@ -148,12 +151,14 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
                     else:
                         # Operation has finished, either with success or error
                         if deleteFlag:
-                            if delete_attempts_left < MAX_DELETE_ATTEMPTS:
-                                time_to_return = True
                             delete_attempts_left -= 1
+                            if not wait_for_404 and delete_attempts_left < MAX_DELETE_ATTEMPTS:
+                                time_to_return = True
                         else:
                             time_to_return = True
             new_detailed_status = _get_detailed_status(resp, entity_label, detailed_status_deleted)
+            # print 'DETAILED-STATUS: {}'.format(new_detailed_status)
+            # print 'DELETE-ATTEMPTS-LEFT: {}'.format(delete_attempts_left)
             if not new_detailed_status:
                 new_detailed_status = 'In progress'
             # TODO: Change LCM to provide detailed-status more up to date
