@@ -453,6 +453,7 @@ class Ns(object):
 
     def get_field(self, ns_name, field):
         nsr = self.get(ns_name)
+        print(yaml.safe_dump(nsr))
         if nsr is None:
             raise NotFound("failed to retrieve ns {}".format(ns_name))
 

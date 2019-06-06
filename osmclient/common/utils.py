@@ -30,7 +30,7 @@ def wait_for_value(func, result=True, wait_time=10, catch_exception=None):
                 return True
         except catch_exception:
             pass
-        time.sleep(1)
+        time.sleep(5)
     try:
         return func() == result
     except catch_exception:
