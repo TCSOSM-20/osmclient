@@ -2327,11 +2327,11 @@ def project_show(ctx, name):
               confirmation_prompt=True,
               help='user password')
 @click.option('--projects',
-              prompt="Comma separate list of projects",
+              # prompt="Comma separate list of projects",
               multiple=True,
               callback=lambda ctx, param, value: ''.join(value).split(',') if all(len(x)==1 for x in value) else value,
               help='list of project ids that the user belongs to')
-@click.option('--project-role-mapping', 'project_role_mappings',
+@click.option('--project-role-mappings', 'project_role_mappings',
               default=None, multiple=True,
               help='creating user project/role(s) mapping')
 @click.pass_context
@@ -2348,7 +2348,7 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     user['username'] = username
     user['password'] = password
     user['projects'] = projects
-    user['project-role-mappings'] = project_role_mappings
+    user['project_role_mappings'] = project_role_mappings
     
     try:
         check_client_version(ctx.obj, ctx.command.name)
@@ -2360,9 +2360,9 @@ def user_create(ctx, username, password, projects, project_role_mappings):
 @cli.command(name='user-update')
 @click.argument('username')
 @click.option('--password',
-              prompt=True,
-              hide_input=True,
-              confirmation_prompt=True,
+              # prompt=True,
+              # hide_input=True,
+              # confirmation_prompt=True,
               help='user password')
 @click.option('--set-project', 'set_project',
               default=None, multiple=True,

@@ -38,14 +38,16 @@ class User(object):
     def create(self, name, user):
         """Creates a new OSM user
         """
-        if len(user["projects"]) == 1:
+        if not user["projects"] or (len(user["projects"]) == 1 and not user["projects"][0]):
+            del user["projects"]
+        elif len(user["projects"]) == 1:
             user["projects"] = user["projects"][0].split(",")
 
-        if user["project-role-mappings"]:
+        if user["project_role_mappings"]:
             project_role_mappings = []
 
-            for set_mapping in user["project-role-mappings"]:
-                set_mapping_clean = [m.trim() for m in set_mapping.split(",")]
+            for set_mapping in user["project_role_mappings"]:
+                set_mapping_clean = [m.strip() for m in set_mapping.split(",")]
                 project, roles = set_mapping_clean[0], set_mapping_clean[1:]
 
                 for role in roles:
@@ -54,7 +56,9 @@ class User(object):
                     if mapping not in project_role_mappings: 
                         project_role_mappings.append(mapping)
             
-            user["project-role-mappings"] = project_role_mappings
+            user["project_role_mappings"] = project_role_mappings
+        else:
+            del user["project_role_mappings"]
 
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=user)
@@ -81,8 +85,7 @@ class User(object):
         """
         myuser  = self.get(name)
         update_user = {
-            "_id": myuser["_id"],
-            "name": myuser["user"],
+            "username": myuser["username"],
             "project_role_mappings": myuser["project_role_mappings"]
         }
 
@@ -92,7 +95,7 @@ class User(object):
         
         if user["set-project"]:
             for set_project in user["set-project"]:
-                set_project_clean = [m.trim() for m in set_project.split(",")]
+                set_project_clean = [m.strip() for m in set_project.split(",")]
                 project, roles = set_project_clean[0], set_project_clean[1:]
 
                 update_user["project_role_mappings"] = [mapping for mapping 
@@ -111,7 +114,7 @@ class User(object):
         
         if user["add-project-role"]:
             for add_project_role in user["add-project-role"]:
-                add_project_role_clean = [m.trim() for m in add_project_role.split(",")]
+                add_project_role_clean = [m.strip() for m in add_project_role.split(",")]
                 project, roles = add_project_role_clean[0], add_project_role_clean[1:]
 
                 for role in roles:
@@ -121,7 +124,7 @@ class User(object):
         
         if user["remove-project-role"]:
             for remove_project_role in user["remove-project-role"]:
-                remove_project_role_clean = [m.trim() for m in remove_project_role.split(",")]
+                remove_project_role_clean = [m.strip() for m in remove_project_role.split(",")]
                 project, roles = remove_project_role_clean[0], remove_project_role_clean[1:]
 
                 for role in roles:
@@ -134,17 +137,19 @@ class User(object):
             and not user["add-project-role"] and not user["remove-project-role"]:
             raise ClientException("At least one parameter should be defined.")
 
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,myuser['_id']),
+        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, myuser['_id']),
                                              postfields_dict=update_user)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
+        if http_code in (200, 201, 202):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
                 raise ClientException('unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
+        elif http_code == 204:
+            pass
         else:
             msg = ""
             if resp:
