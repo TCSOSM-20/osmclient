@@ -1329,7 +1329,6 @@ def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descrip
         print((inst.message))
         exit(1)
 
-
 ####################
 # UPDATE operations
 ####################
@@ -1655,9 +1654,9 @@ def pdu_delete(ctx, name, force):
         exit(1)
 
 
-####################
+#################
 # VIM operations
-####################
+#################
 
 @cli.command(name='vim-create')
 @click.option('--name',
@@ -2104,7 +2103,7 @@ def sdnc_create(ctx,
         ctx.obj.sdnc.create(name, sdncontroller, wait=wait)
     except ClientException as inst:
         print((inst.message))
-
+        exit(1)
 
 @cli.command(name='sdnc-update', short_help='updates an SDN controller')
 @click.argument('name')
@@ -2255,6 +2254,7 @@ def project_create(ctx, name):
         ctx.obj.project.create(name, project)
     except ClientException as inst:
         print(inst.message)
+        exit(1)
 
 
 @cli.command(name='project-delete')
@@ -2382,6 +2382,7 @@ def user_create(ctx, username, password, projects, project_role_mappings):
         ctx.obj.user.create(username, user)
     except ClientException as inst:
         print(inst.message)
+        exit(1)
 
 
 @cli.command(name='user-update')
@@ -2433,6 +2434,7 @@ def user_update(ctx, username, password, set_username, set_project, remove_proje
         ctx.obj.user.update(username, user)
     except ClientException as inst:
         print(inst.message)
+        exit(1)
 
 
 @cli.command(name='user-delete')
@@ -2521,19 +2523,21 @@ def user_show(ctx, name):
 def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
                     threshold_value, threshold_operator, statistic):
     """creates a new alarm for a NS instance"""
-    ns_instance = ctx.obj.ns.get(ns)
-    alarm = {}
-    alarm['alarm_name'] = name
-    alarm['ns_id'] = ns_instance['_id']
-    alarm['correlation_id'] = ns_instance['_id']
-    alarm['vnf_member_index'] = vnf
-    alarm['vdu_name'] = vdu
-    alarm['metric_name'] = metric
-    alarm['severity'] = severity
-    alarm['threshold_value'] = int(threshold_value)
-    alarm['operation'] = threshold_operator
-    alarm['statistic'] = statistic
+    # TODO: Check how to validate threshold_value.
+    # Should it be an integer (1-100), percentage, or decimal (0.01-1.00)?
     try:
+        ns_instance = ctx.obj.ns.get(ns)
+        alarm = {}
+        alarm['alarm_name'] = name
+        alarm['ns_id'] = ns_instance['_id']
+        alarm['correlation_id'] = ns_instance['_id']
+        alarm['vnf_member_index'] = vnf
+        alarm['vdu_name'] = vdu
+        alarm['metric_name'] = metric
+        alarm['severity'] = severity
+        alarm['threshold_value'] = int(threshold_value)
+        alarm['operation'] = threshold_operator
+        alarm['statistic'] = statistic
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.ns.create_alarm(alarm)
     except ClientException as inst:
@@ -2575,16 +2579,18 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
 @click.pass_context
 def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
     """exports a metric to the internal OSM bus, which can be read by other apps"""
-    ns_instance = ctx.obj.ns.get(ns)
-    metric_data = {}
-    metric_data['ns_id'] = ns_instance['_id']
-    metric_data['correlation_id'] = ns_instance['_id']
-    metric_data['vnf_member_index'] = vnf
-    metric_data['vdu_name'] = vdu
-    metric_data['metric_name'] = metric
-    metric_data['collection_unit'] = 'WEEK'
-    metric_data['collection_period'] = 1
+    # TODO: Check how to validate interval.
+    # Should it be an integer (seconds), or should a suffix (s,m,h,d,w) also be permitted?
     try:
+        ns_instance = ctx.obj.ns.get(ns)
+        metric_data = {}
+        metric_data['ns_id'] = ns_instance['_id']
+        metric_data['correlation_id'] = ns_instance['_id']
+        metric_data['vnf_member_index'] = vnf
+        metric_data['vdu_name'] = vdu
+        metric_data['metric_name'] = metric
+        metric_data['collection_unit'] = 'WEEK'
+        metric_data['collection_period'] = 1
         check_client_version(ctx.obj, ctx.command.name)
         if not interval:
             print('{}'.format(ctx.obj.ns.export_metric(metric_data)))
@@ -2860,6 +2866,7 @@ def role_create(ctx, name, definition):
         ctx.obj.role.create(name, definition)
     except ClientException as inst:
         print(inst.message)
+        exit(1)
 
 
 @cli.command(name='role-update', short_help='updates a role')
