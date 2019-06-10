@@ -2315,6 +2315,33 @@ def project_show(ctx, name):
     print(table)
 
 
+@cli.command(name='project-update')
+@click.argument('project')
+@click.option('--name',
+              prompt=True,
+              help='new name for the project')
+
+@click.pass_context
+def project_update(ctx, project, name):
+    """
+    Update a project name
+
+    :param ctx:
+    :param project: id or name of the project to modify
+    :param name:  new name for the project
+    :return:
+    """
+
+    project_changes = {}
+    project_changes['name'] = name
+
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.project.update(project, project_changes)
+    except ClientException as inst:
+        print(inst.message)
+
+
 ####################
 # User mgmt operations
 ####################

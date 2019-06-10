@@ -149,7 +149,7 @@ class User(object):
                                       resp))
             print(resp['id'])
         elif http_code == 204:
-            pass
+            print('Updated')
         else:
             msg = ""
             if resp:

@@ -58,21 +58,23 @@ class Project(object):
                     msg = resp
             raise ClientException("failed to create project {} - {}".format(name, msg))
 
-    def update(self, name, project):
+    def update(self, project, project_changes):
         """Updates an OSM project identified by name
         """
-        proj = self.get(name)
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,proj['_id']),
-                                             postfields_dict=project)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
+        proj = self.get(project)
+        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, proj['_id']),
+                                             postfields_dict=project_changes)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
+        if http_code in (200, 201, 202):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
                 raise ClientException('unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
+        elif http_code == 204:
+            print("Updated")
         else:
             msg = ""
             if resp:
@@ -80,7 +82,7 @@ class Project(object):
                     msg = json.loads(resp)
                 except ValueError:
                     msg = resp
-            raise ClientException("failed to update project {} - {}".format(name, msg))
+            raise ClientException("failed to update project {} - {}".format(project, msg))
 
     def delete(self, name, force=False):
         """Deletes an OSM project identified by name
