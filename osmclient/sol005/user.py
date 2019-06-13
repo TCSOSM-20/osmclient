@@ -83,35 +83,36 @@ class User(object):
     def update(self, name, user):
         """Updates an existing OSM user identified by name
         """
-        myuser  = self.get(name)
+        # print(user)
+        myuser = self.get(name)
         update_user = {
-            "username": myuser["username"],
-            "project_role_mappings": myuser["project_role_mappings"]
+            "add_project_role_mappings": [],
+            "remove_project_role_mappings": [],
         }
 
         # if password is defined, update the password
         if user["password"]:
             update_user["password"] = user["password"]
-        
+        if user["username"]:
+            update_user["username"] = user["username"]
+
         if user["set-project"]:
+            # Remove project and insert project role mapping
             for set_project in user["set-project"]:
+
                 set_project_clean = [m.strip() for m in set_project.split(",")]
                 project, roles = set_project_clean[0], set_project_clean[1:]
 
-                update_user["project_role_mappings"] = [mapping for mapping 
-                                                        in update_user["project_role_mappings"]
-                                                        if mapping["project"] != project]
+                update_user["remove_project_role_mappings"].append({"project": project})
 
                 for role in roles:
                     mapping = {"project": project, "role": role}
-                    update_user["project_role_mappings"].append(mapping)
+                    update_user["add_project_role_mappings"].append(mapping)
         
         if user["remove-project"]:
             for remove_project in user["remove-project"]:
-                update_user["project_role_mappings"] = [mapping for mapping 
-                                                        in update_user["project_role_mappings"]
-                                                        if mapping["project"] != remove_project]
-        
+                update_user["remove_project_role_mappings"].append({"project": remove_project})
+
         if user["add-project-role"]:
             for add_project_role in user["add-project-role"]:
                 add_project_role_clean = [m.strip() for m in add_project_role.split(",")]
@@ -119,23 +120,23 @@ class User(object):
 
                 for role in roles:
                     mapping = {"project": project, "role": role}
-                    if mapping not in update_user["project_role_mappings"]:
-                        update_user["project_role_mappings"].append(mapping)
-        
+                    update_user["add_project_role_mappings"].append(mapping)
+
         if user["remove-project-role"]:
             for remove_project_role in user["remove-project-role"]:
                 remove_project_role_clean = [m.strip() for m in remove_project_role.split(",")]
                 project, roles = remove_project_role_clean[0], remove_project_role_clean[1:]
 
                 for role in roles:
-                    mapping_to_remove = {"project": project, "role": role}
-                    update_user["project_role_mappings"] = [mapping for mapping 
-                                                            in update_user["project_role_mappings"]
-                                                            if mapping != mapping_to_remove]
+                    mapping = {"project": project, "role": role}
+                    update_user["remove_project_role_mappings"].append(mapping)
 
-        if not user["password"] and not user["set-project"] and not user["remove-project"] \
-            and not user["add-project-role"] and not user["remove-project-role"]:
-            raise ClientException("At least one parameter should be defined.")
+        if not update_user["remove_project_role_mappings"]:
+            del update_user["remove_project_role_mappings"]
+        if not update_user["add_project_role_mappings"]:
+            del update_user["add_project_role_mappings"]
+        if not update_user:
+            raise ClientException("At least something should be changed.")
 
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, myuser['_id']),
                                              postfields_dict=update_user)

@@ -2391,6 +2391,9 @@ def user_create(ctx, username, password, projects, project_role_mappings):
               # hide_input=True,
               # confirmation_prompt=True,
               help='user password')
+@click.option('--set-username', 'set_username',
+              default=None,
+              help='change username')
 @click.option('--set-project', 'set_project',
               default=None, multiple=True,
               help='create/replace the project,role(s) mapping for this project: \'project,role1,role2,...\'')
@@ -2404,21 +2407,22 @@ def user_create(ctx, username, password, projects, project_role_mappings):
               default=None, multiple=True,
               help='removes project,role(s) mapping: \'project,role1,role2,...\'')
 @click.pass_context
-def user_update(ctx, username, password, set_project, remove_project,
+def user_update(ctx, username, password, set_username, set_project, remove_project,
                 add_project_role, remove_project_role):
     """Update a user information
 
     \b
     USERNAME: name of the user
     PASSWORD: new password
+    SET_USERNAME: new username
     SET_PROJECT: creating mappings for project/role(s)
     REMOVE_PROJECT: deleting mappings for project/role(s)
     ADD_PROJECT_ROLE: adding mappings for project/role(s)
     REMOVE_PROJECT_ROLE: removing mappings for project/role(s)
     """
     user = {}
-    user['username'] = username
     user['password'] = password
+    user['username'] = set_username
     user['set-project'] = set_project
     user['remove-project'] = remove_project
     user['add-project-role'] = add_project_role
