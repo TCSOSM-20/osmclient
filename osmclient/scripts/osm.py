@@ -2849,11 +2849,11 @@ def vnf_scale(ctx,
 
 @cli.command(name='role-create', short_help='creates a role')
 @click.argument('name')
-@click.option('--definition',
+@click.option('--permissions',
               default=None,
-              help='role definition using a dictionary')
+              help='role permissions using a dictionary')
 @click.pass_context
-def role_create(ctx, name, definition):
+def role_create(ctx, name, permissions):
     """
     Creates a new role.
 
@@ -2863,7 +2863,7 @@ def role_create(ctx, name, definition):
     """
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.role.create(name, definition)
+        ctx.obj.role.create(name, permissions)
     except ClientException as inst:
         print(inst.message)
         exit(1)
@@ -2871,17 +2871,20 @@ def role_create(ctx, name, definition):
 
 @cli.command(name='role-update', short_help='updates a role')
 @click.argument('name')
-@click.option('--definition',
+@click.option('--set-name',
               default=None,
-              help='add a new definition to the role')
+              help='change name of rle')
+# @click.option('--permissions',
+#               default=None,
+#               help='provide a yaml format dictionary with incremental changes. Values can be bool or None to delete')
 @click.option('--add',
               default=None,
-              help='add a resource access grant/denial')
+              help='yaml format dictionary with permission: True/False to access grant/denial')
 @click.option('--remove',
               default=None,
-              help='remove a resource access grant/denial')
+              help='yaml format list to remove a permission')
 @click.pass_context
-def role_update(ctx, name, definition, add, remove):
+def role_update(ctx, name, set_name, add, remove):
     """
     Updates a role.
 
@@ -2893,7 +2896,7 @@ def role_update(ctx, name, definition, add, remove):
     """
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.role.update(name, definition, add, remove)
+        ctx.obj.role.update(name, set_name, None, add, remove)
     except ClientException as inst:
         print(inst.message)
         exit(1)
