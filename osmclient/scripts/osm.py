@@ -2779,9 +2779,11 @@ def vcs_list(ctx):
 
 @cli.command(name='ns-action')
 @click.argument('ns_name')
-@click.option('--vnf_name', default=None)
+@click.option('--vnf_name', default=None, help='member-vnf-index if the target is a vnf instead of a ns)')
+@click.option('--vdu_id', default=None, help='vdu-id if the target is a vdu o a vnf')
+@click.option('--vdu_count', default=None, help='number of vdu instance of this vdu_id')
 @click.option('--action_name', prompt=True)
-@click.option('--params', prompt=True)
+@click.option('--params', default=None)
 @click.option('--wait',
               required=False,
               default=False,
@@ -2792,6 +2794,8 @@ def vcs_list(ctx):
 def ns_action(ctx,
               ns_name,
               vnf_name,
+              vdu_id,
+              vdu_count,
               action_name,
               params,
               wait):
@@ -2801,15 +2805,22 @@ def ns_action(ctx,
     """
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        op_data={}
+        op_data = {}
         if vnf_name:
-            op_data['vnf_member_index'] = vnf_name
+            op_data['member_vnf_index'] = vnf_name
+        if vdu_id:
+            op_data['vdu_id'] = vdu_id
+        if vdu_count:
+            op_data['vdu_count_index'] = vdu_count
         op_data['primitive'] = action_name
-        op_data['primitive_params'] = yaml.load(params)
+        if params:
+            op_data['primitive_params'] = yaml.load(params)
+        else:
+            op_data['primitive_params'] = {}
         ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait)
 
     except ClientException as inst:
-        print((inst.message))
+        print(inst.message)
         exit(1)
 
 
