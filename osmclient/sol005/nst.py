@@ -174,6 +174,6 @@ class Nst(object):
 
     def update(self, name, filename):
         nst = self.get(name)
-        endpoint = '{}/{}/netslice_templates_content'.format(self._apiBase, nst['_id'])
+        endpoint = '{}/{}/nst_content'.format(self._apiBase, nst['_id'])
         self.create(filename=filename, update_endpoint=endpoint)
 
