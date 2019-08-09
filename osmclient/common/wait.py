@@ -42,11 +42,11 @@ def _show_detailed_status(old_detailed_status, new_detailed_status):
 
 def _get_finished_states(entity):
     # Note that the member name is either:
-    # 'operationState' (NS and NSI)
-    # '_admin.'operationalState' (other)
+    # 'operationState' (NS, NSI)
+    # '_admin.'operationalState' (VIM, WIM, SDN)
     # For NS and NSI, 'operationState' may be one of:
     # PROCESSING, COMPLETED,PARTIALLY_COMPLETED, FAILED_TEMP,FAILED,ROLLING_BACK,ROLLED_BACK
-    # For other entities, '_admin.operationalState' may be one of:
+    # For VIM, WIM, SDN: '_admin.operationalState' may be one of:
     # operationalState: ENABLED, DISABLED, ERROR, PROCESSING
     if entity == 'NS' or entity == 'NSI':
         return ['COMPLETED', 'PARTIALLY_COMPLETED', 'FAILED_TEMP', 'FAILED']
@@ -85,8 +85,24 @@ def _get_detailed_status(resp, entity, detailed_status_deleted):
         # For NS and NSI, 'detailed-status' is a JSON "root" member:
         return resp.get('detailed-status')
     else:
-        # For other entities, 'detailed-status' a leaf node to '_admin':
-        return resp.get('_admin', {}).get('detailed-status')
+        # For VIM, WIM, SDN, 'detailed-status' is either:
+        # - a leaf node to '_admin' (operations NOT supported)
+        # - a leaf node of the Nth element in the list '_admin.operations[]' (operations supported by LCM and NBI)
+        # https://osm.etsi.org/gerrit/#/c/7767 : LCM support for operations
+        # https://osm.etsi.org/gerrit/#/c/7734 : NBI support for current_operation
+        ops = resp.get('_admin', {}).get('operations')
+        op_index = resp.get('_admin', {}).get('current_operation')
+        if ops and op_index:
+            # Operations are supported, verify operation index
+            if isinstance(op_index, (int)) or op_index.isdigit():
+                op_index = int(op_index)
+                if op_index > 0 and op_index < len(ops) and ops[op_index] and ops[op_index]["detailed-status"]:
+                    return ops[op_index]["detailed-status"]
+            # operation index is either non-numeric or out-of-range
+            return 'Unexpected error when getting detailed-status!'
+        else:
+            # Operations are NOT supported
+            return resp.get('_admin', {}).get('detailed-status')
 
 def _has_delete_error(resp, entity, deleteFlag, delete_attempts_left):
     if deleteFlag and delete_attempts_left:
