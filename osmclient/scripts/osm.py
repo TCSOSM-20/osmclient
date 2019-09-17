@@ -26,6 +26,7 @@ import yaml
 import json
 import time
 import pycurl
+import os
 
 
 def check_client_version(obj, what, version='sol005'):
@@ -52,62 +53,63 @@ def check_client_version(obj, what, version='sol005'):
               envvar='OSM_HOSTNAME',
               help='hostname of server.  ' +
                    'Also can set OSM_HOSTNAME in environment')
-@click.option('--sol005/--no-sol005',
-              default=True,
-              envvar='OSM_SOL005',
-              help='Use ETSI NFV SOL005 API (default) or the previous SO API. ' +
-                   'Also can set OSM_SOL005 in environment')
+#@click.option('--sol005/--no-sol005',
+#              default=True,
+#              envvar='OSM_SOL005',
+#              help='Use ETSI NFV SOL005 API (default) or the previous SO API. ' +
+#                   'Also can set OSM_SOL005 in environment')
 @click.option('--user',
               default=None,
               envvar='OSM_USER',
-              help='user (only from Release FOUR, defaults to admin). ' +
+              help='user (defaults to admin). ' +
                    'Also can set OSM_USER in environment')
 @click.option('--password',
               default=None,
               envvar='OSM_PASSWORD',
-              help='password (only from Release FOUR, defaults to admin). ' +
+              help='password (defaults to admin). ' +
                    'Also can set OSM_PASSWORD in environment')
 @click.option('--project',
               default=None,
               envvar='OSM_PROJECT',
-              help='project (only from Release FOUR, defaults to admin). ' +
+              help='project (defaults to admin). ' +
                    'Also can set OSM_PROJECT in environment')
-@click.option('--so-port',
-              default=None,
-              envvar='OSM_SO_PORT',
-              help='hostname of server.  ' +
-                   'Also can set OSM_SO_PORT in environment')
-@click.option('--so-project',
-              default=None,
-              envvar='OSM_SO_PROJECT',
-              help='Project Name in SO.  ' +
-                   'Also can set OSM_SO_PROJECT in environment')
-@click.option('--ro-hostname',
-              default=None,
-              envvar='OSM_RO_HOSTNAME',
-              help='hostname of RO server.  ' +
-              'Also can set OSM_RO_HOSTNAME in environment')
-@click.option('--ro-port',
-              default=None,
-              envvar='OSM_RO_PORT',
-              help='hostname of RO server.  ' +
-                   'Also can set OSM_RO_PORT in environment')
+#@click.option('--so-port',
+#              default=None,
+#              envvar='OSM_SO_PORT',
+#              help='hostname of server.  ' +
+#                   'Also can set OSM_SO_PORT in environment')
+#@click.option('--so-project',
+#              default=None,
+#              envvar='OSM_SO_PROJECT',
+#              help='Project Name in SO.  ' +
+#                   'Also can set OSM_SO_PROJECT in environment')
+#@click.option('--ro-hostname',
+#              default=None,
+#              envvar='OSM_RO_HOSTNAME',
+#              help='hostname of RO server.  ' +
+#              'Also can set OSM_RO_HOSTNAME in environment')
+#@click.option('--ro-port',
+#              default=None,
+#              envvar='OSM_RO_PORT',
+#              help='hostname of RO server.  ' +
+#                   'Also can set OSM_RO_PORT in environment')
 @click.pass_context
-def cli(ctx, hostname, sol005, user, password, project, so_port, so_project, ro_hostname, ro_port):
+def cli(ctx, hostname, user, password, project):
     if hostname is None:
         print((
             "either hostname option or OSM_HOSTNAME " +
             "environment variable needs to be specified"))
         exit(1)
     kwargs={}
-    if so_port is not None:
-        kwargs['so_port']=so_port
-    if so_project is not None:
-        kwargs['so_project']=so_project
-    if ro_hostname is not None:
-        kwargs['ro_host']=ro_hostname
-    if ro_port is not None:
-        kwargs['ro_port']=ro_port
+#    if so_port is not None:
+#        kwargs['so_port']=so_port
+#    if so_project is not None:
+#        kwargs['so_project']=so_project
+#    if ro_hostname is not None:
+#        kwargs['ro_host']=ro_hostname
+#    if ro_port is not None:
+#        kwargs['ro_port']=ro_port
+    sol005 = os.getenv('OSM_SOL005', True)
     if user is not None:
         kwargs['user']=user
     if password is not None:
@@ -792,50 +794,50 @@ def vnf_show(ctx, name, literal, filter):
     print(table)
 
 
-@cli.command(name='vnf-monitoring-show')
-@click.argument('vnf_name')
-@click.pass_context
-def vnf_monitoring_show(ctx, vnf_name):
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-        resp = ctx.obj.vnf.get_monitoring(vnf_name)
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
+#@cli.command(name='vnf-monitoring-show')
+#@click.argument('vnf_name')
+#@click.pass_context
+#def vnf_monitoring_show(ctx, vnf_name):
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#        resp = ctx.obj.vnf.get_monitoring(vnf_name)
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
+#
+#    table = PrettyTable(['vnf name', 'monitoring name', 'value', 'units'])
+#    if resp is not None:
+#        for monitor in resp:
+#            table.add_row(
+#                [vnf_name,
+#                 monitor['name'],
+#                    monitor['value-integer'],
+#                    monitor['units']])
+#    table.align = 'l'
+#    print(table)
 
-    table = PrettyTable(['vnf name', 'monitoring name', 'value', 'units'])
-    if resp is not None:
-        for monitor in resp:
-            table.add_row(
-                [vnf_name,
-                 monitor['name'],
-                    monitor['value-integer'],
-                    monitor['units']])
-    table.align = 'l'
-    print(table)
 
-
-@cli.command(name='ns-monitoring-show')
-@click.argument('ns_name')
-@click.pass_context
-def ns_monitoring_show(ctx, ns_name):
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-        resp = ctx.obj.ns.get_monitoring(ns_name)
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
-
-    table = PrettyTable(['vnf name', 'monitoring name', 'value', 'units'])
-    for key, val in list(resp.items()):
-        for monitor in val:
-            table.add_row(
-                [key,
-                 monitor['name'],
-                    monitor['value-integer'],
-                    monitor['units']])
-    table.align = 'l'
-    print(table)
+#@cli.command(name='ns-monitoring-show')
+#@click.argument('ns_name')
+#@click.pass_context
+#def ns_monitoring_show(ctx, ns_name):
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#        resp = ctx.obj.ns.get_monitoring(ns_name)
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
+#
+#    table = PrettyTable(['vnf name', 'monitoring name', 'value', 'units'])
+#    for key, val in list(resp.items()):
+#        for monitor in val:
+#            table.add_row(
+#                [key,
+#                 monitor['name'],
+#                    monitor['value-integer'],
+#                    monitor['units']])
+#    table.align = 'l'
+#    print(table)
 
 
 @cli.command(name='ns-op-show', short_help='shows the info of an operation')
@@ -1809,23 +1811,23 @@ def vim_delete(ctx, name, force, wait):
 
 
 @cli.command(name='vim-list')
-@click.option('--ro_update/--no_ro_update',
-              default=False,
-              help='update list from RO')
+#@click.option('--ro_update/--no_ro_update',
+#              default=False,
+#              help='update list from RO')
 @click.option('--filter', default=None,
               help='restricts the list to the VIM accounts matching the filter')
 @click.pass_context
-def vim_list(ctx, ro_update, filter):
+def vim_list(ctx, filter):
     """list all VIM accounts"""
     if filter:
         check_client_version(ctx.obj, '--filter')
-    if ro_update:
-        check_client_version(ctx.obj, '--ro_update', 'v1')
+#    if ro_update:
+#        check_client_version(ctx.obj, '--ro_update', 'v1')
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
         resp = ctx.obj.vim.list(filter)
-    else:
-        resp = ctx.obj.vim.list(ro_update)
+#    else:
+#        resp = ctx.obj.vim.list(ro_update)
     table = PrettyTable(['vim name', 'uuid'])
     for vim in resp:
         table.add_row([vim['name'], vim['uuid']])
@@ -2627,154 +2629,154 @@ def upload_package(ctx, filename):
         exit(1)
 
 
-@cli.command(name='ns-scaling-show')
-@click.argument('ns_name')
-@click.pass_context
-def show_ns_scaling(ctx, ns_name):
-    """shows the status of a NS scaling operation
-
-    NS_NAME: name of the NS instance being scaled
-    """
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-        resp = ctx.obj.ns.list()
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
-
-    table = PrettyTable(
-        ['group-name',
-         'instance-id',
-         'operational status',
-         'create-time',
-         'vnfr ids'])
-
-    for ns in resp:
-        if ns_name == ns['name']:
-            nsopdata = ctx.obj.ns.get_opdata(ns['id'])
-            scaling_records = nsopdata['nsr:nsr']['scaling-group-record']
-            for record in scaling_records:
-                if 'instance' in record:
-                    instances = record['instance']
-                    for inst in instances:
-                        table.add_row(
-                            [record['scaling-group-name-ref'],
-                             inst['instance-id'],
-                                inst['op-status'],
-                                time.strftime('%Y-%m-%d %H:%M:%S',
-                                              time.localtime(
-                                                  inst['create-time'])),
-                                inst['vnfrs']])
-    table.align = 'l'
-    print(table)
-
-
-@cli.command(name='ns-scale')
-@click.argument('ns_name')
-@click.option('--ns_scale_group', prompt=True)
-@click.option('--index', prompt=True)
-@click.option('--wait',
-              required=False,
-              default=False,
-              is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
-@click.pass_context
-def ns_scale(ctx, ns_name, ns_scale_group, index, wait):
-    """scales NS
-
-    NS_NAME: name of the NS instance to be scaled
-    """
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-        ctx.obj.ns.scale(ns_name, ns_scale_group, index, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
+#@cli.command(name='ns-scaling-show')
+#@click.argument('ns_name')
+#@click.pass_context
+#def show_ns_scaling(ctx, ns_name):
+#    """shows the status of a NS scaling operation
+#
+#    NS_NAME: name of the NS instance being scaled
+#    """
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#        resp = ctx.obj.ns.list()
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
+#
+#    table = PrettyTable(
+#        ['group-name',
+#         'instance-id',
+#         'operational status',
+#         'create-time',
+#         'vnfr ids'])
+#
+#    for ns in resp:
+#        if ns_name == ns['name']:
+#            nsopdata = ctx.obj.ns.get_opdata(ns['id'])
+#            scaling_records = nsopdata['nsr:nsr']['scaling-group-record']
+#            for record in scaling_records:
+#                if 'instance' in record:
+#                    instances = record['instance']
+#                    for inst in instances:
+#                        table.add_row(
+#                            [record['scaling-group-name-ref'],
+#                             inst['instance-id'],
+#                                inst['op-status'],
+#                                time.strftime('%Y-%m-%d %H:%M:%S',
+#                                              time.localtime(
+#                                                  inst['create-time'])),
+#                                inst['vnfrs']])
+#    table.align = 'l'
+#    print(table)
 
 
-@cli.command(name='config-agent-list')
-@click.pass_context
-def config_agent_list(ctx):
-    """list config agents"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
-    table = PrettyTable(['name', 'account-type', 'details'])
-    for account in ctx.obj.vca.list():
-        table.add_row(
-            [account['name'],
-             account['account-type'],
-             account['juju']])
-    table.align = 'l'
-    print(table)
+#@cli.command(name='ns-scale')
+#@click.argument('ns_name')
+#@click.option('--ns_scale_group', prompt=True)
+#@click.option('--index', prompt=True)
+#@click.option('--wait',
+#              required=False,
+#              default=False,
+#              is_flag=True,
+#              help='do not return the control immediately, but keep it \
+#              until the operation is completed, or timeout')
+#@click.pass_context
+#def ns_scale(ctx, ns_name, ns_scale_group, index, wait):
+#    """scales NS
+#
+#    NS_NAME: name of the NS instance to be scaled
+#    """
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#        ctx.obj.ns.scale(ns_name, ns_scale_group, index, wait=wait)
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
 
 
-@cli.command(name='config-agent-delete')
-@click.argument('name')
-@click.pass_context
-def config_agent_delete(ctx, name):
-    """deletes a config agent
-
-    NAME: name of the config agent to be deleted
-    """
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-        ctx.obj.vca.delete(name)
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
-
-
-@cli.command(name='config-agent-add')
-@click.option('--name',
-              prompt=True)
-@click.option('--account_type',
-              prompt=True)
-@click.option('--server',
-              prompt=True)
-@click.option('--user',
-              prompt=True)
-@click.option('--secret',
-              prompt=True,
-              hide_input=True,
-              confirmation_prompt=True)
-@click.pass_context
-def config_agent_add(ctx, name, account_type, server, user, secret):
-    """adds a config agent"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name, 'v1')
-        ctx.obj.vca.create(name, account_type, server, user, secret)
-    except ClientException as inst:
-        print((inst.message))
-        exit(1)
+#@cli.command(name='config-agent-list')
+#@click.pass_context
+#def config_agent_list(ctx):
+#    """list config agents"""
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
+#    table = PrettyTable(['name', 'account-type', 'details'])
+#    for account in ctx.obj.vca.list():
+#        table.add_row(
+#            [account['name'],
+#             account['account-type'],
+#             account['juju']])
+#    table.align = 'l'
+#    print(table)
 
 
-@cli.command(name='ro-dump')
-@click.pass_context
-def ro_dump(ctx):
-    """shows RO agent information"""
-    check_client_version(ctx.obj, ctx.command.name, 'v1')
-    resp = ctx.obj.vim.get_resource_orchestrator()
-    table = PrettyTable(['key', 'attribute'])
-    for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
-    table.align = 'l'
-    print(table)
+#@cli.command(name='config-agent-delete')
+#@click.argument('name')
+#@click.pass_context
+#def config_agent_delete(ctx, name):
+#    """deletes a config agent
+#
+#    NAME: name of the config agent to be deleted
+#    """
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#        ctx.obj.vca.delete(name)
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
 
 
-@cli.command(name='vcs-list')
-@click.pass_context
-def vcs_list(ctx):
-    check_client_version(ctx.obj, ctx.command.name, 'v1')
-    resp = ctx.obj.utils.get_vcs_info()
-    table = PrettyTable(['component name', 'state'])
-    for component in resp:
-        table.add_row([component['component_name'], component['state']])
-    table.align = 'l'
-    print(table)
+#@cli.command(name='config-agent-add')
+#@click.option('--name',
+#              prompt=True)
+#@click.option('--account_type',
+#              prompt=True)
+#@click.option('--server',
+#              prompt=True)
+#@click.option('--user',
+#              prompt=True)
+#@click.option('--secret',
+#              prompt=True,
+#              hide_input=True,
+#              confirmation_prompt=True)
+#@click.pass_context
+#def config_agent_add(ctx, name, account_type, server, user, secret):
+#    """adds a config agent"""
+#    try:
+#        check_client_version(ctx.obj, ctx.command.name, 'v1')
+#        ctx.obj.vca.create(name, account_type, server, user, secret)
+#    except ClientException as inst:
+#        print((inst.message))
+#        exit(1)
+
+
+#@cli.command(name='ro-dump')
+#@click.pass_context
+#def ro_dump(ctx):
+#    """shows RO agent information"""
+#    check_client_version(ctx.obj, ctx.command.name, 'v1')
+#    resp = ctx.obj.vim.get_resource_orchestrator()
+#    table = PrettyTable(['key', 'attribute'])
+#    for k, v in list(resp.items()):
+#        table.add_row([k, json.dumps(v, indent=2)])
+#    table.align = 'l'
+#    print(table)
+
+
+#@cli.command(name='vcs-list')
+#@click.pass_context
+#def vcs_list(ctx):
+#    check_client_version(ctx.obj, ctx.command.name, 'v1')
+#    resp = ctx.obj.utils.get_vcs_info()
+#    table = PrettyTable(['component name', 'state'])
+#    for component in resp:
+#        table.add_row([component['component_name'], component['state']])
+#    table.align = 'l'
+#    print(table)
 
 
 @cli.command(name='ns-action')
