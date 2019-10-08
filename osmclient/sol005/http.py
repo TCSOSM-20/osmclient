@@ -29,7 +29,7 @@ class Http(http.Http):
 
     def _get_curl_cmd(self, endpoint):
         curl_cmd = pycurl.Curl()
-        #print self._url + endpoint
+        #print(self._url + endpoint)
         curl_cmd.setopt(pycurl.URL, self._url + endpoint)
         curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
         curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
@@ -44,7 +44,7 @@ class Http(http.Http):
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
         curl_cmd.perform()
         http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
-        #print 'HTTP_CODE: {}'.format(http_code)
+        #print('HTTP_CODE: {}'.format(http_code))
         curl_cmd.close()
         # TODO 202 accepted should be returned somehow
         if data.getvalue():

@@ -42,7 +42,7 @@ class Nst(object):
         if filter:
             filter_string = '?{}'.format(filter)
         resp = self._http.get_cmd('{}{}'.format(self._apiBase, filter_string))
-        #print yaml.safe_dump(resp)
+        #print(yaml.safe_dump(resp))
         if resp:
             return resp
         return list()
@@ -63,7 +63,7 @@ class Nst(object):
         # It is redundant, since the previous one already gets the whole nstinfo
         # The only difference is that a different primitive is exercised
         resp = self._http.get_cmd('{}/{}'.format(self._apiBase, nst['_id']))
-        #print yaml.safe_dump(resp)
+        #print(yaml.safe_dump(resp))
         if resp:
             return resp
         raise NotFound("nst {} not found".format(name))
@@ -73,8 +73,8 @@ class Nst(object):
         headers = self._client._headers
         headers['Accept'] = 'application/binary'
         http_code, resp = self._http.get2_cmd('{}/{}/{}'.format(self._apiBase, nst['_id'], thing))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 #store in a file
@@ -104,8 +104,8 @@ class Nst(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          nst['_id'], querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code == 202:
             print('Deletion in progress')
         elif http_code == 204:
@@ -154,8 +154,8 @@ class Nst(object):
                                             self._apiVersion, self._apiResource)
             endpoint = '{}{}'.format(self._apiBase,ow_string)
             http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)

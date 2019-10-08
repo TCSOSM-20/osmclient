@@ -83,7 +83,7 @@ class Nsi(object):
                     break
         resp = self._http.get_cmd('{}/{}'.format(self._apiBase, nsi_id))
         #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, nsi_id))
-        #print yaml.safe_dump(resp)
+        #print(yaml.safe_dump(resp))
         if resp:
             return resp
         raise NotFound("nsi {} not found".format(name))
@@ -95,8 +95,8 @@ class Nsi(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          nsi['_id'], querystring))
-        # print 'HTTP CODE: {}'.format(http_code)
-        # print 'RESP: {}'.format(resp)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait and resp:
                 resp = json.loads(resp)
@@ -199,7 +199,7 @@ class Nsi(object):
                         raise ValueError("Error at --config 'additionalParamsForSubnet' items must contain "
                                          "'additionalParamsForNs' and/or 'additionalParamsForVnf'")
 
-        # print yaml.safe_dump(nsi)
+        # print(yaml.safe_dump(nsi))
         try:
             self._apiResource = '/netslice_instances_content'
             self._apiBase = '{}{}{}'.format(self._apiName,
@@ -211,8 +211,8 @@ class Nsi(object):
             self._http.set_http_header(http_header)
             http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=nsi)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 if resp:
                     resp = json.loads(resp)
@@ -252,8 +252,8 @@ class Nsi(object):
             http_code, resp = self._http.get2_cmd('{}?netsliceInstanceId={}'.format(
                                                        self._apiBase, nsi['_id'],
                                                        filter_string) )
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code == 200:
                 if resp:
                     resp = json.loads(resp)
@@ -283,8 +283,8 @@ class Nsi(object):
             self._apiBase = '{}{}{}'.format(self._apiName,
                                       self._apiVersion, self._apiResource)
             http_code, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, operationId))
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code == 200:
                 if resp:
                     resp = json.loads(resp)
@@ -315,11 +315,11 @@ class Nsi(object):
             self._apiBase = '{}{}{}'.format(self._apiName,
                                             self._apiVersion, self._apiResource)
             endpoint = '{}/{}/{}'.format(self._apiBase, nsi['_id'], op_name)
-            #print 'OP_NAME: {}'.format(op_name)
-            #print 'OP_DATA: {}'.format(json.dumps(op_data))
+            #print('OP_NAME: {}'.format(op_name))
+            #print('OP_DATA: {}'.format(json.dumps(op_data)))
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=op_data)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 if resp:
                     resp = json.loads(resp)

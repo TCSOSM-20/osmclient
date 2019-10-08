@@ -134,9 +134,9 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
             resp = ''
             if resp_unicode:
                 resp = json.loads(resp_unicode)
-            # print 'HTTP CODE: {}'.format(http_code)
-            # print 'RESP: {}'.format(resp)
-            # print 'URL: {}/{}'.format(apiUrlStatus, entity_id)
+            # print('HTTP CODE: {}'.format(http_code))
+            # print('RESP: {}'.format(resp))
+            # print('URL: {}/{}'.format(apiUrlStatus, entity_id))
             if deleteFlag and http_code == 404:
                 # In case of deletion, '404 Not Found' means successfully deleted
                 # Display 'detailed-status: Deleted' and return
@@ -173,8 +173,8 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
                         else:
                             time_to_return = True
             new_detailed_status = _get_detailed_status(resp, entity_label, detailed_status_deleted)
-            # print 'DETAILED-STATUS: {}'.format(new_detailed_status)
-            # print 'DELETE-ATTEMPTS-LEFT: {}'.format(delete_attempts_left)
+            # print('DETAILED-STATUS: {}'.format(new_detailed_status))
+            # print('DELETE-ATTEMPTS-LEFT: {}'.format(delete_attempts_left))
             if not new_detailed_status:
                 new_detailed_status = 'In progress'
             # TODO: Change LCM to provide detailed-status more up to date

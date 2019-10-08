@@ -60,7 +60,7 @@ class Pdu(object):
         # It is redundant, since the previous one already gets the whole pdudInfo
         # The only difference is that a different primitive is exercised
         resp = self._http.get_cmd('{}/{}'.format(self._apiBase, pdud['_id']))
-        #print yaml.safe_dump(resp)
+        #print(yaml.safe_dump(resp))
         if resp:
             return resp
         raise NotFound("pdu {} not found".format(name))
@@ -72,8 +72,8 @@ class Pdu(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          pdud['_id'], querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code == 202:
             print('Deletion in progress')
         elif http_code == 204:
@@ -99,8 +99,8 @@ class Pdu(object):
             endpoint = self._apiBase
             #endpoint = '{}{}'.format(self._apiBase,ow_string)
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=pdu)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)

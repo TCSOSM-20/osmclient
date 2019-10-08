@@ -219,7 +219,7 @@ def nsd_list(ctx, filter):
         resp = ctx.obj.nsd.list(filter)
     else:
         resp = ctx.obj.nsd.list()
-    # print yaml.safe_dump(resp)
+    # print(yaml.safe_dump(resp))
     table = PrettyTable(['nsd name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
@@ -273,7 +273,7 @@ def vnfd_list(ctx, nf_type, filter):
         resp = ctx.obj.vnfd.list(filter)
     else:
         resp = ctx.obj.vnfd.list()
-    # print yaml.safe_dump(resp)
+    # print(yaml.safe_dump(resp))
     table = PrettyTable(['nfpkg name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
@@ -520,7 +520,7 @@ def nst_list(ctx, filter):
     except ClientException as inst:
         print((inst.message))
         exit(1)
-    # print yaml.safe_dump(resp)
+    # print(yaml.safe_dump(resp))
     table = PrettyTable(['nst name', 'id'])
     for nst in resp:
         name = nst['name'] if 'name' in nst else '-'

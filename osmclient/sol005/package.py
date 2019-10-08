@@ -76,7 +76,7 @@ class Package(object):
         else:
             endpoint = '/vnfpkgm/v1/vnf_packages_content'
         #endpoint = '/nsds' if pkg_type['type'] == 'nsd' else '/vnfds'
-        #print 'Endpoint: {}'.format(endpoint)
+        #print('Endpoint: {}'.format(endpoint))
         headers = self._client._headers
         headers['Content-Type'] = 'application/gzip'
         #headers['Content-Type'] = 'application/binary'
@@ -89,8 +89,8 @@ class Package(object):
                       for (key,val) in list(headers.items())]
         self._http.set_http_header(http_header)
         http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)

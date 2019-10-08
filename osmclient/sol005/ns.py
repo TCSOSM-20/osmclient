@@ -83,7 +83,7 @@ class Ns(object):
                     break
         resp = self._http.get_cmd('{}/{}'.format(self._apiBase, ns_id))
         #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, ns_id))
-        #print yaml.safe_dump(resp)
+        #print(yaml.safe_dump(resp))
         if resp:
             return resp
         raise NotFound("ns {} not found".format(name))
@@ -95,8 +95,8 @@ class Ns(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                                  ns['_id'], querystring))
-        # print 'HTTP CODE: {}'.format(http_code)
-        # print 'RESP: {}'.format(resp)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait and resp:
                 resp = json.loads(resp)
@@ -203,7 +203,7 @@ class Ns(object):
                 if wim_account is not None:
                     ns['wimAccountId'] = get_wim_account_id(wim_account)
 
-        # print yaml.safe_dump(ns)
+        # print(yaml.safe_dump(ns))
         try:
             self._apiResource = '/ns_instances_content'
             self._apiBase = '{}{}{}'.format(self._apiName,
@@ -215,8 +215,8 @@ class Ns(object):
             self._http.set_http_header(http_header)
             http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=ns)
-            # print 'HTTP CODE: {}'.format(http_code)
-            # print 'RESP: {}'.format(resp)
+            # print('HTTP CODE: {}'.format(http_code))
+            # print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 if resp:
                     resp = json.loads(resp)
@@ -256,8 +256,8 @@ class Ns(object):
             http_code, resp = self._http.get2_cmd('{}?nsInstanceId={}'.format(
                                                        self._apiBase, ns['_id'],
                                                        filter_string) )
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code == 200:
                 if resp:
                     resp = json.loads(resp)
@@ -287,8 +287,8 @@ class Ns(object):
             self._apiBase = '{}{}{}'.format(self._apiName,
                                       self._apiVersion, self._apiResource)
             http_code, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, operationId))
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code == 200:
                 if resp:
                     resp = json.loads(resp)
@@ -319,11 +319,11 @@ class Ns(object):
             self._apiBase = '{}{}{}'.format(self._apiName,
                                             self._apiVersion, self._apiResource)
             endpoint = '{}/{}/{}'.format(self._apiBase, ns['_id'], op_name)
-            #print 'OP_NAME: {}'.format(op_name)
-            #print 'OP_DATA: {}'.format(json.dumps(op_data))
+            #print('OP_NAME: {}'.format(op_name))
+            #print('OP_DATA: {}'.format(json.dumps(op_data)))
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=op_data)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 if resp:
                     resp = json.loads(resp)
@@ -377,8 +377,8 @@ class Ns(object):
         try:
             http_code, resp = self._http.post_cmd(endpoint='/test/message/alarm_request',
                                        postfields_dict=data)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 #resp = json.loads(resp)
                 print('Alarm created')
@@ -405,8 +405,8 @@ class Ns(object):
         try:
             http_code, resp = self._http.post_cmd(endpoint='/test/message/alarm_request',
                                        postfields_dict=data)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 #resp = json.loads(resp)
                 print('Alarm deleted')
@@ -431,8 +431,8 @@ class Ns(object):
         try:
             http_code, resp = self._http.post_cmd(endpoint='/test/message/metric_request',
                                        postfields_dict=data)
-            #print 'HTTP CODE: {}'.format(http_code)
-            #print 'RESP: {}'.format(resp)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
             if http_code in (200, 201, 202, 204):
                 #resp = json.loads(resp)
                 return 'Metric exported'

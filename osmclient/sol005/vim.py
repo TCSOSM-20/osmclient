@@ -82,8 +82,8 @@ class Vim(object):
 
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=vim_account)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)
@@ -124,8 +124,8 @@ class Vim(object):
         #vim_account['config'] = json.dumps(vim_config)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,vim['_id']),
                                        postfields_dict=vim_account)
-        # print 'HTTP CODE: {}'.format(http_code)
-        # print 'RESP: {}'.format(resp)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if wait:
                 # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
@@ -170,8 +170,8 @@ class Vim(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          vim_id, querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait:
                 # When deleting an account, 'resp' may be None.

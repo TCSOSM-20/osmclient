@@ -61,8 +61,8 @@ class SdnController(object):
     def create(self, name, sdn_controller, wait=False):
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=sdn_controller)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)
@@ -87,8 +87,8 @@ class SdnController(object):
         sdnc_id_for_wait = self._get_id_for_wait(name)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
                                        postfields_dict=sdn_controller)
-        # print 'HTTP CODE: {}'.format(http_code)
-        # print 'RESP: {}'.format(resp)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if wait:
                 # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
@@ -115,8 +115,8 @@ class SdnController(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          sdn_controller['_id'], querystring))
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait:
                 # Wait for status for SDNC instance deletion
@@ -143,7 +143,7 @@ class SdnController(object):
         if filter:
             filter_string = '?{}'.format(filter)
         resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
-        #print 'RESP: {}'.format(resp)
+        #print('RESP: {}'.format(resp))
         if resp:
             return resp
         return list()

@@ -77,8 +77,8 @@ class Wim(object):
 
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=wim_account)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)
@@ -116,8 +116,8 @@ class Wim(object):
         #wim_account['config'] = json.dumps(wim_config)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,wim['_id']),
                                        postfields_dict=wim_account)
-        #print 'HTTP CODE: {}'.format(http_code)
-        #print 'RESP: {}'.format(resp)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if wait:
                 # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
@@ -137,7 +137,7 @@ class Wim(object):
             raise ClientException("failed to update wim {} - {}".format(wim_name, msg))
 
     def update_wim_account_dict(self, wim_account, wim_input):
-        print (wim_input)
+        print(wim_input)
         wim_account['wim_type'] = wim_input['wim_type']
         wim_account['description'] = wim_input['description']
         wim_account['wim_url'] = wim_input['url']
@@ -163,9 +163,9 @@ class Wim(object):
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                          wim_id, querystring))
-        # print 'HTTP CODE: {}'.format(http_code)
-        # print 'RESP: {}'.format(resp)
-        # print 'WIM_ID: {}'.format(wim_id)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
+        # print('WIM_ID: {}'.format(wim_id))
         if http_code == 202:
             if wait:
                 # 'resp' may be None.
