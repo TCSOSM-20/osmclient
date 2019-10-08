@@ -23,7 +23,7 @@ from osmclient.v1 import client as client
 from osmclient.sol005 import client as sol005client
 
 
-def Client(version=1, host=None, sol005=False, *args, **kwargs):
+def Client(version=1, host=None, sol005=True, *args, **kwargs):
     if not sol005:
         if version == 1:
             return client.Client(host, *args, **kwargs)
