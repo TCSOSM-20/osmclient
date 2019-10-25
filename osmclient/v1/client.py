@@ -27,6 +27,7 @@ from osmclient.v1 import package
 from osmclient.v1 import vca
 from osmclient.v1 import utils
 from osmclient.common import http
+from osmclient.common import package_tool
 
 
 class Client(object):
@@ -102,6 +103,7 @@ class Client(object):
             **kwargs)
         self.vca = vca.Vca(http_client, client=self, **kwargs)
         self.utils = utils.Utils(http_client, **kwargs)
+        self.package_tool = package_tool.PackageTool(client=self)
 
     @property
     def so_rbac_project_path(self):

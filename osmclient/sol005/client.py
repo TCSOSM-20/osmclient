@@ -35,6 +35,7 @@ from osmclient.sol005 import user as usermodule
 from osmclient.sol005 import role
 from osmclient.sol005 import pdud
 from osmclient.common.exceptions import ClientException
+from osmclient.common import package_tool
 import json
 
 
@@ -86,10 +87,12 @@ class Client(object):
         self.user = usermodule.User(self._http_client, client=self)
         self.role = role.Role(self._http_client, client=self)
         self.pdu = pdud.Pdu(self._http_client, client=self)
+
         '''
         self.vca = vca.Vca(http_client, client=self, **kwargs)
         self.utils = utils.Utils(http_client, **kwargs)
         '''
+        self.package_tool = package_tool.PackageTool(client=self)
 
     def get_token(self):
         if self._token is None:
