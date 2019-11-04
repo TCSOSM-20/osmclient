@@ -314,11 +314,11 @@ class Ns(object):
                     str(exc))
             raise ClientException(message)
 
-    def exec_op(self, name, op_name, op_data=None, wait=False):
+    def exec_op(self, name, op_name, op_data=None, wait=False, ):
         """Executes an operation on a NS
         """
-        ns = self.get(name)
         try:
+            ns = self.get(name)
             self._apiResource = '/ns_instances'
             self._apiBase = '{}{}{}'.format(self._apiName,
                                             self._apiVersion, self._apiResource)
@@ -338,7 +338,7 @@ class Ns(object):
                     # Wait for status for NS instance action
                     # For the 'action' operation, 'id' is used
                     self._wait(resp.get('id'))
-                print(resp['id'])
+                return resp['id']
             else:
                 msg = ""
                 if resp:
@@ -369,7 +369,8 @@ class Ns(object):
                 "member-vnf-index": vnf_name,
                 "scaling-group-descriptor": scaling_group,
             }
-            self.exec_op(ns_name, op_name='scale', op_data=op_data, wait=wait)
+            op_id = self.exec_op(ns_name, op_name='scale', op_data=op_data, wait=wait)
+            print(str(op_id))
         except ClientException as exc:
             message="failed to scale vnf {} of ns {}:\nerror:\n{}".format(
                     vnf_name, ns_name, str(exc))

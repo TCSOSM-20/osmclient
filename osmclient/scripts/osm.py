@@ -27,6 +27,20 @@ import json
 import time
 import pycurl
 import os
+import textwrap
+
+
+def wrap_text(text, width):
+    wrapper = textwrap.TextWrapper(width=width)
+    lines = text.splitlines()
+    return "\n".join(map(wrapper.fill, lines))
+
+
+def trunc_text(text, length):
+   if len(text) > length:
+       return text[:(length - 3)] + '...'
+   else:
+       return text
 
 
 def check_client_version(obj, what, version='sol005'):
@@ -203,8 +217,10 @@ def ns_list(ctx, filter):
         opstatus = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
         configstatus = nsr['config-status'] if 'config-status' in nsr else 'Not found'
         detailed_status = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
+        detailed_status = wrap_text(text=detailed_status,width=50)
         if configstatus == "config_not_needed":
             configstatus = "configured (no charms)"
+
         table.add_row(
             [nsr_name,
              nsr_id,
@@ -457,9 +473,13 @@ def ns_op_list(ctx, name):
         print(str(e))
         exit(1)
 
-    table = PrettyTable(['id', 'operation', 'status'])
+    table = PrettyTable(['id', 'operation', 'action_name', 'status'])
+    #print(yaml.safe_dump(resp))
     for op in resp:
-        table.add_row([op['id'], op['lcmOperationType'],
+        action_name = "N/A"
+        if op['lcmOperationType']=='action':
+            action_name = op['operationParams']['primitive']
+        table.add_row([op['id'], op['lcmOperationType'], action_name,
                        op['operationState']])
     table.align = 'l'
     print(table)
@@ -753,7 +773,7 @@ def ns_show(ctx, name, literal, filter):
 
     for k, v in list(ns.items()):
         if filter is None or filter in k:
-            table.add_row([k, json.dumps(v, indent=2)])
+            table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
 
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname != 'osmclient.sol005.client.Client':
@@ -761,7 +781,7 @@ def ns_show(ctx, name, literal, filter):
         nsr_optdata = nsopdata['nsr:nsr']
         for k, v in list(nsr_optdata.items()):
             if filter is None or filter in k:
-                table.add_row([k, json.dumps(v, indent=2)])
+                table.add_row([k, wrap_text(json.dumps(v, indent=2),width=100)])
     table.align = 'l'
     print(table)
 
@@ -770,30 +790,56 @@ def ns_show(ctx, name, literal, filter):
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
-@click.option('--filter', default=None)
+@click.option('--filter', default=None, help='restricts the information to the fields in the filter')
+@click.option('--kdu', default=None, help='KDU name (whose status will be shown)')
 @click.pass_context
-def vnf_show(ctx, name, literal, filter):
+def vnf_show(ctx, name, literal, filter, kdu):
     """shows the info of a VNF instance
 
     NAME: name or ID of the VNF instance
     """
+    if kdu:
+        if literal:
+            raise ClientException('"--literal" option is incompatible with "--kdu" option')
+        if filter:
+            raise ClientException('"--filter" option is incompatible with "--kdu" option')
+
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.vnf.get(name)
+
+        if kdu:
+            ns_id = resp['nsr-id-ref']
+            op_data={}
+            op_data['member_vnf_index'] = resp['member-vnf-index-ref']
+            op_data['kdu_name'] = kdu
+            op_data['primitive'] = 'status'
+            op_data['primitive_params'] = {}
+            op_id = ctx.obj.ns.exec_op(ns_id, op_name='action', op_data=op_data, wait=False)
+            t = 0 
+            while t<30:
+                op_info = ctx.obj.ns.get_op(op_id)
+                if op_info['operationState'] == 'COMPLETED':
+                    print(op_info['detailed-status'])
+                    return
+                time.sleep(5)
+                t += 5
+            print ("Could not determine KDU status")
+
+        if literal:
+            print(yaml.safe_dump(resp))
+            return
+
+        table = PrettyTable(['field', 'value'])
+
+        for k, v in list(resp.items()):
+            if filter is None or filter in k:
+                table.add_row([k, wrap_text(text=json.dumps(v,indent=2),width=100)])
+        table.align = 'l'
+        print(table)
     except ClientException as e:
         print(str(e))
         exit(1)
-
-    if literal:
-        print(yaml.safe_dump(resp))
-        return
-
-    table = PrettyTable(['field', 'value'])
-    for k, v in list(resp.items()):
-        if filter is None or filter in k:
-            table.add_row([k, json.dumps(v, indent=2)])
-    table.align = 'l'
-    print(table)
 
 
 #@cli.command(name='vnf-monitoring-show')
@@ -845,8 +891,10 @@ def vnf_show(ctx, name, literal, filter):
 @cli.command(name='ns-op-show', short_help='shows the info of a NS operation')
 @click.argument('id')
 @click.option('--filter', default=None)
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
 @click.pass_context
-def ns_op_show(ctx, id, filter):
+def ns_op_show(ctx, id, filter, literal):
     """shows the detailed info of a NS operation
 
     ID: operation identifier
@@ -858,10 +906,14 @@ def ns_op_show(ctx, id, filter):
         print(str(e))
         exit(1)
 
+    if literal:
+        print(yaml.safe_dump(op_info))
+        return
+
     table = PrettyTable(['field', 'value'])
     for k, v in list(op_info.items()):
         if filter is None or filter in k:
-            table.add_row([k, json.dumps(v, indent=2)])
+            table.add_row([k, wrap_text(json.dumps(v, indent=2), 100)])
     table.align = 'l'
     print(table)
 
@@ -881,7 +933,7 @@ def nst_show(ctx, name, literal):
 
     table = PrettyTable(['field', 'value'])
     for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+        table.add_row([k, wrap_text(json.dumps(v, indent=2), 100)])
     table.align = 'l'
     print(table)
 
@@ -1876,7 +1928,7 @@ def vim_show(ctx, name):
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
     table.align = 'l'
     print(table)
 
@@ -2255,6 +2307,338 @@ def sdnc_show(ctx, name):
         table.add_row([k, json.dumps(v, indent=2)])
     table.align = 'l'
     print(table)
+
+
+###########################
+# K8s cluster operations
+###########################
+
+@cli.command(name='k8scluster-add')
+@click.argument('name')
+@click.option('--creds',
+              prompt=True,
+              help='credentials file, i.e. a valid `.kube/config` file')
+@click.option('--version',
+              prompt=True,
+              help='Kubernetes version')
+@click.option('--vim',
+              prompt=True,
+              help='VIM target, the VIM where the cluster resides')
+@click.option('--k8s-nets',
+              prompt=True,
+              help='list of VIM networks, in JSON inline format, where the cluster is accessible via L3 routing, e.g. "{(k8s_net1:vim_network1) [,(k8s_net2:vim_network2) ...]}"')
+@click.option('--description',
+              default='',
+              help='human readable description')
+@click.option('--namespace',
+              default='kube-system',
+              help='namespace to be used for its operation, defaults to `kube-system`')
+@click.option('--cni',
+              default=None,
+              help='list of CNI plugins, in JSON inline format, used in the cluster')
+#@click.option('--skip-init',
+#              is_flag=True,
+#              help='If set, K8s cluster is assumed to be ready for its use with OSM')
+#@click.option('--wait',
+#              is_flag=True,
+#              help='do not return the control immediately, but keep it \
+#              until the operation is completed, or timeout')
+@click.pass_context
+def k8scluster_add(ctx,
+               name,
+               creds,
+               version,
+               vim,
+               k8s_nets,
+               description,
+               namespace,
+               cni):
+    """adds a K8s cluster to OSM
+
+    NAME: name of the K8s cluster
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        cluster = {}
+        cluster['name'] = name
+        with open(creds, 'r') as cf:
+            cluster['credentials'] = yaml.safe_load(cf.read())
+        cluster['k8s_version'] = version
+        cluster['vim_account'] = vim
+        cluster['nets'] = yaml.safe_load(k8s_nets)
+        cluster['description'] = description
+        if namespace: cluster['namespace'] = namespace
+        if cni: cluster['cni'] = yaml.safe_load(cni)
+        ctx.obj.k8scluster.create(name, cluster)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='k8scluster-update', short_help='updates a K8s cluster')
+@click.argument('name')
+@click.option('--newname', help='New name for the K8s cluster')
+@click.option('--creds', help='credentials file, i.e. a valid `.kube/config` file')
+@click.option('--version', help='Kubernetes version')
+@click.option('--vim', help='VIM target, the VIM where the cluster resides')
+@click.option('--k8s-nets', help='list of VIM networks, in JSON inline format, where the cluster is accessible via L3 routing, e.g. "{(k8s_net1:vim_network1) [,(k8s_net2:vim_network2) ...]}"')
+@click.option('--description', help='human readable description')
+@click.option('--namespace', help='namespace to be used for its operation, defaults to `kube-system`')
+@click.option('--cni', help='list of CNI plugins, in JSON inline format, used in the cluster')
+@click.pass_context
+def k8scluster_update(ctx,
+               name,
+               newname,
+               creds,
+               version,
+               vim,
+               k8s_nets,
+               description,
+               namespace,
+               cni):
+    """updates a K8s cluster
+
+    NAME: name or ID of the K8s cluster
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        cluster = {}
+        if newname: cluster['name'] = newname
+        if creds:
+            with open(creds, 'r') as cf:
+                cluster['credentials'] = yaml.safe_load(cf.read())
+        if version: cluster['k8s_version'] = version
+        if vim: cluster['vim_account'] = vim
+        if k8s_nets: cluster['nets'] = yaml.safe_load(k8s_nets)
+        if description: cluster['description'] = description
+        if namespace: cluster['namespace'] = namespace
+        if cni: cluster['cni'] = yaml.safe_load(cni)
+        ctx.obj.k8scluster.update(name, cluster)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='k8scluster-delete')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
+#@click.option('--wait',
+#              is_flag=True,
+#              help='do not return the control immediately, but keep it \
+#              until the operation is completed, or timeout')
+@click.pass_context
+def k8scluster_delete(ctx, name, force):
+    """deletes a K8s cluster
+
+    NAME: name or ID of the K8s cluster to be deleted
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.k8scluster.delete(name, force=force)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='k8scluster-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the K8s clusters matching the filter')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.pass_context
+def k8scluster_list(ctx, filter, literal):
+    """list all K8s clusters"""
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.k8scluster.list(filter)
+        if literal:
+            print(yaml.safe_dump(resp))
+            return
+        table = PrettyTable(['Name', 'Id', 'Version', 'VIM', 'K8s-nets', 'Description'])
+        for cluster in resp:
+            table.add_row([cluster['name'], cluster['_id'], cluster['k8s_version'], cluster['vim_account'],
+                           json.dumps(cluster['nets']), trunc_text(cluster.get('description',''),40)
+                          ])
+        table.align = 'l'
+        print(table)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='k8scluster-show')
+@click.argument('name')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.pass_context
+def k8scluster_show(ctx, name, literal):
+    """shows the details of a K8s cluster
+
+    NAME: name or ID of the K8s cluster
+    """
+    try:
+        resp = ctx.obj.k8scluster.get(name)
+        if literal:
+            print(yaml.safe_dump(resp))
+            return
+        table = PrettyTable(['key', 'attribute'])
+        for k, v in list(resp.items()):
+            table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
+        table.align = 'l'
+        print(table)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+
+###########################
+# Repo operations
+###########################
+
+@cli.command(name='repo-add')
+@click.argument('name')
+@click.argument('uri')
+@click.option('--type',
+              type=click.Choice(['chart', 'bundle']),
+              prompt=True,
+              help='type of repo (chart for helm-charts, bundle for juju-bundles)')
+@click.option('--description',
+              default='',
+              help='human readable description')
+#@click.option('--wait',
+#              is_flag=True,
+#              help='do not return the control immediately, but keep it \
+#              until the operation is completed, or timeout')
+@click.pass_context
+def repo_add(ctx,
+             name,
+             uri,
+             type,
+             description):
+    """adds a repo to OSM
+
+    NAME: name of the repo
+    URI: URI of the repo
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        repo = {}
+        repo['name'] = name
+        repo['url'] = uri
+        repo['type'] = type
+        repo['description'] = description
+        ctx.obj.repo.create(name, repo)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='repo-update')
+@click.argument('name')
+@click.option('--newname', help='New name for the repo')
+@click.option('--uri', help='URI of the repo')
+@click.option('--type', type=click.Choice(['chart', 'bundle']),
+              help='type of repo (chart for helm-charts, bundle for juju-bundles)')
+@click.option('--description', help='human readable description')
+#@click.option('--wait',
+#              is_flag=True,
+#              help='do not return the control immediately, but keep it \
+#              until the operation is completed, or timeout')
+@click.pass_context
+def repo_update(ctx,
+             name,
+             newname,
+             uri,
+             type,
+             description):
+    """updates a repo in OSM
+
+    NAME: name of the repo
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        repo = {}
+        if newname: repo['name'] = newname
+        if uri: repo['uri'] = uri
+        if type: repo['type'] = type
+        if description: repo['description'] = description
+        ctx.obj.repo.update(name, repo)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='repo-delete')
+@click.argument('name')
+@click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
+#@click.option('--wait',
+#              is_flag=True,
+#              help='do not return the control immediately, but keep it \
+#              until the operation is completed, or timeout')
+@click.pass_context
+def repo_delete(ctx, name, force):
+    """deletes a repo
+
+    NAME: name or ID of the repo to be deleted
+    """
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        ctx.obj.repo.delete(name, force=force)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='repo-list')
+@click.option('--filter', default=None,
+              help='restricts the list to the repos matching the filter')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.pass_context
+def repo_list(ctx, filter, literal):
+    """list all repos"""
+    try:
+        check_client_version(ctx.obj, ctx.command.name)
+        resp = ctx.obj.repo.list(filter)
+        if literal:
+            print(yaml.safe_dump(resp))
+            return
+        table = PrettyTable(['Name', 'Id', 'Type', 'URI', 'Description'])
+        for repo in resp:
+            #cluster['k8s-nets'] = json.dumps(yaml.safe_load(cluster['k8s-nets']))
+            table.add_row([repo['name'], repo['_id'], repo['type'], repo['url'], trunc_text(repo.get('description',''),40)])
+        table.align = 'l'
+        print(table)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
+
+@cli.command(name='repo-show')
+@click.argument('name')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.pass_context
+def repo_show(ctx, name, literal):
+    """shows the details of a repo
+
+    NAME: name or ID of the repo
+    """
+    try:
+        resp = ctx.obj.repo.get(name)
+        if literal:
+            print(yaml.safe_dump(resp))
+            return
+        table = PrettyTable(['key', 'attribute'])
+        for k, v in list(resp.items()):
+            table.add_row([k, json.dumps(v, indent=2)])
+        table.align = 'l'
+        print(table)
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
 
 
 ####################
@@ -2805,10 +3189,12 @@ def upload_package(ctx, filename):
 @cli.command(name='ns-action', short_help='executes an action/primitive over a NS instance')
 @click.argument('ns_name')
 @click.option('--vnf_name', default=None, help='member-vnf-index if the target is a vnf instead of a ns)')
-@click.option('--vdu_id', default=None, help='vdu-id if the target is a vdu o a vnf')
+@click.option('--kdu_name', default=None, help='kdu-name if the target is a kdu)')
+@click.option('--vdu_id', default=None, help='vdu-id if the target is a vdu')
 @click.option('--vdu_count', default=None, help='number of vdu instance of this vdu_id')
-@click.option('--action_name', prompt=True)
-@click.option('--params', default=None)
+@click.option('--action_name', prompt=True, help='action name')
+@click.option('--params', default=None, help='action params in YAML/JSON inline string')
+@click.option('--params_file', default=None, help='YAML/JSON file with action params')
 @click.option('--wait',
               required=False,
               default=False,
@@ -2819,10 +3205,12 @@ def upload_package(ctx, filename):
 def ns_action(ctx,
               ns_name,
               vnf_name,
+              kdu_name,
               vdu_id,
               vdu_count,
               action_name,
               params,
+              params_file,
               wait):
     """executes an action/primitive over a NS instance
 
@@ -2833,16 +3221,21 @@ def ns_action(ctx,
         op_data = {}
         if vnf_name:
             op_data['member_vnf_index'] = vnf_name
+        if kdu_name:
+            op_data['kdu_name'] = kdu_name
         if vdu_id:
             op_data['vdu_id'] = vdu_id
         if vdu_count:
             op_data['vdu_count_index'] = vdu_count
         op_data['primitive'] = action_name
+        if params_file:
+            with open(params_file, 'r') as pf:
+                params = pf.read()
         if params:
             op_data['primitive_params'] = yaml.safe_load(params)
         else:
             op_data['primitive_params'] = {}
-        ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait)
+        print(ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait))
 
     except ClientException as e:
         print(str(e))
