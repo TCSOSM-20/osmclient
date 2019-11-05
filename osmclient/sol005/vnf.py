@@ -36,6 +36,7 @@ class Vnf(object):
     def list(self, ns=None, filter=None):
         """Returns a list of VNF instances
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -54,6 +55,7 @@ class Vnf(object):
     def get(self, name):
         """Returns a VNF instance based on name or id
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for vnf in self.list():
                 if name == vnf['_id']:
@@ -65,6 +67,7 @@ class Vnf(object):
         raise NotFound("vnf {} not found".format(name))
 
     def get_individual(self, name):
+        self._client.get_token()
         vnf_id = name
         if not utils.validate_uuid4(name):
             for vnf in self.list():

@@ -35,8 +35,10 @@ class Wim(object):
         self._apiResource = '/wim_accounts'
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
+
     # WIM '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/wim_accounts')
         # Wait for status for WIM instance creation/deletion
@@ -59,6 +61,7 @@ class Wim(object):
         return ''
 
     def create(self, name, wim_input, wim_port_mapping=None, wait=False):
+        self._client.get_token()
         if 'wim_type' not in wim_input:
             raise Exception("wim type not provided")
 
@@ -99,6 +102,7 @@ class Wim(object):
             raise ClientException("failed to create wim {} - {}".format(name, msg))
 
     def update(self, wim_name, wim_account, wim_port_mapping=None, wait=False):
+        self._client.get_token()
         wim = self.get(wim_name)
         wim_id_for_wait = self._get_id_for_wait(wim_name)
         wim_config = {}
@@ -154,6 +158,7 @@ class Wim(object):
         raise NotFound("wim {} not found".format(name))
 
     def delete(self, wim_name, force=False, wait=False):
+        self._client.get_token()
         wim_id = wim_name
         wim_id_for_wait = self._get_id_for_wait(wim_name)
         if not utils.validate_uuid4(wim_name):
@@ -192,6 +197,7 @@ class Wim(object):
     def list(self, filter=None):
         """Returns a list of VIM accounts
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -207,6 +213,7 @@ class Wim(object):
     def get(self, name):
         """Returns a VIM account based on name or id
         """
+        self._client.get_token()
         wim_id = name
         if not utils.validate_uuid4(name):
             wim_id = self.get_id(name)

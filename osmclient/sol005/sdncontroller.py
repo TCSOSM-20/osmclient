@@ -37,6 +37,7 @@ class SdnController(object):
 
     # SDNC '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/sdns')
         # Wait for status for SDN instance creation/update/deletion
@@ -59,6 +60,7 @@ class SdnController(object):
         return ''
 
     def create(self, name, sdn_controller, wait=False):
+        self._client.get_token()
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=sdn_controller)
         #print('HTTP CODE: {}'.format(http_code))
@@ -83,6 +85,7 @@ class SdnController(object):
             raise ClientException("failed to create SDN controller {} - {}".format(name, msg))
 
     def update(self, name, sdn_controller, wait=False):
+        self._client.get_token()
         sdnc = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
@@ -108,6 +111,7 @@ class SdnController(object):
             raise ClientException("failed to update SDN controller {} - {}".format(name, msg))
 
     def delete(self, name, force=False, wait=False):
+        self._client.get_token()
         sdn_controller = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
         querystring = ''
@@ -139,6 +143,7 @@ class SdnController(object):
     def list(self, filter=None):
         """Returns a list of SDN controllers
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -151,6 +156,7 @@ class SdnController(object):
     def get(self, name):
         """Returns an SDN controller based on name or id
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for sdnc in self.list():
                 if name == sdnc['_id']:

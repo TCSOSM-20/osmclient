@@ -40,6 +40,7 @@ class Vnfd(object):
         #self._apiBase='/vnfds'
 
     def list(self, filter=None):
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -49,6 +50,7 @@ class Vnfd(object):
         return list()
 
     def get(self, name):
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for vnfd in self.list():
                 if name == vnfd['_id']:
@@ -99,6 +101,7 @@ class Vnfd(object):
         self.get_thing(name, 'artifacts/{}'.format(artifact), filename)
 
     def delete(self, name, force=False):
+        self._client.get_token()
         vnfd = self.get(name)
         querystring = ''
         if force:
@@ -121,6 +124,7 @@ class Vnfd(object):
             raise ClientException("failed to delete vnfd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
+        self._client.get_token()
         mime_type = magic.from_file(filename, mime=True)
         if mime_type is None:
             raise ClientException(
@@ -177,6 +181,7 @@ class Vnfd(object):
             raise ClientException("failed to create/update vnfd - {}".format(msg))
 
     def update(self, name, filename):
+        self._client.get_token()
         vnfd = self.get(name)
         endpoint = '{}/{}/package_content'.format(self._apiBase, vnfd['_id'])
         self.create(filename=filename, update_endpoint=endpoint)

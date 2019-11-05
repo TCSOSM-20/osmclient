@@ -38,6 +38,7 @@ class User(object):
     def create(self, name, user):
         """Creates a new OSM user
         """
+        self._client.get_token()
         if not user["projects"] or (len(user["projects"]) == 1 and not user["projects"][0]):
             del user["projects"]
         elif len(user["projects"]) == 1:
@@ -83,6 +84,7 @@ class User(object):
     def update(self, name, user):
         """Updates an existing OSM user identified by name
         """
+        self._client.get_token()
         # print(user)
         myuser = self.get(name)
         update_user = {
@@ -163,6 +165,7 @@ class User(object):
     def delete(self, name, force=False):
         """Deletes an existing OSM user identified by name
         """
+        self._client.get_token()
         user = self.get(name)
         querystring = ''
         if force:
@@ -189,6 +192,7 @@ class User(object):
     def list(self, filter=None):
         """Returns the list of OSM users
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -201,6 +205,7 @@ class User(object):
     def get(self, name):
         """Returns an OSM user based on name or id
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for user in self.list():
                 if name == user['_id']:

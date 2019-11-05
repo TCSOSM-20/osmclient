@@ -35,8 +35,10 @@ class Vim(object):
         self._apiResource = '/vim_accounts'
         self._apiBase = '{}{}{}'.format(self._apiName,
                                         self._apiVersion, self._apiResource)
+
     # VIM '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/vim_accounts')
         # Wait for status for VIM instance creation/deletion
@@ -59,6 +61,7 @@ class Vim(object):
         return ''
 
     def create(self, name, vim_access, sdn_controller=None, sdn_port_mapping=None, wait=False):
+        self._client.get_token()
         if 'vim-type' not in vim_access:
             #'openstack' not in vim_access['vim-type']):
             raise Exception("vim type not provided")
@@ -104,6 +107,7 @@ class Vim(object):
             raise ClientException("failed to create vim {} - {}".format(name, msg))
 
     def update(self, vim_name, vim_account, sdn_controller, sdn_port_mapping, wait=False):
+        self._client.get_token()
         vim = self.get(vim_name)
         vim_id_for_wait = self._get_id_for_wait(vim_name)
         vim_config = {}
@@ -162,6 +166,7 @@ class Vim(object):
         raise NotFound("vim {} not found".format(name))
 
     def delete(self, vim_name, force=False, wait=False):
+        self._client.get_token()
         vim_id = vim_name
         if not utils.validate_uuid4(vim_name):
             vim_id = self.get_id(vim_name)
@@ -198,6 +203,7 @@ class Vim(object):
     def list(self, filter=None):
         """Returns a list of VIM accounts
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -213,6 +219,7 @@ class Vim(object):
     def get(self, name):
         """Returns a VIM account based on name or id
         """
+        self._client.get_token()
         vim_id = name
         if not utils.validate_uuid4(name):
             vim_id = self.get_id(name)

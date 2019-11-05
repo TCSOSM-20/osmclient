@@ -1049,8 +1049,11 @@ def nsd_create(ctx, filename, overwrite):
 
 @cli.command(name='nsd-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in NSD')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrite deprecated, use override')
+@click.option('--override', 'overwrite', default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def nsd_create1(ctx, filename, overwrite):
     """creates a new NSD/NSpkg
@@ -1062,8 +1065,11 @@ def nsd_create1(ctx, filename, overwrite):
 
 @cli.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in NSD')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrite deprecated, use override')
+@click.option('--override', 'overwrite', default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def nsd_create2(ctx, filename, overwrite):
     """creates a new NSD/NSpkg
@@ -1084,8 +1090,11 @@ def vnfd_create(ctx, filename, overwrite):
 
 @cli.command(name='vnfd-create', short_help='creates a new VNFD/VNFpkg')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in VNFD')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrite deprecated, use override')
+@click.option('--override', 'overwrite', default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def vnfd_create1(ctx, filename, overwrite):
     """creates a new VNFD/VNFpkg
@@ -1097,8 +1106,11 @@ def vnfd_create1(ctx, filename, overwrite):
 
 @cli.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in VNFD')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrite deprecated, use override')
+@click.option('--override', 'overwrite', default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def vnfd_create2(ctx, filename, overwrite):
     """creates a new VNFD/VNFpkg
@@ -1110,8 +1122,11 @@ def vnfd_create2(ctx, filename, overwrite):
 
 @cli.command(name='nfpkg-create', short_help='creates a new NFpkg')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in NFD')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrite deprecated, use override')
+@click.option('--override', 'overwrite', default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def nfpkg_create(ctx, filename, overwrite):
     """creates a new NFpkg
@@ -1187,8 +1202,11 @@ def nst_create(ctx, filename, overwrite):
 
 @cli.command(name='nst-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in NST')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrites deprecated use override')
+@click.option('--override', 'overwrite' ,default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def nst_create1(ctx, filename, overwrite):
     """creates a new Network Slice Template (NST)
@@ -1200,8 +1218,11 @@ def nst_create1(ctx, filename, overwrite):
 
 @cli.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', default=None,
-              help='overwrites some fields in NST')
+@click.option('--overwrite', 'overwrite', default=None,
+              help='overwrites deprecated use override')
+@click.option('--override', 'overwrite', default=None,
+              help='overrides fields in descriptor, format: '
+                   '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
 def nst_create2(ctx, filename, overwrite):
     """creates a new Network Slice Template (NST)
@@ -2979,7 +3000,6 @@ def role_show(ctx, name):
         table.add_row([k, json.dumps(v, indent=2)])
     table.align = 'l'
     print(table)
-
 
 if __name__ == '__main__':
     try:

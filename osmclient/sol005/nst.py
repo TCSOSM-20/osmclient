@@ -38,6 +38,7 @@ class Nst(object):
                                         self._apiVersion, self._apiResource)
 
     def list(self, filter=None):
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -48,6 +49,7 @@ class Nst(object):
         return list()
 
     def get(self, name):
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for nst in self.list():
                 if name == nst['_id']:
@@ -120,6 +122,7 @@ class Nst(object):
             raise ClientException("failed to delete nst {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
+        self._client.get_token()
         mime_type = magic.from_file(filename, mime=True)
         if mime_type is None:
             raise ClientException(

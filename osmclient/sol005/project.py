@@ -38,6 +38,7 @@ class Project(object):
     def create(self, name, project):
         """Creates a new OSM project
         """
+        self._client.get_token()
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                               postfields_dict=project)
         #print('HTTP CODE: {}'.format(http_code))
@@ -61,6 +62,7 @@ class Project(object):
     def update(self, project, project_changes):
         """Updates an OSM project identified by name
         """
+        self._client.get_token()
         proj = self.get(project)
         http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, proj['_id']),
                                              postfields_dict=project_changes)
@@ -87,6 +89,7 @@ class Project(object):
     def delete(self, name, force=False):
         """Deletes an OSM project identified by name
         """
+        self._client.get_token()
         project = self.get(name)
         querystring = ''
         if force:
@@ -113,6 +116,7 @@ class Project(object):
     def list(self, filter=None):
         """Returns the list of OSM projects
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -125,6 +129,7 @@ class Project(object):
     def get(self, name):
         """Returns a specific OSM project based on name or id
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for proj in self.list():
                 if name == proj['_id']:

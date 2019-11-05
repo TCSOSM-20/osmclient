@@ -39,6 +39,7 @@ class Nsi(object):
 
     # NSI '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/nsi_lcm_op_occs')
         # Wait for status for NSI instance creation/update/deletion
@@ -53,6 +54,7 @@ class Nsi(object):
     def list(self, filter=None):
         """Returns a list of NSI
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -64,6 +66,7 @@ class Nsi(object):
     def get(self, name):
         """Returns an NSI based on name or id
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for nsi in self.list():
                 if name == nsi['_id']:
@@ -76,6 +79,7 @@ class Nsi(object):
 
     def get_individual(self, name):
         nsi_id = name
+        self._client.get_token()
         if not utils.validate_uuid4(name):
             for nsi in self.list():
                 if name == nsi['name']:
@@ -120,6 +124,7 @@ class Nsi(object):
                ssh_keys=None, description='default description',
                admin_status='ENABLED', wait=False):
 
+        self._client.get_token()
         nst = self._client.nst.get(nst_name)
 
         vim_account_id = {}
@@ -278,6 +283,7 @@ class Nsi(object):
     def get_op(self, operationId):
         """Returns the status of an operation
         """
+        self._client.get_token()
         try:
             self._apiResource = '/nsi_lcm_op_occs'
             self._apiBase = '{}{}{}'.format(self._apiName,

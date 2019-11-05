@@ -54,6 +54,7 @@ class Client(object):
         self._project = project
         self._auth_endpoint = '/admin/v1/tokens'
         self._headers = {}
+        self._token = None
 
         if len(host.split(':')) > 1:
             # backwards compatible, port provided as part of host
@@ -69,14 +70,6 @@ class Client(object):
         self._headers['Content-Type'] = 'application/yaml'
         http_header = ['{}: {}'.format(key, val)
                        for (key, val) in list(self._headers.items())]
-        self._http_client.set_http_header(http_header)
-
-        token = self.get_token()
-        if not token:
-            raise ClientException(
-                    'Authentication error: not possible to get auth token')
-        self._headers['Authorization'] = 'Bearer {}'.format(token)
-        http_header.append('Authorization: Bearer {}'.format(token))
         self._http_client.set_http_header(http_header)
 
         self.vnfd = vnfd.Vnfd(self._http_client, client=self)
@@ -99,15 +92,21 @@ class Client(object):
         '''
 
     def get_token(self):
-        postfields_dict = {'username': self._user,
-                           'password': self._password,
-                           'project_id': self._project}
-        http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
-                                                     postfields_dict=postfields_dict)
-        if http_code not in (200, 201, 202, 204):
-            raise ClientException(resp)
-        token = json.loads(resp) if resp else None
-        if token is not None:
-            return token['_id']
-        return None
+        if self._token is None:
+            postfields_dict = {'username': self._user,
+                               'password': self._password,
+                               'project_id': self._project}
+            http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
+                                                         postfields_dict=postfields_dict)
+            if http_code not in (200, 201, 202, 204):
+                message ='Authentication error: not possible to get auth token\nresp:\n{}'.format(resp)
+                raise ClientException(message)
 
+            token = json.loads(resp) if resp else None
+            self._token = token['id']
+
+            if self._token is not None:
+                self._headers['Authorization'] = 'Bearer {}'.format(self._token)
+                http_header = ['{}: {}'.format(key, val)
+                               for (key, val) in list(self._headers.items())]
+                self._http_client.set_http_header(http_header)

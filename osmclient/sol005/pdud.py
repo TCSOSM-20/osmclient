@@ -36,6 +36,7 @@ class Pdu(object):
                                         self._apiVersion, self._apiResource)
 
     def list(self, filter=None):
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -45,6 +46,7 @@ class Pdu(object):
         return list()
 
     def get(self, name):
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for pdud in self.list():
                 if name == pdud['_id']:
@@ -88,6 +90,7 @@ class Pdu(object):
             raise ClientException("failed to delete pdu {} - {}".format(name, msg))
 
     def create(self, pdu, update_endpoint=None):
+        self._client.get_token()
         headers= self._client._headers
         headers['Content-Type'] = 'application/yaml'
         http_header = ['{}: {}'.format(key,val)

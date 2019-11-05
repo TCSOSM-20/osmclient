@@ -46,6 +46,7 @@ class Role(object):
         :raises ClientException: when receives an unexpected from the server.
         :raises ClientException: when fails creating a role.
         """
+        self._client.get_token()
         role = {"name": name}
 
         if permissions:
@@ -94,6 +95,7 @@ class Role(object):
         :raises ClientException: when receives an unexpected response from the server.
         :raises ClientException: when fails updating a role.
         """
+        self._client.get_token()
         if new_name is None and permissions is None and add is None and remove is None:
             raise ClientException('At least one option should be provided')
         elif permissions and (add or remove):
@@ -171,6 +173,7 @@ class Role(object):
         :param force:
         :raises ClientException: when fails to delete a role.
         """
+        self._client.get_token()
         role = self.get(name)
         querystring = ''
         if force:
@@ -201,6 +204,7 @@ class Role(object):
         :param filter:
         :returns:
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -218,6 +222,7 @@ class Role(object):
         :raises NotFound: when the role is not found.
         :returns: the specified role.
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for role in self.list():
                 if name == role['_id']:

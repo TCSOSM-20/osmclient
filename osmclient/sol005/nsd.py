@@ -40,6 +40,7 @@ class Nsd(object):
         #self._apiBase='/nsds'
 
     def list(self, filter=None):
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -50,6 +51,7 @@ class Nsd(object):
         return list()
 
     def get(self, name):
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for nsd in self.list():
                 if name == nsd['_id']:
@@ -61,6 +63,7 @@ class Nsd(object):
         raise NotFound("nsd {} not found".format(name))
 
     def get_individual(self, name):
+        # Called to get_token not required, because will be implicitly called by get.
         nsd = self.get(name)
         # It is redundant, since the previous one already gets the whole nsdinfo
         # The only difference is that a different primitive is exercised
@@ -122,6 +125,7 @@ class Nsd(object):
             raise ClientException("failed to delete nsd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
+        self._client.get_token()
         mime_type = magic.from_file(filename, mime=True)
         if mime_type is None:
             raise ClientException(

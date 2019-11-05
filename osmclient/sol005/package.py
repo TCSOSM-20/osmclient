@@ -58,6 +58,7 @@ class Package(object):
         """wait(block) for an upload to succeed.
            The filename passed is assumed to be a descriptor tarball.
         """
+        self._client.get_token()
         pkg_type = utils.get_key_val_from_pkg(filename)
 
         if pkg_type is None:
@@ -68,6 +69,7 @@ class Package(object):
                                   .format(filename))
 
     def upload(self, filename):
+        self._client.get_token()
         pkg_type = utils.get_key_val_from_pkg(filename)
         if pkg_type is None:
             raise ClientException("Cannot determine package type")

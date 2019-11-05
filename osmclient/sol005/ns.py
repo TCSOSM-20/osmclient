@@ -53,6 +53,7 @@ class Ns(object):
     def list(self, filter=None):
         """Returns a list of NS
         """
+        self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
@@ -64,6 +65,7 @@ class Ns(object):
     def get(self, name):
         """Returns an NS based on name or id
         """
+        self._client.get_token()
         if utils.validate_uuid4(name):
             for ns in self.list():
                 if name == ns['_id']:
@@ -75,6 +77,7 @@ class Ns(object):
         raise NotFound("ns {} not found".format(name))
 
     def get_individual(self, name):
+        self._client.get_token()
         ns_id = name
         if not utils.validate_uuid4(name):
             for ns in self.list():
@@ -118,7 +121,7 @@ class Ns(object):
     def create(self, nsd_name, nsr_name, account, config=None,
                ssh_keys=None, description='default description',
                admin_status='ENABLED', wait=False):
-
+        self._client.get_token()
         nsd = self._client.nsd.get(nsd_name)
 
         vim_account_id = {}
@@ -282,6 +285,7 @@ class Ns(object):
     def get_op(self, operationId):
         """Returns the status of an operation
         """
+        self._client.get_token()
         try:
             self._apiResource = '/ns_lcm_op_occs'
             self._apiBase = '{}{}{}'.format(self._apiName,
@@ -352,6 +356,7 @@ class Ns(object):
     def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
         """Scales a VNF by adding/removing VDUs
         """
+        self._client.get_token()
         try:
             op_data={}
             op_data["scaleType"] = "SCALE_VNF"
@@ -371,6 +376,7 @@ class Ns(object):
             raise ClientException(message)
 
     def create_alarm(self, alarm):
+        self._client.get_token()
         data = {}
         data["create_alarm_request"] = {}
         data["create_alarm_request"]["alarm_create_request"] = alarm
@@ -398,6 +404,7 @@ class Ns(object):
             raise ClientException(message)
 
     def delete_alarm(self, name):
+        self._client.get_token()
         data = {}
         data["delete_alarm_request"] = {}
         data["delete_alarm_request"]["alarm_delete_request"] = {}
@@ -426,6 +433,7 @@ class Ns(object):
             raise ClientException(message)
 
     def export_metric(self, metric):
+        self._client.get_token()
         data = {}
         data["read_metric_data_request"] = metric
         try:
