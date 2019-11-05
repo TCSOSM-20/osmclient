@@ -47,7 +47,9 @@ def check_client_version(obj, what, version='sol005'):
     return
 
 
-@click.group()
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=160)
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.option('--hostname',
               default="127.0.0.1",
               envvar='OSM_HOSTNAME',
@@ -124,7 +126,7 @@ def cli(ctx, hostname, user, password, project):
 # LIST operations
 ####################
 
-@cli.command(name='ns-list')
+@cli.command(name='ns-list', short_help='list all NS instances')
 @click.option('--filter', default=None,
               help='restricts the list to the NS instances matching the filter.')
 @click.pass_context
@@ -233,7 +235,7 @@ def nsd_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='nsd-list')
+@cli.command(name='nsd-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
 @click.pass_context
@@ -242,12 +244,12 @@ def nsd_list1(ctx, filter):
     nsd_list(ctx, filter)
 
 
-@cli.command(name='nspkg-list')
+@cli.command(name='nspkg-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
 @click.pass_context
 def nsd_list2(ctx, filter):
-    """list all NSD/NS pkg in the system"""
+    """list all NS packages"""
     nsd_list(ctx, filter)
 
 
@@ -287,33 +289,33 @@ def vnfd_list(ctx, nf_type, filter):
     print(table)
 
 
-@cli.command(name='vnfd-list')
+@cli.command(name='vnfd-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NF pkg matching the filter')
 @click.pass_context
 def vnfd_list1(ctx, nf_type, filter):
-    """list all VNFD/VNF pkg in the system"""
+    """list all xNF packages (VNF, HNF, PNF)"""
     vnfd_list(ctx, nf_type, filter)
 
 
-@cli.command(name='vnfpkg-list')
+@cli.command(name='vnfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def vnfd_list2(ctx, nf_type, filter):
-    """list all VNFD/VNF pkg in the system"""
+    """list all xNF packages (VNF, HNF, PNF)"""
     vnfd_list(ctx, nf_type, filter)
 
 
-@cli.command(name='nfpkg-list')
+@cli.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def nfpkg_list(ctx, nf_type, filter):
-    """list all NF pkg (VNF pkg, PNF pkg, HNF pkg) in the system"""
+    """list all xNF packages (VNF, HNF, PNF)"""
     try:
         check_client_version(ctx.obj, ctx.command.name)
         vnfd_list(ctx, nf_type, filter)
@@ -374,7 +376,7 @@ def vnf_list(ctx, ns, filter):
     print(table)
 
 
-@cli.command(name='vnf-list')
+@cli.command(name='vnf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
@@ -384,7 +386,7 @@ def vnf_list1(ctx, ns, filter):
     vnf_list(ctx, ns, filter)
 
 
-@cli.command(name='nf-list')
+@cli.command(name='nf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
@@ -440,7 +442,7 @@ def nf_list(ctx, ns, filter):
     vnf_list(ctx, ns, filter)
 
 
-@cli.command(name='ns-op-list')
+@cli.command(name='ns-op-list', short_help='shows the history of operations over a NS instance')
 @click.argument('name')
 @click.pass_context
 def ns_op_list(ctx, name):
@@ -495,7 +497,7 @@ def nsi_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='nsi-list')
+@cli.command(name='nsi-list', short_help='list all Network Slice Instances (NSI)')
 @click.option('--filter', default=None,
               help='restricts the list to the Network Slice Instances matching the filter')
 @click.pass_context
@@ -504,7 +506,7 @@ def nsi_list1(ctx, filter):
     nsi_list(ctx, filter)
 
 
-@cli.command(name='netslice-instance-list')
+@cli.command(name='netslice-instance-list', short_help='list all Network Slice Instances (NSI)')
 @click.option('--filter', default=None,
               help='restricts the list to the Network Slice Instances matching the filter')
 @click.pass_context
@@ -529,7 +531,7 @@ def nst_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='nst-list')
+@cli.command(name='nst-list', short_help='list all Network Slice Templates (NST)')
 @click.option('--filter', default=None,
               help='restricts the list to the NST matching the filter')
 @click.pass_context
@@ -538,7 +540,7 @@ def nst_list1(ctx, filter):
     nst_list(ctx, filter)
 
 
-@cli.command(name='netslice-template-list')
+@cli.command(name='netslice-template-list', short_help='list all Network Slice Templates (NST)')
 @click.option('--filter', default=None,
               help='restricts the list to the NST matching the filter')
 @click.pass_context
@@ -562,7 +564,7 @@ def nsi_op_list(ctx, name):
     print(table)
 
 
-@cli.command(name='nsi-op-list')
+@cli.command(name='nsi-op-list', short_help='shows the history of operations over a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.pass_context
 def nsi_op_list1(ctx, name):
@@ -573,7 +575,7 @@ def nsi_op_list1(ctx, name):
     nsi_op_list(ctx, name)
 
 
-@cli.command(name='netslice-instance-op-list')
+@cli.command(name='netslice-instance-op-list', short_help='shows the history of operations over a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.pass_context
 def nsi_op_list2(ctx, name):
@@ -584,7 +586,7 @@ def nsi_op_list2(ctx, name):
     nsi_op_list(ctx, name)
 
 
-@cli.command(name='pdu-list')
+@cli.command(name='pdu-list', short_help='list all Physical Deployment Units (PDU)')
 @click.option('--filter', default=None,
               help='restricts the list to the Physical Deployment Units matching the filter')
 @click.pass_context
@@ -840,12 +842,12 @@ def vnf_show(ctx, name, literal, filter):
 #    print(table)
 
 
-@cli.command(name='ns-op-show', short_help='shows the info of an operation')
+@cli.command(name='ns-op-show', short_help='shows the info of a NS operation')
 @click.argument('id')
 @click.option('--filter', default=None)
 @click.pass_context
 def ns_op_show(ctx, id, filter):
-    """shows the detailed info of an operation
+    """shows the detailed info of a NS operation
 
     ID: operation identifier
     """
@@ -1660,7 +1662,7 @@ def pdu_delete(ctx, name, force):
 # VIM operations
 #################
 
-@cli.command(name='vim-create')
+@cli.command(name='vim-create', short_help='creates a new VIM account')
 @click.option('--name',
               prompt=True,
               help='Name to create datacenter')
@@ -1784,7 +1786,7 @@ def vim_update(ctx,
         exit(1)
 
 
-@cli.command(name='vim-delete')
+@cli.command(name='vim-delete', short_help='deletes a VIM account')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
@@ -1810,7 +1812,7 @@ def vim_delete(ctx, name, force, wait):
         exit(1)
 
 
-@cli.command(name='vim-list')
+@cli.command(name='vim-list', short_help='list all VIM accounts')
 #@click.option('--ro_update/--no_ro_update',
 #              default=False,
 #              help='update list from RO')
@@ -1835,7 +1837,7 @@ def vim_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='vim-show')
+@cli.command(name='vim-show', short_help='shows the details of a VIM account')
 @click.argument('name')
 @click.pass_context
 def vim_show(ctx, name):
@@ -1862,7 +1864,7 @@ def vim_show(ctx, name):
 # WIM operations
 ####################
 
-@cli.command(name='wim-create')
+@cli.command(name='wim-create', short_help='creates a new WIM account')
 @click.option('--name',
               prompt=True,
               help='Name for the WIM account')
@@ -1972,7 +1974,7 @@ def wim_update(ctx,
         exit(1)
 
 
-@cli.command(name='wim-delete')
+@cli.command(name='wim-delete', short_help='deletes a WIM account')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
@@ -1995,7 +1997,7 @@ def wim_delete(ctx, name, force, wait):
         exit(1)
 
 
-@cli.command(name='wim-list')
+@cli.command(name='wim-list', short_help='list all WIM accounts')
 @click.option('--filter', default=None,
               help='restricts the list to the WIM accounts matching the filter')
 @click.pass_context
@@ -2014,7 +2016,7 @@ def wim_list(ctx, filter):
         exit(1)
 
 
-@cli.command(name='wim-show')
+@cli.command(name='wim-show', short_help='shows the details of a WIM account')
 @click.argument('name')
 @click.pass_context
 def wim_show(ctx, name):
@@ -2042,7 +2044,7 @@ def wim_show(ctx, name):
 # SDN controller operations
 ####################
 
-@cli.command(name='sdnc-create')
+@cli.command(name='sdnc-create', short_help='creates a new SDN controller')
 @click.option('--name',
               prompt=True,
               help='Name to create sdn controller')
@@ -2170,7 +2172,7 @@ def sdnc_update(ctx,
         exit(1)
 
 
-@cli.command(name='sdnc-delete')
+@cli.command(name='sdnc-delete', short_help='deletes an SDN controller')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
@@ -2193,7 +2195,7 @@ def sdnc_delete(ctx, name, force, wait):
         exit(1)
 
 
-@cli.command(name='sdnc-list')
+@cli.command(name='sdnc-list', short_help='list all SDN controllers')
 @click.option('--filter', default=None,
               help='restricts the list to the SDN controllers matching the filter')
 @click.pass_context
@@ -2212,7 +2214,7 @@ def sdnc_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='sdnc-show')
+@cli.command(name='sdnc-show', short_help='shows the details of an SDN controller')
 @click.argument('name')
 @click.pass_context
 def sdnc_show(ctx, name):
@@ -2238,7 +2240,7 @@ def sdnc_show(ctx, name):
 # Project mgmt operations
 ####################
 
-@cli.command(name='project-create')
+@cli.command(name='project-create', short_help='creates a new project')
 @click.argument('name')
 #@click.option('--description',
 #              default='no description',
@@ -2259,7 +2261,7 @@ def project_create(ctx, name):
         exit(1)
 
 
-@cli.command(name='project-delete')
+@cli.command(name='project-delete', short_help='deletes a project')
 @click.argument('name')
 #@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -2276,7 +2278,7 @@ def project_delete(ctx, name):
         exit(1)
 
 
-@cli.command(name='project-list')
+@cli.command(name='project-list', short_help='list all projects')
 @click.option('--filter', default=None,
               help='restricts the list to the projects matching the filter')
 @click.pass_context
@@ -2295,7 +2297,7 @@ def project_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='project-show')
+@cli.command(name='project-show', short_help='shows the details of a project')
 @click.argument('name')
 @click.pass_context
 def project_show(ctx, name):
@@ -2317,7 +2319,7 @@ def project_show(ctx, name):
     print(table)
 
 
-@cli.command(name='project-update')
+@cli.command(name='project-update', short_help='updates a project (only the name can be updated)')
 @click.argument('project')
 @click.option('--name',
               prompt=True,
@@ -2348,7 +2350,7 @@ def project_update(ctx, project, name):
 # User mgmt operations
 ####################
 
-@cli.command(name='user-create')
+@cli.command(name='user-create', short_help='creates a new user')
 @click.argument('username')
 @click.option('--password',
               prompt=True,
@@ -2387,7 +2389,7 @@ def user_create(ctx, username, password, projects, project_role_mappings):
         exit(1)
 
 
-@cli.command(name='user-update')
+@cli.command(name='user-update', short_help='updates user information')
 @click.argument('username')
 @click.option('--password',
               # prompt=True,
@@ -2439,7 +2441,7 @@ def user_update(ctx, username, password, set_username, set_project, remove_proje
         exit(1)
 
 
-@cli.command(name='user-delete')
+@cli.command(name='user-delete', short_help='deletes a user')
 @click.argument('name')
 #@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -2457,7 +2459,7 @@ def user_delete(ctx, name):
         exit(1)
 
 
-@cli.command(name='user-list')
+@cli.command(name='user-list', short_help='list all users')
 @click.option('--filter', default=None,
               help='restricts the list to the users matching the filter')
 @click.pass_context
@@ -2476,7 +2478,7 @@ def user_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='user-show')
+@cli.command(name='user-show', short_help='shows the details of a user')
 @click.argument('name')
 @click.pass_context
 def user_show(ctx, name):
@@ -2567,7 +2569,7 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
 # Performance Management operations
 ####################
 
-@cli.command(name='ns-metric-export')
+@cli.command(name='ns-metric-export', short_help='exports a metric to the internal OSM bus, which can be read by other apps')
 @click.option('--ns', prompt=True, help='NS instance id or name')
 @click.option('--vnf', prompt=True,
               help='VNF name (VNF member index as declared in the NSD)')
@@ -2611,7 +2613,7 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
 # Other operations
 ####################
 
-@cli.command(name='upload-package')
+@cli.command(name='upload-package', short_help='uploads a VNF package or NS package')
 @click.argument('filename')
 @click.pass_context
 def upload_package(ctx, filename):
@@ -2779,7 +2781,7 @@ def upload_package(ctx, filename):
 #    print(table)
 
 
-@cli.command(name='ns-action')
+@cli.command(name='ns-action', short_help='executes an action/primitive over a NS instance')
 @click.argument('ns_name')
 @click.option('--vnf_name', default=None, help='member-vnf-index if the target is a vnf instead of a ns)')
 @click.option('--vdu_id', default=None, help='vdu-id if the target is a vdu o a vnf')
@@ -2826,7 +2828,7 @@ def ns_action(ctx,
         exit(1)
 
 
-@cli.command(name='vnf-scale')
+@cli.command(name='vnf-scale', short_help='executes a VNF scale (adding/removing VDUs)')
 @click.argument('ns_name')
 @click.argument('vnf_name')
 @click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
@@ -2860,7 +2862,7 @@ def vnf_scale(ctx,
 # Role Management Operations #
 ##############################
 
-@cli.command(name='role-create', short_help='creates a role')
+@cli.command(name='role-create', short_help='creates a new role')
 @click.argument('name')
 @click.option('--permissions',
               default=None,
