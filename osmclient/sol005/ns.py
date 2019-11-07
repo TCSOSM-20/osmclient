@@ -161,7 +161,7 @@ class Ns(object):
                 with open(pubkeyfile, 'r') as f:
                     ns['ssh_keys'].append(f.read())
         if config:
-            ns_config = yaml.load(config)
+            ns_config = yaml.safe_load(config)
             if "vim-network-name" in ns_config:
                 ns_config["vld"] = ns_config.pop("vim-network-name")
             if "vld" in ns_config:

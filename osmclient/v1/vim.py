@@ -66,7 +66,7 @@ class Vim(object):
 
         vim_config = {}
         if 'config' in vim_access and vim_access['config'] is not None:
-           vim_config = yaml.load(vim_access['config'])
+           vim_config = yaml.safe_load(vim_access['config'])
 
         if vim_config:
             vim_account['datacenter']['config'] = vim_config

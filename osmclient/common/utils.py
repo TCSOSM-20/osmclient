@@ -66,7 +66,7 @@ def get_key_val_from_pkg(descriptor_file):
     if yamlfile is None:
         return None
 
-    dict = yaml.load(tar.extractfile(yamlfile))
+    dict = yaml.safe_load(tar.extractfile(yamlfile))
     result = {}
     for k1, v1 in list(dict.items()):
         if not k1.endswith('-catalog'):

@@ -155,7 +155,7 @@ class Nsi(object):
                 with open(pubkeyfile, 'r') as f:
                     nsi['ssh_keys'].append(f.read())
         if config:
-            nsi_config = yaml.load(config)
+            nsi_config = yaml.safe_load(config)
             if "netslice-vld" in nsi_config:
                 for vld in nsi_config["netslice-vld"]:
                     if vld.get("vim-network-name"):

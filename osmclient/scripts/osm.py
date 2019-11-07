@@ -1316,7 +1316,7 @@ def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descrip
                 raise ClientException('in absence of descriptor file, option "--vim_account" is mandatory (at least once)')
         else:
             with open(descriptor_file, 'r') as df:
-                pdu = yaml.load(df.read())
+                pdu = yaml.safe_load(df.read())
         if name: pdu["name"] = name
         if pdu_type: pdu["type"] = pdu_type
         if description: pdu["description"] = description
@@ -2818,7 +2818,7 @@ def ns_action(ctx,
             op_data['vdu_count_index'] = vdu_count
         op_data['primitive'] = action_name
         if params:
-            op_data['primitive_params'] = yaml.load(params)
+            op_data['primitive_params'] = yaml.safe_load(params)
         else:
             op_data['primitive_params'] = {}
         ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait)

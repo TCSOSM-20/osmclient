@@ -49,7 +49,7 @@ class Role(object):
         role = {"name": name}
 
         if permissions:
-            role_permissions = yaml.load(permissions)
+            role_permissions = yaml.safe_load(permissions)
 
             if not isinstance(role_permissions, dict):
                 raise ClientException('Role permissions should be provided in a key-value fashion')
@@ -105,7 +105,7 @@ class Role(object):
             new_role_obj["name"] = new_name
 
         if permissions:
-            role_definition = yaml.load(permissions)
+            role_definition = yaml.safe_load(permissions)
 
             if not isinstance(role_definition, dict):
                 raise ClientException('Role permissions should be provided in a key-value fashion')
@@ -117,7 +117,7 @@ class Role(object):
             new_role_obj["permissions"] = role_definition
         else:
             if remove:
-                keys_from_remove = yaml.load(remove)
+                keys_from_remove = yaml.safe_load(remove)
 
                 if not isinstance(keys_from_remove, list):
                     raise ClientException('Keys should be provided in a list fashion')
@@ -128,7 +128,7 @@ class Role(object):
                     new_role_obj["permissions"][key] = None
 
             if add:
-                add_roles = yaml.load(add)
+                add_roles = yaml.safe_load(add)
 
                 if not isinstance(add_roles, dict):
                     raise ClientException('Add should be provided in a key-value fashion')

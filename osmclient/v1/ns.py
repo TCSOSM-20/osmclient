@@ -116,7 +116,7 @@ class Ns(object):
         ns_config = {}
 
         if config: 
-            ns_config = yaml.load(config)
+            ns_config = yaml.safe_load(config)
 
         if ns_config and 'vim-network-name' in ns_config:
             for network in ns_config['vim-network-name']:
