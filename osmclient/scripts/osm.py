@@ -319,8 +319,8 @@ def nfpkg_list(ctx, nf_type, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         vnfd_list(ctx, nf_type, filter)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -334,8 +334,8 @@ def vnf_list(ctx, ns, filter):
             resp = ctx.obj.vnf.list(ns, filter)
         else:
             resp = ctx.obj.vnf.list()
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
@@ -453,8 +453,8 @@ def ns_op_list(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.ns.list_op(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['id', 'operation', 'status'])
@@ -470,8 +470,8 @@ def nsi_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.nsi.list(filter)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(
         ['netslice instance name',
@@ -519,8 +519,8 @@ def nst_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.nst.list(filter)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
     # print(yaml.safe_dump(resp))
     table = PrettyTable(['nst name', 'id'])
@@ -553,8 +553,8 @@ def nsi_op_list(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.nsi.list_op(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(['id', 'operation', 'status'])
     for op in resp:
@@ -595,8 +595,8 @@ def pdu_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.pdu.list(filter)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(
         ['pdu name',
@@ -629,8 +629,8 @@ def nsd_show(ctx, name, literal):
     try:
         resp = ctx.obj.nsd.get(name)
         # resp = ctx.obj.nsd.get_individual(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -674,8 +674,8 @@ def vnfd_show(ctx, name, literal):
     try:
         resp = ctx.obj.vnfd.get(name)
         # resp = ctx.obj.vnfd.get_individual(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -741,8 +741,8 @@ def ns_show(ctx, name, literal, filter):
     """
     try:
         ns = ctx.obj.ns.get(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -780,8 +780,8 @@ def vnf_show(ctx, name, literal, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.vnf.get(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -803,8 +803,8 @@ def vnf_show(ctx, name, literal, filter):
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
 #        resp = ctx.obj.vnf.get_monitoring(vnf_name)
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 #
 #    table = PrettyTable(['vnf name', 'monitoring name', 'value', 'units'])
@@ -826,8 +826,8 @@ def vnf_show(ctx, name, literal, filter):
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
 #        resp = ctx.obj.ns.get_monitoring(ns_name)
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 #
 #    table = PrettyTable(['vnf name', 'monitoring name', 'value', 'units'])
@@ -854,8 +854,8 @@ def ns_op_show(ctx, id, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         op_info = ctx.obj.ns.get_op(id)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['field', 'value'])
@@ -871,8 +871,8 @@ def nst_show(ctx, name, literal):
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.nst.get(name)
         #resp = ctx.obj.nst.get_individual(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -916,8 +916,8 @@ def nsi_show(ctx, name, literal, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         nsi = ctx.obj.nsi.get(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -966,8 +966,8 @@ def nsi_op_show(ctx, id, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         op_info = ctx.obj.nsi.get_op(id)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['field', 'value'])
@@ -1016,8 +1016,8 @@ def pdu_show(ctx, name, literal, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         pdu = ctx.obj.pdu.get(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     if literal:
@@ -1042,8 +1042,8 @@ def nsd_create(ctx, filename, overwrite):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.nsd.create(filename, overwrite)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1083,8 +1083,8 @@ def vnfd_create(ctx, filename, overwrite):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.vnfd.create(filename, overwrite)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1186,8 +1186,8 @@ def ns_create(ctx,
             ssh_keys=ssh_keys,
             account=vim_account,
             wait=wait)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1195,8 +1195,8 @@ def nst_create(ctx, filename, overwrite):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.nst.create(filename, overwrite)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1243,8 +1243,8 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
                 config=cf.read()
         ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
                            account=vim_account, wait=wait)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1350,8 +1350,8 @@ def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descrip
                 ifaces_list.append(new_iface)
             pdu["interfaces"] = ifaces_list
         ctx.obj.pdu.create(pdu)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 ####################
@@ -1362,8 +1362,8 @@ def nsd_update(ctx, name, content):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.nsd.update(name, content)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1397,8 +1397,8 @@ def vnfd_update(ctx, name, content):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.vnfd.update(name, content)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1445,8 +1445,8 @@ def nst_update(ctx, name, content):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.nst.update(name, content)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1487,8 +1487,8 @@ def nsd_delete(ctx, name, force):
         else:
             check_client_version(ctx.obj, '--force')
             ctx.obj.nsd.delete(name, force)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1523,8 +1523,8 @@ def vnfd_delete(ctx, name, force):
         else:
             check_client_version(ctx.obj, '--force')
             ctx.obj.vnfd.delete(name, force)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1585,8 +1585,8 @@ def ns_delete(ctx, name, force, wait):
         else:
             check_client_version(ctx.obj, '--force')
             ctx.obj.ns.delete(name, force, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1594,8 +1594,8 @@ def nst_delete(ctx, name, force):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.nst.delete(name, force)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1627,8 +1627,8 @@ def nsi_delete(ctx, name, force, wait):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.nsi.delete(name, force, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1674,8 +1674,8 @@ def pdu_delete(ctx, name, force):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.pdu.delete(name, force)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1749,8 +1749,8 @@ def vim_create(ctx,
             ctx.obj.vim.create(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
         else:
             ctx.obj.vim.create(name, vim, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1802,8 +1802,8 @@ def vim_update(ctx,
         if description: vim['description'] = description
         if config: vim['config'] = config
         ctx.obj.vim.update(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1828,8 +1828,8 @@ def vim_delete(ctx, name, force, wait):
         else:
             check_client_version(ctx.obj, '--force')
             ctx.obj.vim.delete(name, force, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1870,8 +1870,8 @@ def vim_show(ctx, name):
         resp = ctx.obj.vim.get(name)
         if 'vim_password' in resp:
             resp['vim_password']='********'
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['key', 'attribute'])
@@ -1941,8 +1941,8 @@ def wim_create(ctx,
         if description: wim['description'] = description
         if config: wim['config'] = config
         ctx.obj.wim.create(name, wim, wim_port_mapping, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -1990,8 +1990,8 @@ def wim_update(ctx,
         if description: wim['description'] = description
         if config: wim['config'] = config
         ctx.obj.wim.update(name, wim, wim_port_mapping, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2013,8 +2013,8 @@ def wim_delete(ctx, name, force, wait):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.wim.delete(name, force, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2032,8 +2032,8 @@ def wim_list(ctx, filter):
             table.add_row([wim['name'], wim['uuid']])
         table.align = 'l'
         print(table)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2050,8 +2050,8 @@ def wim_show(ctx, name):
         resp = ctx.obj.wim.get(name)
         if 'password' in resp:
             resp['wim_password']='********'
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['key', 'attribute'])
@@ -2126,8 +2126,8 @@ def sdnc_create(ctx,
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.sdnc.create(name, sdncontroller, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 @cli.command(name='sdnc-update', short_help='updates an SDN controller')
@@ -2188,8 +2188,8 @@ def sdnc_update(ctx,
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.sdnc.update(name, sdncontroller, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2211,8 +2211,8 @@ def sdnc_delete(ctx, name, force, wait):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.sdnc.delete(name, force, wait=wait)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2225,8 +2225,8 @@ def sdnc_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.sdnc.list(filter)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(['sdnc name', 'id'])
     for sdnc in resp:
@@ -2246,8 +2246,8 @@ def sdnc_show(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.sdnc.get(name)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['key', 'attribute'])
@@ -2277,8 +2277,8 @@ def project_create(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.project.create(name, project)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2294,8 +2294,8 @@ def project_delete(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.project.delete(name)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2308,8 +2308,8 @@ def project_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.project.list(filter)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(['name', 'id'])
     for proj in resp:
@@ -2329,8 +2329,8 @@ def project_show(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.project.get(name)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['key', 'attribute'])
@@ -2363,8 +2363,8 @@ def project_update(ctx, project, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.project.update(project, project_changes)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
 
 
 ####################
@@ -2405,8 +2405,8 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.user.create(username, user)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2457,8 +2457,8 @@ def user_update(ctx, username, password, set_username, set_project, remove_proje
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.user.update(username, user)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2475,8 +2475,8 @@ def user_delete(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.user.delete(name)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2489,8 +2489,8 @@ def user_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.user.list(filter)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(['name', 'id'])
     for user in resp:
@@ -2512,8 +2512,8 @@ def user_show(ctx, name):
         resp = ctx.obj.user.get(name)
         if 'password' in resp:
             resp['password']='********'
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['key', 'attribute'])
@@ -2565,8 +2565,8 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
         alarm['statistic'] = statistic
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.ns.create_alarm(alarm)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2581,8 +2581,8 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name)
 #        ctx.obj.ns.delete_alarm(name)
-#    except ClientException as inst:
-#        print(inst.message)
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 
 
@@ -2625,8 +2625,8 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
                 print('{} {}'.format(ctx.obj.ns.export_metric(metric_data),i))
                 time.sleep(int(interval))
                 i+=1
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2647,8 +2647,8 @@ def upload_package(ctx, filename):
         fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
         if fullclassname != 'osmclient.sol005.client.Client':
             ctx.obj.package.wait_for_upload(filename)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2663,8 +2663,8 @@ def upload_package(ctx, filename):
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
 #        resp = ctx.obj.ns.list()
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 #
 #    table = PrettyTable(
@@ -2713,8 +2713,8 @@ def upload_package(ctx, filename):
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
 #        ctx.obj.ns.scale(ns_name, ns_scale_group, index, wait=wait)
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 
 
@@ -2724,8 +2724,8 @@ def upload_package(ctx, filename):
 #    """list config agents"""
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 #    table = PrettyTable(['name', 'account-type', 'details'])
 #    for account in ctx.obj.vca.list():
@@ -2748,8 +2748,8 @@ def upload_package(ctx, filename):
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
 #        ctx.obj.vca.delete(name)
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 
 
@@ -2772,8 +2772,8 @@ def upload_package(ctx, filename):
 #    try:
 #        check_client_version(ctx.obj, ctx.command.name, 'v1')
 #        ctx.obj.vca.create(name, account_type, server, user, secret)
-#    except ClientException as inst:
-#        print((inst.message))
+#    except ClientException as e:
+#        print(str(e))
 #        exit(1)
 
 
@@ -2844,8 +2844,8 @@ def ns_action(ctx,
             op_data['primitive_params'] = {}
         ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait)
 
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2874,8 +2874,8 @@ def vnf_scale(ctx,
         if not scale_in and not scale_out:
             scale_out = True
         ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out)
-    except ClientException as inst:
-        print((inst.message))
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2900,8 +2900,8 @@ def role_create(ctx, name, permissions):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.role.create(name, permissions)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2933,8 +2933,8 @@ def role_update(ctx, name, set_name, add, remove):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.role.update(name, set_name, None, add, remove)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2952,8 +2952,8 @@ def role_delete(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         ctx.obj.role.delete(name)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
 
@@ -2968,8 +2968,8 @@ def role_list(ctx, filter):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.role.list(filter)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
     table = PrettyTable(['name', 'id'])
     for role in resp:
@@ -2991,8 +2991,8 @@ def role_show(ctx, name):
     try:
         check_client_version(ctx.obj, ctx.command.name)
         resp = ctx.obj.role.get(name)
-    except ClientException as inst:
-        print(inst.message)
+    except ClientException as e:
+        print(str(e))
         exit(1)
 
     table = PrettyTable(['key', 'attribute'])

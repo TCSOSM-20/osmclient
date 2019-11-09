@@ -242,7 +242,7 @@ class Ns(object):
             message="failed to create ns: {} nsd: {}\nerror:\n{}".format(
                     nsr_name,
                     nsd_name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def list_op(self, name, filter=None):
@@ -279,7 +279,7 @@ class Ns(object):
         except ClientException as exc:
             message="failed to get operation list of NS {}:\nerror:\n{}".format(
                     name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def get_op(self, operationId):
@@ -311,7 +311,7 @@ class Ns(object):
         except ClientException as exc:
             message="failed to get status of operation {}:\nerror:\n{}".format(
                     operationId,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def exec_op(self, name, op_name, op_data=None, wait=False):
@@ -350,7 +350,7 @@ class Ns(object):
         except ClientException as exc:
             message="failed to exec operation {}:\nerror:\n{}".format(
                     name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
@@ -372,7 +372,7 @@ class Ns(object):
             self.exec_op(ns_name, op_name='scale', op_data=op_data, wait=wait)
         except ClientException as exc:
             message="failed to scale vnf {} of ns {}:\nerror:\n{}".format(
-                    vnf_name, ns_name, exc.message)
+                    vnf_name, ns_name, str(exc))
             raise ClientException(message)
 
     def create_alarm(self, alarm):
@@ -400,7 +400,7 @@ class Ns(object):
         except ClientException as exc:
             message="failed to create alarm: alarm {}\n{}".format(
                     alarm,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def delete_alarm(self, name):
@@ -429,7 +429,7 @@ class Ns(object):
         except ClientException as exc:
             message="failed to delete alarm: alarm {}\n{}".format(
                     name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def export_metric(self, metric):
@@ -456,7 +456,7 @@ class Ns(object):
         except ClientException as exc:
             message="failed to export metric: metric {}\n{}".format(
                     metric,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def get_field(self, ns_name, field):

@@ -193,5 +193,5 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
     except ClientException as exc:
         message="Operation failed for {}:\nerror:\n{}".format(
             entity_label,
-            exc.message)
+            str(exc))
         raise ClientException(message)

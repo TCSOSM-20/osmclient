@@ -240,7 +240,7 @@ class Nsi(object):
             message="failed to create nsi: {} nst: {}\nerror:\n{}".format(
                     nsi_name,
                     nst_name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def list_op(self, name, filter=None):
@@ -277,7 +277,7 @@ class Nsi(object):
         except ClientException as exc:
             message="failed to get operation list of NSI {}:\nerror:\n{}".format(
                     name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def get_op(self, operationId):
@@ -309,7 +309,7 @@ class Nsi(object):
         except ClientException as exc:
             message="failed to get status of operation {}:\nerror:\n{}".format(
                     operationId,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
     def exec_op(self, name, op_name, op_data=None):
@@ -344,6 +344,6 @@ class Nsi(object):
         except ClientException as exc:
             message="failed to exec operation {}:\nerror:\n{}".format(
                     name,
-                    exc.message)
+                    str(exc))
             raise ClientException(message)
 
