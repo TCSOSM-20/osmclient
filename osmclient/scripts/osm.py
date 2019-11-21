@@ -29,7 +29,12 @@ import pycurl
 import os
 import textwrap
 import pkg_resources
+import logging
 
+
+# Global variables
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=160)
 
 def wrap_text(text, width):
     wrapper = textwrap.TextWrapper(width=width)
@@ -53,6 +58,7 @@ def check_client_version(obj, what, version='sol005'):
     :return: -
     :raises ClientError: if the specified version does not match the client version
     """
+    logger.debug("")
     fullclassname = obj.__module__ + "." + obj.__class__.__name__
     message = 'The following commands or options are only supported with the option "--sol005": {}'.format(what)
     if version == 'v1':
@@ -62,9 +68,7 @@ def check_client_version(obj, what, version='sol005'):
     return
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=160)
-
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=160))
 @click.option('--hostname',
               default="127.0.0.1",
               envvar='OSM_HOSTNAME',
@@ -90,6 +94,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=16
               envvar='OSM_PROJECT',
               help='project (defaults to admin). ' +
                    'Also can set OSM_PROJECT in environment')
+@click.option('-v', '--verbose', count=True,
+              help='increase verbosity (-v INFO, -vv VERBOSE, -vvv DEBUG)')
 #@click.option('--so-port',
 #              default=None,
 #              envvar='OSM_SO_PORT',
@@ -111,13 +117,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=16
 #              help='hostname of RO server.  ' +
 #                   'Also can set OSM_RO_PORT in environment')
 @click.pass_context
-def cli_osm(ctx, hostname, user, password, project):
+def cli_osm(ctx, hostname, user, password, project, verbose):
+    global logger
     if hostname is None:
         print((
             "either hostname option or OSM_HOSTNAME " +
             "environment variable needs to be specified"))
         exit(1)
-    kwargs={}
+    kwargs = {'verbose': verbose}
 #    if so_port is not None:
 #        kwargs['so_port']=so_port
 #    if so_project is not None:
@@ -134,6 +141,7 @@ def cli_osm(ctx, hostname, user, password, project):
     if project is not None:
         kwargs['project']=project
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
+    logger = logging.getLogger('osmclient')
 
 
 ####################
@@ -192,6 +200,7 @@ def ns_list(ctx, filter):
        --filter  nsd.vendor=<VENDOR>&nsd-ref=<NSD_NAME>
        --filter  nsd.constituent-vnfd.vnfd-id-ref=<VNFD_NAME>
     """
+    logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.ns.list(filter)
@@ -232,6 +241,7 @@ def ns_list(ctx, filter):
 
 
 def nsd_list(ctx, filter):
+    logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.nsd.list(filter)
@@ -257,6 +267,7 @@ def nsd_list(ctx, filter):
 @click.pass_context
 def nsd_list1(ctx, filter):
     """list all NSD/NS pkg in the system"""
+    logger.debug("")
     nsd_list(ctx, filter)
 
 
@@ -266,10 +277,12 @@ def nsd_list1(ctx, filter):
 @click.pass_context
 def nsd_list2(ctx, filter):
     """list all NS packages"""
+    logger.debug("")
     nsd_list(ctx, filter)
 
 
 def vnfd_list(ctx, nf_type, filter):
+    logger.debug("")
     if nf_type:
         check_client_version(ctx.obj, '--nf_type')
     elif filter:
@@ -312,6 +325,7 @@ def vnfd_list(ctx, nf_type, filter):
 @click.pass_context
 def vnfd_list1(ctx, nf_type, filter):
     """list all xNF packages (VNF, HNF, PNF)"""
+    logger.debug("")
     vnfd_list(ctx, nf_type, filter)
 
 
@@ -322,6 +336,7 @@ def vnfd_list1(ctx, nf_type, filter):
 @click.pass_context
 def vnfd_list2(ctx, nf_type, filter):
     """list all xNF packages (VNF, HNF, PNF)"""
+    logger.debug("")
     vnfd_list(ctx, nf_type, filter)
 
 
@@ -332,6 +347,7 @@ def vnfd_list2(ctx, nf_type, filter):
 @click.pass_context
 def nfpkg_list(ctx, nf_type, filter):
     """list all xNF packages (VNF, HNF, PNF)"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     vnfd_list(ctx, nf_type, filter)
@@ -399,6 +415,7 @@ def vnf_list(ctx, ns, filter):
 @click.pass_context
 def vnf_list1(ctx, ns, filter):
     """list all NF instances"""
+    logger.debug("")
     vnf_list(ctx, ns, filter)
 
 
@@ -455,6 +472,7 @@ def nf_list(ctx, ns, filter):
        --filter  vdur.ip-address=<IP_ADDRESS>
        --filter  vnfd-ref=<VNFD_NAME>,vdur.ip-address=<IP_ADDRESS>
     """
+    logger.debug("")
     vnf_list(ctx, ns, filter)
 
 
@@ -466,6 +484,7 @@ def ns_op_list(ctx, name):
 
     NAME: name or ID of the NS instance
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.ns.list_op(name)
@@ -487,6 +506,7 @@ def ns_op_list(ctx, name):
 
 def nsi_list(ctx, filter):
     """list all Network Slice Instances"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.nsi.list(filter)
@@ -523,6 +543,7 @@ def nsi_list(ctx, filter):
 @click.pass_context
 def nsi_list1(ctx, filter):
     """list all Network Slice Instances (NSI)"""
+    logger.debug("")
     nsi_list(ctx, filter)
 
 
@@ -532,10 +553,12 @@ def nsi_list1(ctx, filter):
 @click.pass_context
 def nsi_list2(ctx, filter):
     """list all Network Slice Instances (NSI)"""
+    logger.debug("")
     nsi_list(ctx, filter)
 
 
 def nst_list(ctx, filter):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.nst.list(filter)
@@ -557,6 +580,7 @@ def nst_list(ctx, filter):
 @click.pass_context
 def nst_list1(ctx, filter):
     """list all Network Slice Templates (NST) in the system"""
+    logger.debug("")
     nst_list(ctx, filter)
 
 
@@ -566,10 +590,12 @@ def nst_list1(ctx, filter):
 @click.pass_context
 def nst_list2(ctx, filter):
     """list all Network Slice Templates (NST) in the system"""
+    logger.debug("")
     nst_list(ctx, filter)
 
 
 def nsi_op_list(ctx, name):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.nsi.list_op(name)
@@ -592,6 +618,7 @@ def nsi_op_list1(ctx, name):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_op_list(ctx, name)
 
 
@@ -603,6 +630,7 @@ def nsi_op_list2(ctx, name):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_op_list(ctx, name)
 
 
@@ -612,6 +640,7 @@ def nsi_op_list2(ctx, name):
 @click.pass_context
 def pdu_list(ctx, filter):
     """list all Physical Deployment Units (PDU)"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.pdu.list(filter)
@@ -646,6 +675,7 @@ def pdu_list(ctx, filter):
 ####################
 
 def nsd_show(ctx, name, literal):
+    logger.debug("")
     # try:
     resp = ctx.obj.nsd.get(name)
     # resp = ctx.obj.nsd.get_individual(name)
@@ -674,6 +704,7 @@ def nsd_show1(ctx, name, literal):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_show(ctx, name, literal)
 
 
@@ -687,10 +718,12 @@ def nsd_show2(ctx, name, literal):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_show(ctx, name, literal)
 
 
 def vnfd_show(ctx, name, literal):
+    logger.debug("")
     # try:
     resp = ctx.obj.vnfd.get(name)
     # resp = ctx.obj.vnfd.get_individual(name)
@@ -719,6 +752,7 @@ def vnfd_show1(ctx, name, literal):
 
     NAME: name or ID of the VNFD/VNFpkg
     """
+    logger.debug("")
     vnfd_show(ctx, name, literal)
 
 
@@ -732,6 +766,7 @@ def vnfd_show2(ctx, name, literal):
 
     NAME: name or ID of the VNFD/VNFpkg
     """
+    logger.debug("")
     vnfd_show(ctx, name, literal)
 
 
@@ -745,6 +780,7 @@ def nfpkg_show(ctx, name, literal):
 
     NAME: name or ID of the NFpkg
     """
+    logger.debug("")
     vnfd_show(ctx, name, literal)
 
 
@@ -759,6 +795,7 @@ def ns_show(ctx, name, literal, filter):
 
     NAME: name or ID of the NS instance
     """
+    logger.debug("")
     # try:
     ns = ctx.obj.ns.get(name)
     # except ClientException as e:
@@ -798,6 +835,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
 
     NAME: name or ID of the VNF instance
     """
+    logger.debug("")
     if kdu:
         if literal:
             raise ClientException('"--literal" option is incompatible with "--kdu" option')
@@ -899,6 +937,7 @@ def ns_op_show(ctx, id, filter, literal):
 
     ID: operation identifier
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     op_info = ctx.obj.ns.get_op(id)
@@ -919,6 +958,7 @@ def ns_op_show(ctx, id, filter, literal):
 
 
 def nst_show(ctx, name, literal):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.nst.get(name)
@@ -948,6 +988,7 @@ def nst_show1(ctx, name, literal):
 
     NAME: name or ID of the NST
     """
+    logger.debug("")
     nst_show(ctx, name, literal)
 
 
@@ -961,10 +1002,12 @@ def nst_show2(ctx, name, literal):
 
     NAME: name or ID of the NST
     """
+    logger.debug("")
     nst_show(ctx, name, literal)
 
 
 def nsi_show(ctx, name, literal, filter):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     nsi = ctx.obj.nsi.get(name)
@@ -997,6 +1040,7 @@ def nsi_show1(ctx, name, literal, filter):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_show(ctx, name, literal, filter)
 
 
@@ -1011,10 +1055,12 @@ def nsi_show2(ctx, name, literal, filter):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_show(ctx, name, literal, filter)
 
 
 def nsi_op_show(ctx, id, filter):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     op_info = ctx.obj.nsi.get_op(id)
@@ -1039,6 +1085,7 @@ def nsi_op_show1(ctx, id, filter):
 
     ID: operation identifier
     """
+    logger.debug("")
     nsi_op_show(ctx, id, filter)
 
 
@@ -1051,6 +1098,7 @@ def nsi_op_show2(ctx, id, filter):
 
     ID: operation identifier
     """
+    logger.debug("")
     nsi_op_show(ctx, id, filter)
 
 
@@ -1065,6 +1113,7 @@ def pdu_show(ctx, name, literal, filter):
 
     NAME: name or ID of the PDU
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     pdu = ctx.obj.pdu.get(name)
@@ -1091,6 +1140,7 @@ def pdu_show(ctx, name, literal, filter):
 ####################
 
 def nsd_create(ctx, filename, overwrite):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.nsd.create(filename, overwrite)
@@ -1112,6 +1162,7 @@ def nsd_create1(ctx, filename, overwrite):
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
     """
+    logger.debug("")
     nsd_create(ctx, filename, overwrite)
 
 
@@ -1128,10 +1179,12 @@ def nsd_create2(ctx, filename, overwrite):
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
     """
+    logger.debug("")
     nsd_create(ctx, filename, overwrite)
 
 
 def vnfd_create(ctx, filename, overwrite):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.vnfd.create(filename, overwrite)
@@ -1153,6 +1206,7 @@ def vnfd_create1(ctx, filename, overwrite):
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_create(ctx, filename, overwrite)
 
 
@@ -1169,6 +1223,7 @@ def vnfd_create2(ctx, filename, overwrite):
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_create(ctx, filename, overwrite)
 
 
@@ -1185,6 +1240,7 @@ def nfpkg_create(ctx, filename, overwrite):
 
     FILENAME: NF Descriptor yaml file or NFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_create(ctx, filename, overwrite)
 
 
@@ -1224,6 +1280,7 @@ def ns_create(ctx,
               config_file,
               wait):
     """creates a new NS instance"""
+    logger.debug("")
     # try:
     if config_file:
         check_client_version(ctx.obj, '--config_file')
@@ -1244,6 +1301,7 @@ def ns_create(ctx,
 
 
 def nst_create(ctx, filename, overwrite):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.nst.create(filename, overwrite)
@@ -1265,6 +1323,7 @@ def nst_create1(ctx, filename, overwrite):
 
     FILENAME: NST yaml file or NSTpkg tar.gz file
     """
+    logger.debug("")
     nst_create(ctx, filename, overwrite)
 
 
@@ -1281,11 +1340,13 @@ def nst_create2(ctx, filename, overwrite):
 
     FILENAME: NST yaml file or NSTpkg tar.gz file
     """
+    logger.debug("")
     nst_create(ctx, filename, overwrite)
 
 
 def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     if config_file:
@@ -1329,6 +1390,7 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
 @click.pass_context
 def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
+    logger.debug("")
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait=wait)
 
 
@@ -1359,6 +1421,7 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
 @click.pass_context
 def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
+    logger.debug("")
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait=wait)
 
 
@@ -1376,6 +1439,7 @@ def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
 @click.pass_context
 def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descriptor_file):
     """creates a new Physical Deployment Unit (PDU)"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     pdu = {}
@@ -1407,11 +1471,13 @@ def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descrip
     #     print(str(e))
     #     exit(1)
 
+
 ####################
 # UPDATE operations
 ####################
 
 def nsd_update(ctx, name, content):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.nsd.update(name, content)
@@ -1430,6 +1496,7 @@ def nsd_update1(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_update(ctx, name, content)
 
 
@@ -1443,10 +1510,12 @@ def nsd_update2(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_update(ctx, name, content)
 
 
 def vnfd_update(ctx, name, content):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.vnfd.update(name, content)
@@ -1465,6 +1534,7 @@ def vnfd_update1(ctx, name, content):
 
     NAME: name or ID of the VNFD/VNFpkg
     """
+    logger.debug("")
     vnfd_update(ctx, name, content)
 
 
@@ -1478,6 +1548,7 @@ def vnfd_update2(ctx, name, content):
 
     NAME: VNFD yaml file or VNFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_update(ctx, name, content)
 
 
@@ -1491,10 +1562,12 @@ def nfpkg_update(ctx, name, content):
 
     NAME: NF Descriptor yaml file or NFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_update(ctx, name, content)
 
 
 def nst_update(ctx, name, content):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.nst.update(name, content)
@@ -1513,6 +1586,7 @@ def nst_update1(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nst_update(ctx, name, content)
 
 
@@ -1526,6 +1600,7 @@ def nst_update2(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nst_update(ctx, name, content)
 
 
@@ -1534,6 +1609,7 @@ def nst_update2(ctx, name, content):
 ####################
 
 def nsd_delete(ctx, name, force):
+    logger.debug("")
     # try:
     if not force:
         ctx.obj.nsd.delete(name)
@@ -1554,6 +1630,7 @@ def nsd_delete1(ctx, name, force):
 
     NAME: name or ID of the NSD/NSpkg to be deleted
     """
+    logger.debug("")
     nsd_delete(ctx, name, force)
 
 
@@ -1566,10 +1643,12 @@ def nsd_delete2(ctx, name, force):
 
     NAME: name or ID of the NSD/NSpkg to be deleted
     """
+    logger.debug("")
     nsd_delete(ctx, name, force)
 
 
 def vnfd_delete(ctx, name, force):
+    logger.debug("")
     # try:
     if not force:
         ctx.obj.vnfd.delete(name)
@@ -1590,6 +1669,7 @@ def vnfd_delete1(ctx, name, force):
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
     """
+    logger.debug("")
     vnfd_delete(ctx, name, force)
 
 
@@ -1602,6 +1682,7 @@ def vnfd_delete2(ctx, name, force):
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
     """
+    logger.debug("")
     vnfd_delete(ctx, name, force)
 
 
@@ -1614,6 +1695,7 @@ def nfpkg_delete(ctx, name, force):
 
     NAME: name or ID of the NFpkg to be deleted
     """
+    logger.debug("")
     vnfd_delete(ctx, name, force)
 
 
@@ -1632,6 +1714,7 @@ def ns_delete(ctx, name, force, wait):
 
     NAME: name or ID of the NS instance to be deleted
     """
+    logger.debug("")
     # try:
     if not force:
         ctx.obj.ns.delete(name, wait=wait)
@@ -1644,6 +1727,7 @@ def ns_delete(ctx, name, force, wait):
 
 
 def nst_delete(ctx, name, force):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.nst.delete(name, force)
@@ -1661,6 +1745,7 @@ def nst_delete1(ctx, name, force):
 
     NAME: name or ID of the NST/NSTpkg to be deleted
     """
+    logger.debug("")
     nst_delete(ctx, name, force)
 
 
@@ -1673,10 +1758,12 @@ def nst_delete2(ctx, name, force):
 
     NAME: name or ID of the NST/NSTpkg to be deleted
     """
+    logger.debug("")
     nst_delete(ctx, name, force)
 
 
 def nsi_delete(ctx, name, force, wait):
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.nsi.delete(name, force, wait=wait)
@@ -1700,6 +1787,7 @@ def nsi_delete1(ctx, name, force, wait):
 
     NAME: name or ID of the Network Slice instance to be deleted
     """
+    logger.debug("")
     nsi_delete(ctx, name, force, wait=wait)
 
 
@@ -1712,6 +1800,7 @@ def nsi_delete2(ctx, name, force, wait):
 
     NAME: name or ID of the Network Slice instance to be deleted
     """
+    logger.debug("")
     nsi_delete(ctx, name, force, wait=wait)
 
 
@@ -1724,6 +1813,7 @@ def pdu_delete(ctx, name, force):
 
     NAME: name or ID of the PDU to be deleted
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.pdu.delete(name, force)
@@ -1785,6 +1875,7 @@ def vim_create(ctx,
                sdn_port_mapping,
                wait):
     """creates a new VIM account"""
+    logger.debug("")
     # try:
     if sdn_controller:
         check_client_version(ctx.obj, '--sdn_controller')
@@ -1843,6 +1934,7 @@ def vim_update(ctx,
 
     NAME: name or ID of the VIM account
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     vim = {}
@@ -1875,6 +1967,7 @@ def vim_delete(ctx, name, force, wait):
 
     NAME: name or ID of the VIM account to be deleted
     """
+    logger.debug("")
     # try:
     if not force:
         ctx.obj.vim.delete(name, wait=wait)
@@ -1895,6 +1988,7 @@ def vim_delete(ctx, name, force, wait):
 @click.pass_context
 def vim_list(ctx, filter):
     """list all VIM accounts"""
+    logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
 #    if ro_update:
@@ -1919,6 +2013,7 @@ def vim_show(ctx, name):
 
     NAME: name or ID of the VIM account
     """
+    logger.debug("")
     # try:
     resp = ctx.obj.vim.get(name)
     if 'vim_password' in resp:
@@ -1981,6 +2076,7 @@ def wim_create(ctx,
                wim_port_mapping,
                wait):
     """creates a new WIM account"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     # if sdn_controller:
@@ -2034,6 +2130,7 @@ def wim_update(ctx,
 
     NAME: name or ID of the WIM account
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     wim = {}
@@ -2065,6 +2162,7 @@ def wim_delete(ctx, name, force, wait):
 
     NAME: name or ID of the WIM account to be deleted
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.wim.delete(name, force, wait=wait)
@@ -2079,6 +2177,7 @@ def wim_delete(ctx, name, force, wait):
 @click.pass_context
 def wim_list(ctx, filter):
     """list all WIM accounts"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.wim.list(filter)
@@ -2100,6 +2199,7 @@ def wim_show(ctx, name):
 
     NAME: name or ID of the WIM account
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.wim.get(name)
@@ -2154,6 +2254,7 @@ def wim_show(ctx, name):
 @click.pass_context
 def sdnc_create(ctx, **kwargs):
     """creates a new SDN controller"""
+    logger.debug("")
     sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
                      x not in ("wait", "ip_address", "port", "switch_dpid")}
     if kwargs.get("port"):
@@ -2197,6 +2298,7 @@ def sdnc_update(ctx, **kwargs):
 
     NAME: name or ID of the SDN controller
     """
+    logger.debug("")
     sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
                      x not in ("wait", "ip_address", "port", "switch_dpid", "new_name")}
     if kwargs.get("newname"):
@@ -2233,6 +2335,7 @@ def sdnc_delete(ctx, name, force, wait):
 
     NAME: name or ID of the SDN controller to be deleted
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.sdnc.delete(name, force, wait=wait)
@@ -2247,6 +2350,7 @@ def sdnc_delete(ctx, name, force, wait):
 @click.pass_context
 def sdnc_list(ctx, filter):
     """list all SDN controllers"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.sdnc.list(filter)
@@ -2268,6 +2372,7 @@ def sdnc_show(ctx, name):
 
     NAME: name or ID of the SDN controller
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.sdnc.get(name)
@@ -2624,6 +2729,7 @@ def project_create(ctx, name):
 
     NAME: name of the project
     """
+    logger.debug("")
     project = {}
     project['name'] = name
     # try:
@@ -2643,6 +2749,7 @@ def project_delete(ctx, name):
 
     NAME: name or ID of the project to be deleted
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.project.delete(name)
@@ -2657,6 +2764,7 @@ def project_delete(ctx, name):
 @click.pass_context
 def project_list(ctx, filter):
     """list all projects"""
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.project.list(filter)
@@ -2678,6 +2786,7 @@ def project_show(ctx, name):
 
     NAME: name or ID of the project
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.project.get(name)
@@ -2708,7 +2817,7 @@ def project_update(ctx, project, name):
     :param name:  new name for the project
     :return:
     """
-
+    logger.debug("")
     project_changes = {}
     project_changes['name'] = name
 
@@ -2748,6 +2857,7 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     PROJECTS: projects assigned to user (internal only)
     PROJECT_ROLE_MAPPING: roles in projects assigned to user (keystone)
     """
+    logger.debug("")
     user = {}
     user['username'] = username
     user['password'] = password
@@ -2798,6 +2908,7 @@ def user_update(ctx, username, password, set_username, set_project, remove_proje
     ADD_PROJECT_ROLE: adding mappings for project/role(s)
     REMOVE_PROJECT_ROLE: removing mappings for project/role(s)
     """
+    logger.debug("")
     user = {}
     user['password'] = password
     user['username'] = set_username
@@ -2824,6 +2935,7 @@ def user_delete(ctx, name):
     \b
     NAME: name or ID of the user to be deleted
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.user.delete(name)
@@ -2859,6 +2971,7 @@ def user_show(ctx, name):
 
     NAME: name or ID of the user
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.user.get(name)
@@ -2902,6 +3015,7 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
     """creates a new alarm for a NS instance"""
     # TODO: Check how to validate threshold_value.
     # Should it be an integer (1-100), percentage, or decimal (0.01-1.00)?
+    logger.debug("")
     # try:
     ns_instance = ctx.obj.ns.get(ns)
     alarm = {}
@@ -2958,6 +3072,7 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
     """exports a metric to the internal OSM bus, which can be read by other apps"""
     # TODO: Check how to validate interval.
     # Should it be an integer (seconds), or should a suffix (s,m,h,d,w) also be permitted?
+    logger.debug("")
     # try:
     ns_instance = ctx.obj.ns.get(ns)
     metric_data = {}
@@ -3005,6 +3120,7 @@ def upload_package(ctx, filename):
 
     FILENAME: VNF or NS package file (tar.gz)
     """
+    logger.debug("")
     # try:
     ctx.obj.package.upload(filename)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
@@ -3194,6 +3310,7 @@ def ns_action(ctx,
 
     NS_NAME: name or ID of the NS instance
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     op_data = {}
@@ -3240,6 +3357,7 @@ def vnf_scale(ctx,
     NS_NAME: name or ID of the NS instance.
     VNF_NAME: member-vnf-index in the NS to be scaled.
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     if not scale_in and not scale_out:
@@ -3268,6 +3386,7 @@ def role_create(ctx, name, permissions):
     NAME: Name or ID of the role.
     DEFINITION: Definition of grant/denial of access to resources.
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.role.create(name, permissions)
@@ -3301,6 +3420,7 @@ def role_update(ctx, name, set_name, add, remove):
     ADD: Grant/denial of access to resource to add.
     REMOVE: Grant/denial of access to resource to remove.
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.role.update(name, set_name, None, add, remove)
@@ -3320,6 +3440,7 @@ def role_delete(ctx, name):
     \b
     NAME: Name or ID of the role.
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.role.delete(name)
@@ -3336,6 +3457,7 @@ def role_list(ctx, filter):
     """
     List all roles.
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.role.list(filter)
@@ -3359,6 +3481,7 @@ def role_show(ctx, name):
     \b
     NAME: Name or ID of the role.
     """
+    logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.role.get(name)
@@ -3534,3 +3657,4 @@ def cli():
 
 if __name__ == '__main__':
     cli()
+

@@ -39,6 +39,7 @@ from osmclient.sol005 import repo
 from osmclient.common.exceptions import ClientException
 from osmclient.common import package_tool
 import json
+import logging
 
 
 class Client(object):
@@ -55,6 +56,7 @@ class Client(object):
         self._user = user
         self._password = password
         self._project = project
+        self._logger = logging.getLogger('osmclient')
         self._auth_endpoint = '/admin/v1/tokens'
         self._headers = {}
         self._token = None
@@ -98,6 +100,7 @@ class Client(object):
         '''
 
     def get_token(self):
+        self._logger.debug("")
         if self._token is None:
             postfields_dict = {'username': self._user,
                                'password': self._password,

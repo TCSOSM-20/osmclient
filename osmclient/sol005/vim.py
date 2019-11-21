@@ -24,12 +24,14 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
 import json
+import logging
 
 
 class Vim(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/admin'
         self._apiVersion = '/v1'
         self._apiResource = '/vim_accounts'
@@ -38,6 +40,7 @@ class Vim(object):
 
     # VIM '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/vim_accounts')
@@ -51,7 +54,10 @@ class Vim(object):
             deleteFlag=deleteFlag)
 
     def _get_id_for_wait(self, name):
-        # Returns id of name, or the id itself if given as argument
+        """ Returns id of name, or the id itself if given as argument
+        """
+        self._logger.debug("")
+        self._client.get_token()
         for vim in self.list():
             if name == vim['uuid']:
                 return vim['uuid']
@@ -61,6 +67,7 @@ class Vim(object):
         return ''
 
     def create(self, name, vim_access, sdn_controller=None, sdn_port_mapping=None, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         if 'vim-type' not in vim_access:
             #'openstack' not in vim_access['vim-type']):
@@ -107,6 +114,7 @@ class Vim(object):
             raise ClientException("failed to create vim {} - {}".format(name, msg))
 
     def update(self, vim_name, vim_account, sdn_controller, sdn_port_mapping, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         vim = self.get(vim_name)
         vim_id_for_wait = self._get_id_for_wait(vim_name)
@@ -149,6 +157,7 @@ class Vim(object):
             raise ClientException("failed to update vim {} - {}".format(vim_name, msg))
 
     def update_vim_account_dict(self, vim_account, vim_access):
+        self._logger.debug("")
         vim_account['vim_type'] = vim_access['vim-type']
         vim_account['description'] = vim_access['description']
         vim_account['vim_url'] = vim_access['vim-url']
@@ -160,12 +169,14 @@ class Vim(object):
     def get_id(self, name):
         """Returns a VIM id from a VIM name
         """
+        self._logger.debug("")
         for vim in self.list():
             if name == vim['name']:
                 return vim['uuid']
         raise NotFound("vim {} not found".format(name))
 
     def delete(self, vim_name, force=False, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         vim_id = vim_name
         if not utils.validate_uuid4(vim_name):
@@ -203,6 +214,7 @@ class Vim(object):
     def list(self, filter=None):
         """Returns a list of VIM accounts
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -219,6 +231,7 @@ class Vim(object):
     def get(self, name):
         """Returns a VIM account based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         vim_id = name
         if not utils.validate_uuid4(name):

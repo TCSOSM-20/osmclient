@@ -16,7 +16,7 @@
 
 echo "POST INSTALL OSMCLIENT"
 #Install pyangbind, required for python3-osm-im
-python3 -m pip install pyangbind
+python3 -m pip install pyangbind verboselogs
 #configure autocomplete for osmclient
 [ -z "$SUDO_USER" ] && SUDO_USER="$USER"
 su $SUDO_USER -c 'mkdir -p $HOME/.bash_completion.d'

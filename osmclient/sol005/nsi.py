@@ -24,6 +24,7 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
 import json
+import logging
 
 
 class Nsi(object):
@@ -31,6 +32,7 @@ class Nsi(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/nsilcm'
         self._apiVersion = '/v1'
         self._apiResource = '/netslice_instances_content'
@@ -39,6 +41,7 @@ class Nsi(object):
 
     # NSI '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/nsi_lcm_op_occs')
@@ -54,6 +57,7 @@ class Nsi(object):
     def list(self, filter=None):
         """Returns a list of NSI
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -66,6 +70,7 @@ class Nsi(object):
     def get(self, name):
         """Returns an NSI based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for nsi in self.list():
@@ -78,6 +83,7 @@ class Nsi(object):
         raise NotFound("nsi {} not found".format(name))
 
     def get_individual(self, name):
+        self._logger.debug("")
         nsi_id = name
         self._client.get_token()
         if not utils.validate_uuid4(name):
@@ -93,6 +99,7 @@ class Nsi(object):
         raise NotFound("nsi {} not found".format(name))
 
     def delete(self, name, force=False, wait=False):
+        self._logger.debug("")
         nsi = self.get(name)
         querystring = ''
         if force:
@@ -124,12 +131,14 @@ class Nsi(object):
                ssh_keys=None, description='default description',
                admin_status='ENABLED', wait=False):
 
+        self._logger.debug("")
         self._client.get_token()
         nst = self._client.nst.get(nst_name)
 
         vim_account_id = {}
 
         def get_vim_account_id(vim_account):
+            self._logger.debug("")
             if vim_account_id.get(vim_account):
                 return vim_account_id[vim_account]
 
@@ -246,6 +255,7 @@ class Nsi(object):
     def list_op(self, name, filter=None):
         """Returns the list of operations of a NSI
         """
+        self._logger.debug("")
         nsi = self.get(name)
         try:
             self._apiResource = '/nsi_lcm_op_occs'
@@ -283,6 +293,7 @@ class Nsi(object):
     def get_op(self, operationId):
         """Returns the status of an operation
         """
+        self._logger.debug("")
         self._client.get_token()
         try:
             self._apiResource = '/nsi_lcm_op_occs'
@@ -315,6 +326,7 @@ class Nsi(object):
     def exec_op(self, name, op_name, op_data=None):
         """Executes an operation on a NSI
         """
+        self._logger.debug("")
         nsi = self.get(name)
         try:
             self._apiResource = '/netslice_instances'

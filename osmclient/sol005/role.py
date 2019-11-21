@@ -25,12 +25,14 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
 import yaml
+import logging
 
 
 class Role(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/admin'
         self._apiVersion = '/v1'
         self._apiResource = '/roles'
@@ -46,6 +48,7 @@ class Role(object):
         :raises ClientException: when receives an unexpected from the server.
         :raises ClientException: when fails creating a role.
         """
+        self._logger.debug("")
         self._client.get_token()
         role = {"name": name}
 
@@ -95,6 +98,7 @@ class Role(object):
         :raises ClientException: when receives an unexpected response from the server.
         :raises ClientException: when fails updating a role.
         """
+        self._logger.debug("")
         self._client.get_token()
         if new_name is None and permissions is None and add is None and remove is None:
             raise ClientException('At least one option should be provided')
@@ -173,6 +177,7 @@ class Role(object):
         :param force:
         :raises ClientException: when fails to delete a role.
         """
+        self._logger.debug("")
         self._client.get_token()
         role = self.get(name)
         querystring = ''
@@ -204,6 +209,7 @@ class Role(object):
         :param filter:
         :returns:
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -222,6 +228,7 @@ class Role(object):
         :raises NotFound: when the role is not found.
         :returns: the specified role.
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for role in self.list():
@@ -232,3 +239,4 @@ class Role(object):
                 if name == role['name']:
                     return role
         raise NotFound("Role {} not found".format(name))
+

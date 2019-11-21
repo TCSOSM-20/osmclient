@@ -20,6 +20,7 @@ OSM vnf API handling
 
 from osmclient.common import utils
 from osmclient.common.exceptions import NotFound
+import logging
 
 
 class Vnf(object):
@@ -27,6 +28,7 @@ class Vnf(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/nslcm'
         self._apiVersion = '/v1'
         self._apiResource = '/vnfrs'
@@ -36,6 +38,7 @@ class Vnf(object):
     def list(self, ns=None, filter=None):
         """Returns a list of VNF instances
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -55,6 +58,7 @@ class Vnf(object):
     def get(self, name):
         """Returns a VNF instance based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for vnf in self.list():
@@ -67,6 +71,7 @@ class Vnf(object):
         raise NotFound("vnf {} not found".format(name))
 
     def get_individual(self, name):
+        self._logger.debug("")
         self._client.get_token()
         vnf_id = name
         if not utils.validate_uuid4(name):

@@ -24,6 +24,7 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
 import json
+import logging
 
 
 class Ns(object):
@@ -31,6 +32,7 @@ class Ns(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/nslcm'
         self._apiVersion = '/v1'
         self._apiResource = '/ns_instances_content'
@@ -39,6 +41,7 @@ class Ns(object):
 
     # NS '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._logger.debug("")
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/ns_lcm_op_occs')
         # Wait for status for NS instance creation/update/deletion
@@ -53,6 +56,7 @@ class Ns(object):
     def list(self, filter=None):
         """Returns a list of NS
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -65,6 +69,7 @@ class Ns(object):
     def get(self, name):
         """Returns an NS based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for ns in self.list():
@@ -77,6 +82,7 @@ class Ns(object):
         raise NotFound("ns {} not found".format(name))
 
     def get_individual(self, name):
+        self._logger.debug("")
         self._client.get_token()
         ns_id = name
         if not utils.validate_uuid4(name):
@@ -92,6 +98,7 @@ class Ns(object):
         raise NotFound("ns {} not found".format(name))
 
     def delete(self, name, force=False, wait=False):
+        self._logger.debug("")
         ns = self.get(name)
         querystring = ''
         if force:
@@ -121,6 +128,7 @@ class Ns(object):
     def create(self, nsd_name, nsr_name, account, config=None,
                ssh_keys=None, description='default description',
                admin_status='ENABLED', wait=False):
+        self._logger.debug("")
         self._client.get_token()
         nsd = self._client.nsd.get(nsd_name)
 
@@ -128,6 +136,7 @@ class Ns(object):
         wim_account_id = {}
 
         def get_vim_account_id(vim_account):
+            self._logger.debug("")
             if vim_account_id.get(vim_account):
                 return vim_account_id[vim_account]
 
@@ -138,6 +147,7 @@ class Ns(object):
             return vim['_id']
 
         def get_wim_account_id(wim_account):
+            self._logger.debug("")
             if not isinstance(wim_account, str):
                 return wim_account
             if wim_account_id.get(wim_account):
@@ -245,6 +255,7 @@ class Ns(object):
     def list_op(self, name, filter=None):
         """Returns the list of operations of a NS
         """
+        self._logger.debug("")
         ns = self.get(name)
         try:
             self._apiResource = '/ns_lcm_op_occs'
@@ -282,6 +293,7 @@ class Ns(object):
     def get_op(self, operationId):
         """Returns the status of an operation
         """
+        self._logger.debug("")
         self._client.get_token()
         try:
             self._apiResource = '/ns_lcm_op_occs'
@@ -314,6 +326,8 @@ class Ns(object):
     def exec_op(self, name, op_name, op_data=None, wait=False, ):
         """Executes an operation on a NS
         """
+        self._logger.debug("")
+        ns = self.get(name)
         try:
             ns = self.get(name)
             self._apiResource = '/ns_instances'
@@ -353,6 +367,7 @@ class Ns(object):
     def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
         """Scales a VNF by adding/removing VDUs
         """
+        self._logger.debug("")
         self._client.get_token()
         try:
             op_data={}
@@ -374,6 +389,7 @@ class Ns(object):
             raise ClientException(message)
 
     def create_alarm(self, alarm):
+        self._logger.debug("")
         self._client.get_token()
         data = {}
         data["create_alarm_request"] = {}
@@ -402,6 +418,7 @@ class Ns(object):
             raise ClientException(message)
 
     def delete_alarm(self, name):
+        self._logger.debug("")
         self._client.get_token()
         data = {}
         data["delete_alarm_request"] = {}
@@ -431,6 +448,7 @@ class Ns(object):
             raise ClientException(message)
 
     def export_metric(self, metric):
+        self._logger.debug("")
         self._client.get_token()
         data = {}
         data["read_metric_data_request"] = metric
@@ -458,6 +476,7 @@ class Ns(object):
             raise ClientException(message)
 
     def get_field(self, ns_name, field):
+        self._logger.debug("")
         nsr = self.get(ns_name)
         print(yaml.safe_dump(nsr))
         if nsr is None:
@@ -467,3 +486,4 @@ class Ns(object):
             return nsr[field]
 
         raise NotFound("failed to find {} in ns {}".format(field, ns_name))
+

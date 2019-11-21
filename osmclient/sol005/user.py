@@ -23,12 +23,14 @@ from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
+import logging
 
 
 class User(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/admin'
         self._apiVersion = '/v1'
         self._apiResource = '/users'
@@ -38,6 +40,7 @@ class User(object):
     def create(self, name, user):
         """Creates a new OSM user
         """
+        self._logger.debug("")
         self._client.get_token()
         if not user["projects"] or (len(user["projects"]) == 1 and not user["projects"][0]):
             del user["projects"]
@@ -84,6 +87,7 @@ class User(object):
     def update(self, name, user):
         """Updates an existing OSM user identified by name
         """
+        self._logger.debug("")
         self._client.get_token()
         # print(user)
         myuser = self.get(name)
@@ -165,6 +169,7 @@ class User(object):
     def delete(self, name, force=False):
         """Deletes an existing OSM user identified by name
         """
+        self._logger.debug("")
         self._client.get_token()
         user = self.get(name)
         querystring = ''
@@ -192,6 +197,7 @@ class User(object):
     def list(self, filter=None):
         """Returns the list of OSM users
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -205,6 +211,7 @@ class User(object):
     def get(self, name):
         """Returns an OSM user based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for user in self.list():
@@ -215,5 +222,4 @@ class User(object):
                 if name == user['username']:
                     return user
         raise NotFound("User {} not found".format(name))
-
 

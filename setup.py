@@ -28,8 +28,8 @@ setup(
     description=_description,
     license='Apache 2',
     install_requires=[
-        'Click', 'prettytable', 'pyyaml', 'PycURL', 'python-magic',
-        'jinja2', 'osm-im'
+        'Click', 'prettytable', 'pyyaml', 'pycurl', 'python-magic',
+        'jinja2', 'osm-im', 'verboselogs'
     ],
     dependency_links=[
         'git+https://osm.etsi.org/gerrit/osm/IM.git#egg=osm-im',
