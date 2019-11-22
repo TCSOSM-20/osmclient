@@ -118,7 +118,7 @@ class Wim(object):
                 wim_config['wim_port_mapping'] = yaml.safe_load(f.read())
         wim_account['config'] = wim_config
         #wim_account['config'] = json.dumps(wim_config)
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,wim['_id']),
+        http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,wim['_id']),
                                        postfields_dict=wim_account)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))

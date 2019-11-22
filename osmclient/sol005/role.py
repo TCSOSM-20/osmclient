@@ -143,7 +143,7 @@ class Role(object):
         if not new_role_obj["permissions"]:
             del new_role_obj["permissions"]
 
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, role_obj['_id']),
+        http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, role_obj['_id']),
                                              postfields_dict=new_role_obj)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))

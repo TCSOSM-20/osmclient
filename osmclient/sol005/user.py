@@ -140,7 +140,7 @@ class User(object):
         if not update_user:
             raise ClientException("At least something should be changed.")
 
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, myuser['_id']),
+        http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, myuser['_id']),
                                              postfields_dict=update_user)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))

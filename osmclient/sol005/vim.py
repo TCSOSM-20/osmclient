@@ -126,7 +126,7 @@ class Vim(object):
                 vim_config['sdn-port-mapping'] = yaml.safe_load(f.read())
         vim_account['config'] = vim_config
         #vim_account['config'] = json.dumps(vim_config)
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,vim['_id']),
+        http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,vim['_id']),
                                        postfields_dict=vim_account)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))

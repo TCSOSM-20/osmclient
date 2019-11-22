@@ -88,7 +88,7 @@ class SdnController(object):
         self._client.get_token()
         sdnc = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
+        http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
                                        postfields_dict=sdn_controller)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))

@@ -64,7 +64,7 @@ class Project(object):
         """
         self._client.get_token()
         proj = self.get(project)
-        http_code, resp = self._http.put_cmd(endpoint='{}/{}'.format(self._apiBase, proj['_id']),
+        http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, proj['_id']),
                                              postfields_dict=project_changes)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
