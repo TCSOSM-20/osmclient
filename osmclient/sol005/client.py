@@ -116,3 +116,8 @@ class Client(object):
                 http_header = ['{}: {}'.format(key, val)
                                for (key, val) in list(self._headers.items())]
                 self._http_client.set_http_header(http_header)
+
+    def get_version(self):
+        resp = self._http_client.get_cmd(endpoint="/version")
+        return "{} {}".format(resp.get("version"), resp.get("date"))
+

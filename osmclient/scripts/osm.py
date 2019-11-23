@@ -3018,6 +3018,16 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
 # Other operations
 ####################
 
+@cli.command(name='version')
+@click.pass_context
+def get_version(ctx):
+    try:
+        check_client_version(ctx.obj, "version")
+        print (ctx.obj.get_version())
+    except ClientException as e:
+        print(str(e))
+        exit(1)
+
 @cli.command(name='upload-package', short_help='uploads a VNF package or NS package')
 @click.argument('filename')
 @click.pass_context
