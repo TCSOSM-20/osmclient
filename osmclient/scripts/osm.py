@@ -1343,11 +1343,11 @@ def pdu_show(ctx, name, literal, filter):
 # CREATE operations
 ####################
 
-def nsd_create(ctx, filename, overwrite):
+def nsd_create(ctx, filename, overwrite, skip_charm_build):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    ctx.obj.nsd.create(filename, overwrite)
+    ctx.obj.nsd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -1360,14 +1360,16 @@ def nsd_create(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def nsd_create1(ctx, filename, overwrite):
+def nsd_create1(ctx, filename, overwrite, skip_charm_build):
     """creates a new NSD/NSpkg
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
     """
     logger.debug("")
-    nsd_create(ctx, filename, overwrite)
+    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
 @cli_osm.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
@@ -1377,21 +1379,23 @@ def nsd_create1(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def nsd_create2(ctx, filename, overwrite):
+def nsd_create2(ctx, charm_folder, overwrite, skip_charm_build):
     """creates a new NSD/NSpkg
 
-    FILENAME: NSD yaml file or NSpkg tar.gz file
+    FILENAME: NSD folder, NSD yaml file or NSpkg tar.gz file
     """
     logger.debug("")
-    nsd_create(ctx, filename, overwrite)
+    nsd_create(ctx, charm_folder, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
-def vnfd_create(ctx, filename, overwrite):
+def vnfd_create(ctx, filename, overwrite, skip_charm_build):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    ctx.obj.vnfd.create(filename, overwrite)
+    ctx.obj.vnfd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -1404,14 +1408,16 @@ def vnfd_create(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def vnfd_create1(ctx, filename, overwrite):
+def vnfd_create1(ctx, filename, overwrite, skip_charm_build):
     """creates a new VNFD/VNFpkg
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
 @cli_osm.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
@@ -1421,14 +1427,16 @@ def vnfd_create1(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def vnfd_create2(ctx, filename, overwrite):
+def vnfd_create2(ctx, filename, overwrite, skip_charm_build):
     """creates a new VNFD/VNFpkg
 
-    FILENAME: VNFD yaml file or VNFpkg tar.gz file
+    FILENAME: NF Package Folder, NF Descriptor yaml file or NFpkg tar.gz file
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
 @cli_osm.command(name='nfpkg-create', short_help='creates a new NFpkg')
@@ -1438,14 +1446,16 @@ def vnfd_create2(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def nfpkg_create(ctx, filename, overwrite):
+def nfpkg_create(ctx, filename, overwrite, skip_charm_build):
     """creates a new NFpkg
 
-    FILENAME: NF Descriptor yaml file or NFpkg tar.gz file
+    FILENAME: NF Package Folder, NF Descriptor yaml file or NFpkg tar.gz filems to build
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
 @cli_osm.command(name='ns-create', short_help='creates a new Network Service instance')
@@ -1522,13 +1532,13 @@ def nst_create(ctx, filename, overwrite):
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
-def nst_create1(ctx, filename, overwrite):
+def nst_create1(ctx, charm_folder, overwrite):
     """creates a new Network Slice Template (NST)
 
-    FILENAME: NST yaml file or NSTpkg tar.gz file
+    FILENAME: NST package folder, NST yaml file or NSTpkg tar.gz file
     """
     logger.debug("")
-    nst_create(ctx, filename, overwrite)
+    nst_create(ctx, charm_folder, overwrite)
 
 
 @cli_osm.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
@@ -3319,15 +3329,17 @@ def get_version(ctx):
 
 @cli_osm.command(name='upload-package', short_help='uploads a VNF package or NS package')
 @click.argument('filename')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='the charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def upload_package(ctx, filename):
-    """uploads a VNF package or NS package
+def upload_package(ctx, filename, skip_charm_build):
+    """uploads a vnf package or ns package
 
-    FILENAME: VNF or NS package file (tar.gz)
+    filename: vnf or ns package folder, or vnf or ns package file (tar.gz)
     """
     logger.debug("")
     # try:
-    ctx.obj.package.upload(filename)
+    ctx.obj.package.upload(filename, skip_charm_build=skip_charm_build)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname != 'osmclient.sol005.client.Client':
         ctx.obj.package.wait_for_upload(filename)
@@ -3794,9 +3806,14 @@ def package_create(ctx,
 @click.argument('base-directory',
                 default=".",
                 required=False)
+@click.option('--recursive/--no-recursive',
+              default=True,
+              help='The activated recursive option will validate the yaml files'
+                   ' within the indicated directory and in its subdirectories')
 @click.pass_context
 def package_validate(ctx,
-                     base_directory):
+                     base_directory,
+                     recursive):
     """
     Validate descriptors given a base directory.
 
@@ -3805,7 +3822,7 @@ def package_validate(ctx,
     """
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    results = ctx.obj.package_tool.validate(base_directory)
+    results = ctx.obj.package_tool.validate(base_directory, recursive)
     table = PrettyTable()
     table.field_names = ["TYPE", "PATH", "VALID", "ERROR"]
     # Print the dictionary generated by the validation function
@@ -3827,10 +3844,13 @@ def package_validate(ctx,
               default=False,
               is_flag=True,
               help='skip package validation')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='the charm will not be compiled, it is assumed to already exist')
 @click.pass_context
 def package_build(ctx,
                   package_folder,
-                  skip_validation):
+                  skip_validation,
+                  skip_charm_build):
     """
     Build the package NS, VNF given the package_folder.
 
@@ -3839,7 +3859,9 @@ def package_build(ctx,
     """
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    results = ctx.obj.package_tool.build(package_folder, skip_validation)
+    results = ctx.obj.package_tool.build(package_folder,
+                                         skip_validation=skip_validation,
+                                         skip_charm_build=skip_charm_build)
     print(results)
     # except ClientException as inst:
     #     print("ERROR: {}".format(inst))

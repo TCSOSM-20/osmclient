@@ -23,11 +23,15 @@ import tarfile
 import hashlib
 from osm_im.validation import Validation as validation_im
 from jinja2 import Environment, PackageLoader
-
+import subprocess
+import shutil
+import yaml
+import logging
 
 class PackageTool(object):
     def __init__(self, client=None):
         self._client = client
+        self._logger = logging.getLogger('osmclient')
 
     def create(self, package_type, base_directory, package_name, override, image, vdus, vcpu, memory, storage,
                interfaces, vendor, detailed, netslice_subnets, netslice_vlds):
@@ -50,7 +54,7 @@ class PackageTool(object):
 
             :return: status
         """
-
+        self._logger.debug("")
         # print("location: {}".format(osmclient.__path__))
         file_loader = PackageLoader("osmclient")
         env = Environment(loader=file_loader)
@@ -80,7 +84,7 @@ class PackageTool(object):
             self.create_files(structure["files"], output, package_type)
         return "Created"
 
-    def validate(self, base_directory):
+    def validate(self, base_directory, recursive=True):
         """
             **Validate OSM Descriptors given a path**
 
@@ -89,8 +93,12 @@ class PackageTool(object):
 
             :return: List of dict of validated descriptors. keys: type, path, valid, error
         """
+        self._logger.debug("")
         table = []
-        descriptors_paths = [f for f in glob.glob(base_directory + "/**/*.yaml", recursive=True)]
+        if recursive:
+            descriptors_paths = [f for f in glob.glob(base_directory + "/**/*.yaml", recursive=recursive)]
+        else:
+            descriptors_paths = [f for f in glob.glob(base_directory + "/*.yaml", recursive=recursive)]
         print("Base directory: {}".format(base_directory))
         print("{} Descriptors found to validate".format(len(descriptors_paths)))
         for desc_path in descriptors_paths:
@@ -105,7 +113,7 @@ class PackageTool(object):
                 table.append({"type": desc_type, "path": desc_path, "valid": "ERROR", "error": str(e)})
         return table
 
-    def build(self, package_folder, skip_validation=True):
+    def build(self, package_folder, skip_validation=False, skip_charm_build=False):
         """
             **Creates a .tar.gz file given a package_folder**
 
@@ -115,20 +123,21 @@ class PackageTool(object):
 
             :returns: message result for the build process
         """
-
+        self._logger.debug("")
+        package_folder = package_folder.rstrip('/')
         if not os.path.exists("{}".format(package_folder)):
             return "Fail, package is not in the specified route"
         if not skip_validation:
-            results = self.validate(package_folder)
-            for result in results:
-                if result["valid"] != "OK":
-                    return("There was an error validating the file: {} with error: {}".format(result["path"],
-                                                                                              result["error"]))
-        self.calculate_checksum(package_folder)
-        with tarfile.open("{}.tar.gz".format(package_folder), mode='w:gz') as archive:
-            print("Adding File: {}".format(package_folder))
-            archive.add('{}'.format(package_folder), recursive=True)
-        return "Created {}.tar.gz".format(package_folder)
+            results = self.validate(package_folder, recursive=False)
+            if results:
+                for result in results:
+                    if result["valid"] != "OK":
+                        raise ClientException("There was an error validating the file: {} with error: {}"
+                                              .format(result["path"], result["error"]))
+            else:
+                raise ClientException("No descriptor file found in: {}".format(package_folder))
+        charm_list = self.build_all_charms(package_folder, skip_charm_build)
+        return self.build_tarfile(package_folder, charm_list)
 
     def calculate_checksum(self, package_folder):
         """
@@ -138,10 +147,11 @@ class PackageTool(object):
                 - package_folder: is the folder where we have the files to calculate the checksum
             :returns: None
         """
+        self._logger.debug("")
         files = [f for f in glob.glob(package_folder + "/**/*.*", recursive=True)]
-        checksum = open("{}/checksum.txt".format(package_folder), "w+")
+        checksum = open("{}/checksums.txt".format(package_folder), "w+")
         for file_item in files:
-            if "checksum.txt" in file_item:
+            if "checksums.txt" in file_item:
                 continue
             # from https://www.quickprogrammingtips.com/python/how-to-calculate-md5-hash-of-a-file-in-python.html
             md5_hash = hashlib.md5()
@@ -215,6 +225,7 @@ class PackageTool(object):
 
             :return: None
         """
+        self._logger.debug("")
         for file_item, file_package, file_type in files:
             if package_type == file_package:
                 if file_type == "descriptor":
@@ -234,6 +245,7 @@ class PackageTool(object):
 
             :return: Missing paths Dict
         """
+        self._logger.debug("")
         missing_paths = {}
         folders = []
         files = []
@@ -249,6 +261,38 @@ class PackageTool(object):
 
         return missing_paths
 
+    def build_all_charms(self, package_folder, skip_charm_build):
+        """
+            **Read the descriptor file, check that the charms referenced are in the folder and compiles them**
+
+            :params:
+                - packet_folder: is the location of the package
+            :return: Files and Folders not found. In case of override, it will return all file list
+        """
+        listCharms = []
+        self._logger.debug("")
+        descriptor_file = False
+        descriptors_paths = [f for f in glob.glob(package_folder + "/*.yaml")]
+        for file in descriptors_paths:
+            if 'nfd.yaml' in file:
+                descriptor_file = True
+                listCharms = self.charms_search(file, 'vnf')
+            if 'nsd.yaml' in file:
+                descriptor_file = True
+                listCharms = self.charms_search(file, 'ns')
+        if not descriptor_file:
+            raise ClientException ('descriptor name is not correct in: {}'.format(package_folder))
+        if listCharms and not skip_charm_build:
+            for charmName in listCharms:
+                if os.path.isdir('{}/charms/layers/{}'.format(package_folder,charmName)):
+                    self.charm_build(package_folder, charmName)
+                else:
+                    if not os.path.isdir('{}/charms/{}'.format(package_folder,charmName)):
+                        raise ClientException ('The charm: {} referenced in the descriptor file '
+                                               'is not present either in {}/charms or in {}/charms/layers'.
+                                               format(charmName, package_folder,package_folder))
+        return listCharms
+
     def discover_folder_structure(self, base_directory, name, override):
         """
             **Discover files and folders structure for OSM descriptors given a base_directory and name**
@@ -259,6 +303,7 @@ class PackageTool(object):
                 - override: is the flag used to indicate the creation of the list even if the file exist to override it
             :return: Files and Folders not found. In case of override, it will return all file list
         """
+        self._logger.debug("")
         prefix = "{}/{}".format(base_directory, name)
         files_folders = {"folders": [("{}_ns".format(prefix), "ns"),
                                      ("{}_ns/icons".format(prefix), "ns"),
@@ -284,3 +329,108 @@ class PackageTool(object):
         missing_files_folders = self.check_files_folders(files_folders, override)
         # print("Missing files and folders: {}".format(missing_files_folders))
         return missing_files_folders
+
+    def charm_build(self, charms_folder, build_name):
+        """
+        Build the charms inside the package.
+        params: package_folder is the name of the folder where is the charms to compile.
+                build_name is the name of the layer or interface
+        """
+        self._logger.debug("")
+        os.environ['JUJU_REPOSITORY'] = "{}/charms".format(charms_folder)
+        os.environ['CHARM_LAYERS_DIR'] = "{}/layers".format(os.environ['JUJU_REPOSITORY'])
+        os.environ['CHARM_INTERFACES_DIR'] = "{}/interfaces".format(os.environ['JUJU_REPOSITORY'])
+        os.environ['CHARM_BUILD_DIR'] = "{}/charms/builds".format(charms_folder)
+        src_folder = '{}/{}'.format(os.environ['CHARM_LAYERS_DIR'], build_name)
+        result = subprocess.run(["charm", "build", "{}".format(src_folder)])
+        if result.returncode == 1:
+            raise ClientException("failed to build the charm: {}".format(src_folder))
+        self._logger.verbose("charm: {} compiled".format(src_folder))
+
+    def build_tarfile(self, package_folder, charm_list=None):
+        """
+        Creates a .tar.gz file given a package_folder
+        params: package_folder is the name of the folder to be packaged
+        returns: .tar.gz name
+        """
+        self._logger.debug("")
+        ignore_patterns = "'*layers*', '*interfaces*'"
+        try:
+            directory_name = self.create_temp_dir(package_folder, ignore_patterns, charm_list)
+            cwd = os.getcwd()
+            os.chdir(directory_name)
+            self.calculate_checksum(package_folder)
+            with tarfile.open("{}.tar.gz".format(package_folder), mode='w:gz') as archive:
+                print("Adding File: {}".format(package_folder))
+                archive.add('{}'.format(package_folder), recursive=True)
+            #return "Created {}.tar.gz".format(package_folder)
+            #self.build("{}".format(os.path.basename(package_folder)))
+            os.chdir(cwd)
+        except:
+            shutil.rmtree(os.path.join(package_folder, "tmp"))
+            raise ClientException('failure to manipulate the result of the compilation')
+        os.rename("{}/{}.tar.gz".format(directory_name, os.path.basename(package_folder)),
+                  "{}.tar.gz".format(os.path.basename(package_folder)))
+        os.rename("{}/{}/checksums.txt".format(directory_name, os.path.basename(package_folder)),
+                  "{}/checksums.txt".format(package_folder))
+        shutil.rmtree(os.path.join(package_folder, "tmp"))
+        self._logger.verbose("package created: {}.tar.gz".format(os.path.basename(package_folder)))
+        return "{}.tar.gz".format(package_folder)
+
+    def create_temp_dir(self, package_folder, ignore_patterns=None, charm_list=None):
+        """
+        Method to create a temporary folder where we can move the files in package_folder, which do not 
+        meet the pattern defined in ignore_patterns
+        """
+        self._logger.debug("")
+        ignore = shutil.ignore_patterns(ignore_patterns)
+        os.makedirs("{}/tmp".format(package_folder), exist_ok=True)
+        directory_name = os.path.abspath("{}/tmp".format(package_folder))
+        os.makedirs("{}/{}".format(directory_name, os.path.basename(package_folder),exist_ok=True))
+        for item in os.listdir(package_folder):
+            if item != "tmp":
+                s = os.path.join(package_folder, item)
+                d = os.path.join(os.path.join(directory_name, os.path.basename(package_folder)), item)
+                if os.path.isdir(s):
+                    if item == "charms":
+                        s = os.path.join(s, "builds")
+                        if not os.path.exists(s):
+                            os.makedirs(s)
+                        for i in os.listdir(s):
+                            if i in charm_list:
+                                s_charm = os.path.join(s, i)
+                                # d_charm = os.path.join(package_folder, item, i)
+                                d_temp = os.path.join(d, i)
+                                # if os.path.exists(d_charm):
+                                #     shutil.rmtree(d_charm)
+                                shutil.copytree(s_charm, d_temp, symlinks = True, ignore = ignore)
+                                # shutil.copytree(s_charm, d_charm, symlinks = True, ignore = ignore)
+                    else:
+                        shutil.copytree(s, d, symlinks = True, ignore = ignore)
+                else:
+                    shutil.copy2(s, d)
+        return directory_name
+
+    def charms_search(self, descriptor_file, desc_type):
+        self._logger.debug("")
+        dict = {}
+        list = []
+        with open("{}".format(descriptor_file)) as yaml_desc:
+            dict = yaml.safe_load(yaml_desc)
+            for k1, v1 in dict.items():
+                for k2, v2 in v1.items():
+                    for entry in v2:
+                        if '{}-configuration'.format(desc_type) in entry:
+                            name = entry['{}-configuration'.format(desc_type)]
+                            for k3, v3 in name.items():
+                                if 'charm' in v3:
+                                    list.append((v3['charm']))
+                        if 'vdu' in entry:
+                            name = entry['vdu']
+                            for vdu in name:
+                                if 'vdu-configuration' in vdu:
+                                    for k4, v4 in vdu['vdu-configuration'].items():
+                                        if 'charm' in v4:
+                                            list.append((v4['charm']))
+        return list
+
