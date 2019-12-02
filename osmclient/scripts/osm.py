@@ -28,6 +28,7 @@ import time
 import pycurl
 import os
 import textwrap
+import pkg_resources
 
 
 def wrap_text(text, width):
@@ -3023,7 +3024,8 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
 def get_version(ctx):
     try:
         check_client_version(ctx.obj, "version")
-        print (ctx.obj.get_version())
+        print ("Server version: {}".format(ctx.obj.get_version()))
+        print ("Client version: {}".format(pkg_resources.get_distribution("osmclient").version))
     except ClientException as e:
         print(str(e))
         exit(1)
