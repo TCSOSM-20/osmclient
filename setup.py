@@ -14,14 +14,19 @@
 #    under the License.
 from setuptools import setup, find_packages
 
+_description = 'OSM client library and console script'
+
 setup(
     name='osmclient',
     version_command=('git describe --match v* --tags --long --dirty',
                      'pep440-git-full'),
-    author='Mike Marchetti',
-    author_email='mmarchetti@sandvine.com',
+    author='ETSI',
     packages=find_packages(),
     include_package_data=True,
+    maintainer='Gerardo Garcia',
+    maintainer_email='gerardo.garciadeblas@telefonica.com',
+    description=_description,
+    license='Apache 2',
     install_requires=[
         'Click', 'prettytable', 'pyyaml', 'pycurl', 'python-magic',
         'jinja2', 'osm-im'
