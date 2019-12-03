@@ -2501,9 +2501,9 @@ def k8scluster_show(ctx, name, literal):
 @click.argument('name')
 @click.argument('uri')
 @click.option('--type',
-              type=click.Choice(['chart', 'bundle']),
+              type=click.Choice(['helm-chart', 'juju-bundle']),
               prompt=True,
-              help='type of repo (chart for helm-charts, bundle for juju-bundles)')
+              help='type of repo for helm-chart or juju-bundle')
 @click.option('--description',
               default='',
               help='human readable description')
@@ -2539,8 +2539,8 @@ def repo_add(ctx,
 @click.argument('name')
 @click.option('--newname', help='New name for the repo')
 @click.option('--uri', help='URI of the repo')
-@click.option('--type', type=click.Choice(['chart', 'bundle']),
-              help='type of repo (chart for helm-charts, bundle for juju-bundles)')
+@click.option('--type', type=click.Choice(['helm-chart', 'juju-bundle']),
+              help='type of repo for helm-chart or juju-bundle')
 @click.option('--description', help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
