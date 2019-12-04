@@ -198,9 +198,6 @@ class Ns(object):
                     if not additional_param_vnf.get("member-vnf-index"):
                         raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
                                          "'member-vnf-index'")
-                    if not additional_param_vnf.get("additionalParams"):
-                        raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
-                                         "'additionalParams'")
             if "wim_account" in ns_config:
                 wim_account = ns_config.pop("wim_account")
                 if wim_account is not None:
