@@ -2455,11 +2455,11 @@ def k8scluster_list(ctx, filter, literal):
         if literal:
             print(yaml.safe_dump(resp))
             return
-        table = PrettyTable(['Name', 'Id', 'Version', 'VIM', 'K8s-nets', 'Description'])
+        table = PrettyTable(['Name', 'Id', 'Version', 'VIM', 'K8s-nets', 'Operational State', 'Description'])
         for cluster in resp:
             table.add_row([cluster['name'], cluster['_id'], cluster['k8s_version'], cluster['vim_account'],
-                           json.dumps(cluster['nets']), trunc_text(cluster.get('description',''),40)
-                          ])
+                           json.dumps(cluster['nets']), cluster["_admin"]["operationalState"], 
+                           trunc_text(cluster.get('description',''),40)])
         table.align = 'l'
         print(table)
     except ClientException as e:
