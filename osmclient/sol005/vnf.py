@@ -21,7 +21,7 @@ OSM vnf API handling
 from osmclient.common import utils
 from osmclient.common.exceptions import NotFound
 import logging
-
+import json
 
 class Vnf(object):
 
@@ -49,10 +49,10 @@ class Vnf(object):
                 filter_string += ',nsr-id-ref={}'.format(ns_instance['_id'])
             else:
                 filter_string = '?nsr-id-ref={}'.format(ns_instance['_id'])
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         #print('RESP: {}'.format(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):
@@ -79,9 +79,9 @@ class Vnf(object):
                 if name == vnf['name']:
                     vnf_id = vnf['_id']
                     break
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase, vnf_id))
+        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, vnf_id))
         #print('RESP: {}'.format(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         raise NotFound("vnf {} not found".format(name))
 

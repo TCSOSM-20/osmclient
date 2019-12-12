@@ -20,6 +20,7 @@ OSM package API handling
 
 #from os import stat
 #from os.path import basename
+from osmclient.common.exceptions import OsmHttpException
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 from osmclient.common import utils
@@ -100,19 +101,18 @@ class Package(object):
         http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                     msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to upload package - {}".format(msg))
-
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise OsmHttpException('unexpected response from server - {}'.format(
+                                   resp))
+        print(resp['id'])
+        # else:
+        #     msg = ""
+        #     if resp:
+        #         try:
+        #              msg = json.loads(resp)
+        #         except ValueError:
+        #             msg = resp
+        #     raise ClientException("failed to upload package - {}".format(msg))

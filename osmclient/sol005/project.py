@@ -20,8 +20,8 @@ OSM project mgmt API
 """
 
 from osmclient.common import utils
-from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
+from osmclient.common.exceptions import OsmHttpException
 import json
 import logging
 
@@ -46,21 +46,21 @@ class Project(object):
                                               postfields_dict=project)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to create project {} - {}".format(name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise OsmHttpException('unexpected response from server - {}'.format(
+                                  resp))
+        print(resp['id'])
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to create project {} - {}".format(name, msg))
 
     def update(self, project, project_changes):
         """Updates an OSM project identified by name
@@ -76,19 +76,19 @@ class Project(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
+                raise OsmHttpException('unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
         elif http_code == 204:
             print("Updated")
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to update project {} - {}".format(project, msg))
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to update project {} - {}".format(project, msg))
 
     def delete(self, name, force=False):
         """Deletes an OSM project identified by name
@@ -116,7 +116,7 @@ class Project(object):
                     msg = json.loads(resp)
                 except ValueError:
                     msg = resp
-            raise ClientException("failed to delete project {} - {}".format(name, msg))
+            raise OsmHttpException("failed to delete project {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """Returns the list of OSM projects
@@ -126,10 +126,10 @@ class Project(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         #print('RESP: {}'.format(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):

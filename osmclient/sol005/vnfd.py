@@ -20,6 +20,7 @@ OSM vnfd API handling
 
 from osmclient.common.exceptions import NotFound
 from osmclient.common.exceptions import ClientException
+from osmclient.common.exceptions import OsmHttpException
 from osmclient.common import utils
 import json
 import magic
@@ -47,9 +48,9 @@ class Vnfd(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):
@@ -70,10 +71,10 @@ class Vnfd(object):
         vnfd = self.get(name)
         # It is redundant, since the previous one already gets the whole vnfpkginfo
         # The only difference is that a different primitive is exercised
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase, vnfd['_id']))
+        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, vnfd['_id']))
         #print(yaml.safe_dump(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         raise NotFound("vnfd {} not found".format(name))
 
     def get_thing(self, name, thing, filename):
@@ -84,18 +85,18 @@ class Vnfd(object):
         http_code, resp = self._http.get2_cmd('{}/{}/{}'.format(self._apiBase, vnfd['_id'], thing))
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                #store in a file
-                return resp
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            #store in a file
+            return json.loads(resp)
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
 
     def get_descriptor(self, name, filename):
         self._logger.debug("")
@@ -131,7 +132,7 @@ class Vnfd(object):
                     msg = json.loads(resp)
                 except ValueError:
                     msg = resp
-            raise ClientException("failed to delete vnfd {} - {}".format(name, msg))
+            raise OsmHttpException("failed to delete vnfd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
         self._logger.debug("")
@@ -177,19 +178,18 @@ class Vnfd(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server: '.format(
-                                      resp))
+                raise OsmHttpException('unexpected response from server: '.format(resp))
             print(resp['id'])
         elif http_code == 204:
             print('Updated')
-        else:
-            msg = "Error {}".format(http_code)
-            if resp:
-                try:
-                    msg = "{} - {}".format(msg, json.loads(resp))
-                except ValueError:
-                    msg = "{} - {}".format(msg, resp)
-            raise ClientException("failed to create/update vnfd - {}".format(msg))
+        # else:
+        #     msg = "Error {}".format(http_code)
+        #     if resp:
+        #         try:
+        #             msg = "{} - {}".format(msg, json.loads(resp))
+        #         except ValueError:
+        #             msg = "{} - {}".format(msg, resp)
+        #     raise ClientException("failed to create/update vnfd - {}".format(msg))
 
     def update(self, name, filename):
         self._logger.debug("")

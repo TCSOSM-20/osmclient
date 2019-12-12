@@ -22,6 +22,7 @@ OSM user mgmt API
 from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
+from osmclient.common.exceptions import OsmHttpException
 import json
 import logging
 
@@ -68,21 +69,21 @@ class User(object):
                                        postfields_dict=user)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to create user {} - {}".format(name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise OsmHttpException('unexpected response from server - {}'.format(
+                                  resp))
+        print(resp['id'])
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to create user {} - {}".format(name, msg))
 
     def update(self, name, user):
         """Updates an existing OSM user identified by name
@@ -152,19 +153,19 @@ class User(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
+                raise OsmHttpException('unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
         elif http_code == 204:
             print('Updated')
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to update user {} - {}".format(name, msg))
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to update user {} - {}".format(name, msg))
 
     def delete(self, name, force=False):
         """Deletes an existing OSM user identified by name
@@ -192,7 +193,7 @@ class User(object):
                     msg = json.loads(resp)
                 except ValueError:
                     msg = resp
-            raise ClientException("failed to delete user {} - {}".format(name, msg))
+            raise OsmHttpException("failed to delete user {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """Returns the list of OSM users
@@ -202,10 +203,10 @@ class User(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         #print('RESP: {}'.format(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):

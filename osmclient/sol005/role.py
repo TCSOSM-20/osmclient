@@ -23,6 +23,7 @@ OSM role mgmt API
 from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
+from osmclient.common.exceptions import OsmHttpException
 import json
 import yaml
 import logging
@@ -68,21 +69,21 @@ class Role(object):
                                               postfields_dict=role)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('Unexpected response from server - {}'.format(
-                                      resp))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("Failed to create role {} - {}".format(name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise OsmHttpException('Unexpected response from server - {}'.format(
+                                  resp))
+        print(resp['id'])
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("Failed to create role {} - {}".format(name, msg))
 
     def update(self, name, new_name, permissions, add=None, remove=None):
         """
@@ -155,19 +156,19 @@ class Role(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise ClientException('Unexpected response from server - {}'.format(
+                raise OsmHttpException('Unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
         elif http_code == 204:
             print("Updated")
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("Failed to update role {} - {}".format(name, msg))
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("Failed to update role {} - {}".format(name, msg))
 
     def delete(self, name, force=False):
         """
@@ -200,7 +201,7 @@ class Role(object):
                     msg = json.loads(resp)
                 except ValueError:
                     msg = resp
-            raise ClientException("Failed to delete role {} - {}".format(name, msg))
+            raise OsmHttpException("Failed to delete role {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """
@@ -214,10 +215,10 @@ class Role(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase, filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase, filter_string))
         # print('RESP: {}'.format(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):

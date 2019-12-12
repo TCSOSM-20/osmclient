@@ -22,6 +22,7 @@ from osmclient.common import utils
 from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
+from osmclient.common.exceptions import OsmHttpException
 import yaml
 import json
 import logging
@@ -62,9 +63,9 @@ class Nsi(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):
@@ -91,11 +92,11 @@ class Nsi(object):
                 if name == nsi['name']:
                     nsi_id = nsi['_id']
                     break
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase, nsi_id))
+        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nsi_id))
         #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, nsi_id))
         #print(yaml.safe_dump(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         raise NotFound("nsi {} not found".format(name))
 
     def delete(self, name, force=False, wait=False):
@@ -125,7 +126,7 @@ class Nsi(object):
                     msg = json.loads(resp)
                 except ValueError:
                     msg = resp
-            raise ClientException("failed to delete nsi {} - {}".format(name, msg))
+            raise OsmHttpException("failed to delete nsi {} - {}".format(name, msg))
 
     def create(self, nst_name, nsi_name, account, config=None,
                ssh_keys=None, description='default description',
@@ -226,33 +227,33 @@ class Nsi(object):
                           for (key,val) in list(headers.items())]
             self._http.set_http_header(http_header)
             http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                       postfields_dict=nsi)
+                                   postfields_dict=nsi)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                if resp:
-                    resp = json.loads(resp)
-                if not resp or 'id' not in resp:
-                    raise ClientException('unexpected response from server - {} '.format(
-                                      resp))
-                if wait:
-                    # Wait for status for NSI instance creation
-                    self._wait(resp.get('nsilcmop_id'))
-                print(resp['id'])
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException(msg)
+            #if http_code in (200, 201, 202, 204):
+            if resp:
+                resp = json.loads(resp)
+            if not resp or 'id' not in resp:
+                raise ClientException('unexpected response from server - {} '.format(
+                                  resp))
+            if wait:
+                # Wait for status for NSI instance creation
+                self._wait(resp.get('nsilcmop_id'))
+            print(resp['id'])
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException(msg)
         except ClientException as exc:
             message="failed to create nsi: {} nst: {}\nerror:\n{}".format(
                     nsi_name,
                     nst_name,
                     str(exc))
-            raise ClientException(message)
+            raise OsmHttpException(message)
 
     def list_op(self, name, filter=None):
         """Returns the list of operations of a NSI
@@ -271,26 +272,26 @@ class Nsi(object):
                                                        filter_string) )
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code == 200:
-                if resp:
-                    resp = json.loads(resp)
-                    return resp
-                else:
-                    raise ClientException('unexpected response from server')
+            #if http_code == 200:
+            if resp:
+                resp = json.loads(resp)
+                return resp
             else:
-                msg = ""
-                if resp:
-                    try:
-                        resp = json.loads(resp)
-                        msg = resp['detail']
-                    except ValueError:
-                        msg = resp
-                raise ClientException(msg)
+                 raise ClientException('unexpected response from server')
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            resp = json.loads(resp)
+            #            msg = resp['detail']
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException(msg)
         except ClientException as exc:
             message="failed to get operation list of NSI {}:\nerror:\n{}".format(
                     name,
                     str(exc))
-            raise ClientException(message)
+            raise OsmHttpException(message)
 
     def get_op(self, operationId):
         """Returns the status of an operation
@@ -304,26 +305,26 @@ class Nsi(object):
             http_code, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, operationId))
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code == 200:
-                if resp:
-                    resp = json.loads(resp)
-                    return resp
-                else:
-                    raise ClientException('unexpected response from server')
+            #if http_code == 200:
+            if resp:
+                resp = json.loads(resp)
+                return resp
             else:
-                msg = ""
-                if resp:
-                    try:
-                        resp = json.loads(resp)
-                        msg = resp['detail']
-                    except ValueError:
-                        msg = resp
-                raise ClientException(msg)
+                raise ClientException('unexpected response from server')
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            resp = json.loads(resp)
+            #            msg = resp['detail']
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException(msg)
         except ClientException as exc:
             message="failed to get status of operation {}:\nerror:\n{}".format(
                     operationId,
                     str(exc))
-            raise ClientException(message)
+            raise OsmHttpException(message)
 
     def exec_op(self, name, op_name, op_data=None):
         """Executes an operation on a NSI
@@ -340,24 +341,24 @@ class Nsi(object):
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=op_data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                if resp:
-                    resp = json.loads(resp)
-                if not resp or 'id' not in resp:
-                    raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-                print(resp['id'])
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException(msg)
+            #if http_code in (200, 201, 202, 204):
+            if resp:
+                resp = json.loads(resp)
+            if not resp or 'id' not in resp:
+                raise ClientException('unexpected response from server - {}'.format(
+                                  resp))
+            print(resp['id'])
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException(msg)
         except ClientException as exc:
             message="failed to exec operation {}:\nerror:\n{}".format(
                     name,
                     str(exc))
-            raise ClientException(message)
+            raise OsmHttpException(message)
 
