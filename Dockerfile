@@ -11,9 +11,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
-RUN apt-get update && apt-get -y install git make python python3 \
-    libcurl4-gnutls-dev libgnutls-dev tox python-dev python3-dev \
-    debhelper python-setuptools python3-setuptools python-all python3-all \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install git \
+    make python3 python3-pip libcurl4-openssl-dev libssl-dev tox python3-dev \
+    debhelper python3-setuptools python3-all python-all python-pip \
     apt-utils

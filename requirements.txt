@@ -14,5 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-nose
-mock
+Click
+prettytable
+PyYAML
+pycurl
+python-magic
+jinja2
+git+https://osm.etsi.org/gerrit/osm/IM.git#egg=osm-im

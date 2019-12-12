@@ -28,7 +28,7 @@ setup(
     description=_description,
     license='Apache 2',
     install_requires=[
-        'Click', 'prettytable', 'pyyaml', 'pycurl', 'python-magic',
+        'Click', 'prettytable', 'pyyaml', 'PycURL', 'python-magic',
         'jinja2', 'osm-im'
     ],
     dependency_links=[
