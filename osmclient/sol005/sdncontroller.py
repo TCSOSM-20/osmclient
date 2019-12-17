@@ -61,16 +61,14 @@ class SdnController(object):
 
     def create(self, name, sdn_controller, wait=False):
         self._client.get_token()
-        http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                       postfields_dict=sdn_controller)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
+        http_code, resp = self._http.post_cmd(endpoint=self._apiBase, postfields_dict=sdn_controller)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
+                raise ClientException('unexpected response from server - {}'.format(resp))
             if wait:
                 # Wait for status for SDNC instance creation
                 self._wait(resp.get('id'))
@@ -89,7 +87,7 @@ class SdnController(object):
         sdnc = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
-                                       postfields_dict=sdn_controller)
+                                               postfields_dict=sdn_controller)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
@@ -118,9 +116,9 @@ class SdnController(object):
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                         sdn_controller['_id'], querystring))
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
+                                                                 sdn_controller['_id'], querystring))
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait:
                 # Wait for status for SDNC instance deletion
@@ -147,8 +145,8 @@ class SdnController(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
-        #print('RESP: {}'.format(resp))
+        resp = self._http.get_cmd('{}{}'.format(self._apiBase, filter_string))
+        # print('RESP: {}'.format(resp))
         if resp:
             return resp
         return list()

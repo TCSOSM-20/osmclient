@@ -1102,8 +1102,8 @@ def nsd_create(ctx, filename, overwrite):
 
 @cli.command(name='nsd-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1118,8 +1118,8 @@ def nsd_create1(ctx, filename, overwrite):
 
 @cli.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1159,8 +1159,8 @@ def vnfd_create1(ctx, filename, overwrite):
 
 @cli.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1175,8 +1175,8 @@ def vnfd_create2(ctx, filename, overwrite):
 
 @cli.command(name='nfpkg-create', short_help='creates a new NFpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1212,8 +1212,8 @@ def nfpkg_create(ctx, filename, overwrite):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def ns_create(ctx,
               nsd_name,
@@ -1255,9 +1255,9 @@ def nst_create(ctx, filename, overwrite):
 
 @cli.command(name='nst-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrites deprecated use override')
-@click.option('--override', 'overwrite' ,default=None,
+@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+              help='Deprecated. Use override')
+@click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
@@ -1271,8 +1271,8 @@ def nst_create1(ctx, filename, overwrite):
 
 @cli.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrites deprecated use override')
+@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1325,8 +1325,8 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
@@ -1355,8 +1355,8 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
@@ -1372,7 +1372,8 @@ def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
               multiple=True)
 @click.option('--description', help='human readable description')
 @click.option('--vim_account', help='list of VIM accounts (in the same VIM) that can reach this PDU', multiple=True)
-@click.option('--descriptor_file', default=None, help='PDU descriptor file (as an alternative to using the other arguments')
+@click.option('--descriptor_file', default=None,
+              help='PDU descriptor file (as an alternative to using the other arguments')
 @click.pass_context
 def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descriptor_file):
     """creates a new Physical Deployment Unit (PDU)"""
@@ -1624,8 +1625,8 @@ def nfpkg_delete(ctx, name, force):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def ns_delete(ctx, name, force, wait):
     """deletes a NS instance
@@ -1692,8 +1693,8 @@ def nsi_delete(ctx, name, force, wait):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def nsi_delete1(ctx, name, force, wait):
     """deletes a Network Slice Instance (NSI)
@@ -1769,8 +1770,8 @@ def pdu_delete(ctx, name, force):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def vim_create(ctx,
                name,
@@ -1823,8 +1824,8 @@ def vim_create(ctx,
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def vim_update(ctx,
                name,
@@ -1867,8 +1868,8 @@ def vim_update(ctx,
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def vim_delete(ctx, name, force, wait):
     """deletes a VIM account
@@ -1959,13 +1960,15 @@ def vim_show(ctx, name):
 @click.option('--description',
               default='no description',
               help='human readable description')
-@click.option('--wim_port_mapping', default=None, help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge (WAN service endpoint id and info)")
+@click.option('--wim_port_mapping', default=None,
+              help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge "
+                   "(WAN service endpoint id and info)")
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def wim_create(ctx,
                name,
@@ -2008,13 +2011,14 @@ def wim_create(ctx,
 @click.option('--config', help='WIM specific config parameters')
 @click.option('--wim_type', help='WIM type')
 @click.option('--description', help='human readable description')
-@click.option('--wim_port_mapping', default=None, help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge (WAN service endpoint id and info)")
+@click.option('--wim_port_mapping', default=None,
+              help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge "
+                   "(WAN service endpoint id and info)")
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def wim_update(ctx,
                name,
@@ -2055,8 +2059,7 @@ def wim_update(ctx,
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def wim_delete(ctx, name, force, wait):
     """deletes a WIM account
@@ -2125,60 +2128,50 @@ def wim_show(ctx, name):
 @click.option('--type',
               prompt=True,
               help='SDN controller type')
-@click.option('--sdn_controller_version',
-              help='SDN controller version')
-@click.option('--ip_address',
-              prompt=True,
-              help='SDN controller IP address')
-@click.option('--port',
-              prompt=True,
-              help='SDN controller port')
-@click.option('--switch_dpid',
-              prompt=True,
-              help='Switch DPID (Openflow Datapath ID)')
+@click.option('--sdn_controller_version', hidden=True,
+              help='Deprecated. Use --config {version: sdn_controller_version}')
+@click.option('--url',
+              help='URL in format http[s]://HOST:IP/')
+@click.option('--ip_address', hidden=True,
+              help='Deprecated. Use --url')
+@click.option('--port', hidden=True,
+              help='Deprecated. Use --url')
+@click.option('--switch_dpid', hidden=True,
+              help='Deprecated. Use --config {dpid: DPID}')
+@click.option('--config',
+              help='Extra information for SDN in yaml format, as {dpid: (Openflow Datapath ID), version: version}')
 @click.option('--user',
               help='SDN controller username')
 @click.option('--password',
               hide_input=True,
               confirmation_prompt=True,
               help='SDN controller password')
-#@click.option('--description',
-#              default='no description',
-#              help='human readable description')
+@click.option('--description', default=None, help='human readable description')
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help="do not return the control immediately, but keep it until the operation is completed, or timeout")
 @click.pass_context
-def sdnc_create(ctx,
-                name,
-                type,
-                sdn_controller_version,
-                ip_address,
-                port,
-                switch_dpid,
-                user,
-                password,
-                wait):
+def sdnc_create(ctx, **kwargs):
     """creates a new SDN controller"""
-    sdncontroller = {}
-    sdncontroller['name'] = name
-    sdncontroller['type'] = type
-    sdncontroller['ip'] = ip_address
-    sdncontroller['port'] = int(port)
-    sdncontroller['dpid'] = switch_dpid
-    if sdn_controller_version:
-        sdncontroller['version'] = sdn_controller_version
-    if user:
-        sdncontroller['user'] = user
-    if password:
-        sdncontroller['password'] = password
-#    sdncontroller['description'] = description
+    sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
+                     x not in ("wait", "ip_address", "port", "switch_dpid")}
+    if kwargs.get("port"):
+        print("option '--port' is deprecated, use '-url' instead")
+        sdncontroller["port"] = int(kwargs["port"])
+    if kwargs.get("ip_address"):
+        print("option '--ip_address' is deprecated, use '-url' instead")
+        sdncontroller["ip"] = kwargs["ip_address"]
+    if kwargs.get("switch_dpid"):
+        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        sdncontroller["dpid"] = kwargs["switch_dpid"]
+    if kwargs.get("sdn_controller_version"):
+        print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
+              " instead")
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.create(name, sdncontroller, wait=wait)
+        ctx.obj.sdnc.create(kwargs["name"], sdncontroller, wait=kwargs["wait"])
     except ClientException as e:
         print(str(e))
         exit(1)
@@ -2186,61 +2179,45 @@ def sdnc_create(ctx,
 @cli.command(name='sdnc-update', short_help='updates an SDN controller')
 @click.argument('name')
 @click.option('--newname', help='New name for the SDN controller')
+@click.option('--description',  default=None, help='human readable description')
 @click.option('--type', help='SDN controller type')
-@click.option('--sdn_controller_version', help='SDN controller username')
-@click.option('--ip_address', help='SDN controller IP address')
-@click.option('--port', help='SDN controller port')
-@click.option('--switch_dpid', help='Switch DPID (Openflow Datapath ID)')
+@click.option('--url', help='URL in format http[s]://HOST:IP/')
+@click.option('--config', help='Extra information for SDN in yaml format, as '
+                               '{dpid: (Openflow Datapath ID), version: version}')
 @click.option('--user', help='SDN controller username')
 @click.option('--password', help='SDN controller password')
-#@click.option('--description',  default=None, help='human readable description')
-@click.option('--wait',
-              required=False,
-              default=False,
-              is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+@click.option('--ip_address', hidden=True, help='Deprecated. Use --url')
+@click.option('--port', hidden=True, help='Deprecated. Use --url')
+@click.option('--switch_dpid', hidden=True, help='Deprecated. Use --config {switch_dpid: DPID}')
+@click.option('--sdn_controller_version', hidden=True, help='Deprecated. Use --config {version: VERSION}')
+@click.option('--wait', required=False, default=False, is_flag=True,
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
-def sdnc_update(ctx,
-                name,
-                newname,
-                type,
-                sdn_controller_version,
-                ip_address,
-                port,
-                switch_dpid,
-                user,
-                password,
-                wait):
+def sdnc_update(ctx, **kwargs):
     """updates an SDN controller
 
     NAME: name or ID of the SDN controller
     """
-    sdncontroller = {}
-    if newname: sdncontroller['name'] = newname
-    if type: sdncontroller['type'] = type
-    if ip_address: sdncontroller['ip'] = ip_address
-    if port: sdncontroller['port'] = int(port)
-    if switch_dpid: sdncontroller['dpid'] = switch_dpid
-#    sdncontroller['description'] = description
-    if sdn_controller_version is not None:
-        if sdn_controller_version=="":
-            sdncontroller['version'] = None
-        else:
-            sdncontroller['version'] = sdn_controller_version
-    if user is not None:
-        if user=="":
-            sdncontroller['user'] = None
-        else:
-            sdncontroller['user'] = user
-    if password is not None:
-        if password=="":
-            sdncontroller['password'] = None
-        else:
-            sdncontroller['password'] = user
+    sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
+                     x not in ("wait", "ip_address", "port", "switch_dpid", "new_name")}
+    if kwargs.get("newname"):
+        sdncontroller["name"] = kwargs["newname"]
+    if kwargs.get("port"):
+        print("option '--port' is deprecated, use '-url' instead")
+        sdncontroller["port"] = int(kwargs["port"])
+    if kwargs.get("ip_address"):
+        print("option '--ip_address' is deprecated, use '-url' instead")
+        sdncontroller["ip"] = kwargs["ip_address"]
+    if kwargs.get("switch_dpid"):
+        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        sdncontroller["dpid"] = kwargs["switch_dpid"]
+    if kwargs.get("sdn_controller_version"):
+        print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
+              " instead")
+
     try:
         check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.update(name, sdncontroller, wait=wait)
+        ctx.obj.sdnc.update(kwargs["name"], sdncontroller, wait=kwargs["wait"])
     except ClientException as e:
         print(str(e))
         exit(1)
@@ -2249,12 +2226,8 @@ def sdnc_update(ctx,
 @cli.command(name='sdnc-delete', short_help='deletes an SDN controller')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
-@click.option('--wait',
-              required=False,
-              default=False,
-              is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+@click.option('--wait', required=False, default=False, is_flag=True,
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def sdnc_delete(ctx, name, force, wait):
     """deletes an SDN controller
@@ -2271,7 +2244,7 @@ def sdnc_delete(ctx, name, force, wait):
 
 @cli.command(name='sdnc-list', short_help='list all SDN controllers')
 @click.option('--filter', default=None,
-              help='restricts the list to the SDN controllers matching the filter')
+              help="restricts the list to the SDN controllers matching the filter with format: 'k[.k..]=v[&k[.k]=v2]'")
 @click.pass_context
 def sdnc_list(ctx, filter):
     """list all SDN controllers"""
@@ -2342,8 +2315,7 @@ def sdnc_show(ctx, name):
 #              help='If set, K8s cluster is assumed to be ready for its use with OSM')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def k8scluster_add(ctx,
                name,
@@ -2425,8 +2397,7 @@ def k8scluster_update(ctx,
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def k8scluster_delete(ctx, name, force):
     """deletes a K8s cluster
@@ -2509,8 +2480,7 @@ def k8scluster_show(ctx, name, literal):
               help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def repo_add(ctx,
              name,
@@ -2544,8 +2514,7 @@ def repo_add(ctx,
 @click.option('--description', help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def repo_update(ctx,
              name,
@@ -2575,8 +2544,7 @@ def repo_update(ctx,
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def repo_delete(ctx, name, force):
     """deletes a repo
@@ -3211,8 +3179,7 @@ def upload_package(ctx, filename):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def ns_action(ctx,
               ns_name,
