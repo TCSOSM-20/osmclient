@@ -212,6 +212,8 @@ class Ns(object):
                 wim_account = ns_config.pop("wim_account")
                 if wim_account is not None:
                     ns['wimAccountId'] = get_wim_account_id(wim_account)
+            if "timeout_ns_deploy" in ns_config:
+                ns["timeout_ns_deploy"] = ns_config.pop("timeout_ns_deploy")
 
         # print(yaml.safe_dump(ns))
         try:

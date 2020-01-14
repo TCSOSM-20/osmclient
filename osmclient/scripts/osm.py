@@ -1151,7 +1151,7 @@ def nsd_create(ctx, filename, overwrite):
 
 @cli_osm.command(name='nsd-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
               help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
@@ -1168,7 +1168,7 @@ def nsd_create1(ctx, filename, overwrite):
 
 @cli_osm.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
               help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
@@ -1212,7 +1212,7 @@ def vnfd_create1(ctx, filename, overwrite):
 
 @cli_osm.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
               help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
@@ -1229,7 +1229,7 @@ def vnfd_create2(ctx, filename, overwrite):
 
 @cli_osm.command(name='nfpkg-create', short_help='creates a new NFpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
               help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
@@ -1312,7 +1312,7 @@ def nst_create(ctx, filename, overwrite):
 
 @cli_osm.command(name='nst-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
               help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
@@ -1329,7 +1329,7 @@ def nst_create1(ctx, filename, overwrite):
 
 @cli_osm.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None, hidden=True,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
               help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
@@ -2227,15 +2227,15 @@ def wim_show(ctx, name):
 @click.option('--type',
               prompt=True,
               help='SDN controller type')
-@click.option('--sdn_controller_version', hidden=True,
+@click.option('--sdn_controller_version',  # hidden=True,
               help='Deprecated. Use --config {version: sdn_controller_version}')
 @click.option('--url',
               help='URL in format http[s]://HOST:IP/')
-@click.option('--ip_address', hidden=True,
+@click.option('--ip_address',  # hidden=True,
               help='Deprecated. Use --url')
-@click.option('--port', hidden=True,
+@click.option('--port',  # hidden=True,
               help='Deprecated. Use --url')
-@click.option('--switch_dpid', hidden=True,
+@click.option('--switch_dpid',  # hidden=True,
               help='Deprecated. Use --config {dpid: DPID}')
 @click.option('--config',
               help='Extra information for SDN in yaml format, as {dpid: (Openflow Datapath ID), version: version}')
@@ -2286,10 +2286,10 @@ def sdnc_create(ctx, **kwargs):
                                '{dpid: (Openflow Datapath ID), version: version}')
 @click.option('--user', help='SDN controller username')
 @click.option('--password', help='SDN controller password')
-@click.option('--ip_address', hidden=True, help='Deprecated. Use --url')
-@click.option('--port', hidden=True, help='Deprecated. Use --url')
-@click.option('--switch_dpid', hidden=True, help='Deprecated. Use --config {switch_dpid: DPID}')
-@click.option('--sdn_controller_version', hidden=True, help='Deprecated. Use --config {version: VERSION}')
+@click.option('--ip_address', help='Deprecated. Use --url')  # hidden=True
+@click.option('--port', help='Deprecated. Use --url')  # hidden=True
+@click.option('--switch_dpid', help='Deprecated. Use --config {switch_dpid: DPID}')  # hidden=True
+@click.option('--sdn_controller_version', help='Deprecated. Use --config {version: VERSION}')  # hidden=True
 @click.option('--wait', required=False, default=False, is_flag=True,
               help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context

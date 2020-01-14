@@ -212,6 +212,8 @@ class Nsi(object):
                             not additional_param_subnet.get("additionalParamsForVnf"):
                         raise ValueError("Error at --config 'additionalParamsForSubnet' items must contain "
                                          "'additionalParamsForNs' and/or 'additionalParamsForVnf'")
+            if "timeout_nsi_deploy" in nsi_config:
+                nsi["timeout_nsi_deploy"] = nsi_config.pop("timeout_nsi_deploy")
 
         # print(yaml.safe_dump(nsi))
         try:
