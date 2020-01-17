@@ -30,6 +30,7 @@ import os
 import textwrap
 import pkg_resources
 import logging
+from datetime import datetime
 
 
 # Global variables
@@ -835,6 +836,32 @@ def vnf_show(ctx, name, literal, filter, kdu):
 
     NAME: name or ID of the VNF instance
     """
+    def print_kdu_status(op_info_status):
+        """print KDU status properly formatted
+        """
+        try:
+            op_status = yaml.safe_load(op_info_status)
+            if "namespace" in op_status and "info" in op_status and \
+            "last_deployed" in op_status["info"] and "status" in op_status["info"] and \
+            "code" in op_status["info"]["status"] and "resources" in op_status["info"]["status"] and \
+            "notes" in op_status["info"]["status"] and "seconds" in op_status["info"]["last_deployed"]:
+                last_deployed_time = datetime.fromtimestamp(op_status["info"]["last_deployed"]["seconds"]).strftime("%a %b %d %I:%M:%S %Y")
+                print("LAST DEPLOYED: {}".format(last_deployed_time))
+                print("NAMESPACE: {}".format(op_status["namespace"]))
+                status_code = "UNKNOWN"
+                if op_status["info"]["status"]["code"]==1:
+                    status_code = "DEPLOYED"
+                print("STATUS: {}".format(status_code))
+                print()
+                print("RESOURCES:")
+                print(op_status["info"]["status"]["resources"])
+                print("NOTES:")
+                print(op_status["info"]["status"]["notes"])
+            else:
+                print(op_info_status)
+        except Exception:
+            print(op_info_status)
+
     logger.debug("")
     if kdu:
         if literal:
@@ -858,7 +885,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
         while t<30:
             op_info = ctx.obj.ns.get_op(op_id)
             if op_info['operationState'] == 'COMPLETED':
-                print(op_info['detailed-status'])
+                print_kdu_status(op_info['detailed-status'])
                 return
             time.sleep(5)
             t += 5
