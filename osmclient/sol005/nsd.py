@@ -24,6 +24,7 @@ from osmclient.common import utils
 import json
 import magic
 from os.path import basename
+import logging
 #from os import stat
 
 
@@ -32,6 +33,7 @@ class Nsd(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/nsd'
         self._apiVersion = '/v1'
         self._apiResource = '/ns_descriptors'
@@ -40,6 +42,7 @@ class Nsd(object):
         #self._apiBase='/nsds'
 
     def list(self, filter=None):
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -51,6 +54,7 @@ class Nsd(object):
         return list()
 
     def get(self, name):
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for nsd in self.list():
@@ -63,7 +67,8 @@ class Nsd(object):
         raise NotFound("nsd {} not found".format(name))
 
     def get_individual(self, name):
-        # Called to get_token not required, because will be implicitly called by get.
+        self._logger.debug("")
+        # Call to get_token not required, because will be implicitly called by get.
         nsd = self.get(name)
         # It is redundant, since the previous one already gets the whole nsdinfo
         # The only difference is that a different primitive is exercised
@@ -74,6 +79,8 @@ class Nsd(object):
         raise NotFound("nsd {} not found".format(name))
 
     def get_thing(self, name, thing, filename):
+        self._logger.debug("")
+        # Call to get_token not required, because will be implicitly called by get.
         nsd = self.get(name)
         headers = self._client._headers
         headers['Accept'] = 'application/binary'
@@ -94,15 +101,19 @@ class Nsd(object):
             raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
 
     def get_descriptor(self, name, filename):
+        self._logger.debug("")
         self.get_thing(name, 'nsd', filename)
 
     def get_package(self, name, filename):
+        self._logger.debug("")
         self.get_thing(name, 'package_content', filename)
 
     def get_artifact(self, name, artifact, filename):
+        self._logger.debug("")
         self.get_thing(name, 'artifacts/{}'.format(artifact), filename)
 
     def delete(self, name, force=False):
+        self._logger.debug("")
         nsd = self.get(name)
         querystring = ''
         if force:
@@ -125,6 +136,7 @@ class Nsd(object):
             raise ClientException("failed to delete nsd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
+        self._logger.debug("")
         self._client.get_token()
         mime_type = magic.from_file(filename, mime=True)
         if mime_type is None:
@@ -182,6 +194,7 @@ class Nsd(object):
             raise ClientException("failed to create/update nsd - {}".format(msg))
 
     def update(self, name, filename):
+        self._logger.debug("")
         nsd = self.get(name)
         endpoint = '{}/{}/nsd_content'.format(self._apiBase, nsd['_id'])
         self.create(filename=filename, update_endpoint=endpoint)

@@ -24,6 +24,7 @@ from osmclient.common import utils
 import json
 import magic
 from os.path import basename
+import logging
 #from os import stat
 
 
@@ -32,6 +33,7 @@ class Vnfd(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/vnfpkgm'
         self._apiVersion = '/v1'
         self._apiResource = '/vnf_packages'
@@ -40,6 +42,7 @@ class Vnfd(object):
         #self._apiBase='/vnfds'
 
     def list(self, filter=None):
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -50,6 +53,7 @@ class Vnfd(object):
         return list()
 
     def get(self, name):
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for vnfd in self.list():
@@ -62,6 +66,7 @@ class Vnfd(object):
         raise NotFound("vnfd {} not found".format(name))
 
     def get_individual(self, name):
+        self._logger.debug("")
         vnfd = self.get(name)
         # It is redundant, since the previous one already gets the whole vnfpkginfo
         # The only difference is that a different primitive is exercised
@@ -72,6 +77,7 @@ class Vnfd(object):
         raise NotFound("vnfd {} not found".format(name))
 
     def get_thing(self, name, thing, filename):
+        self._logger.debug("")
         vnfd = self.get(name)
         headers = self._client._headers
         headers['Accept'] = 'application/binary'
@@ -92,15 +98,19 @@ class Vnfd(object):
             raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
 
     def get_descriptor(self, name, filename):
+        self._logger.debug("")
         self.get_thing(name, 'vnfd', filename)
 
     def get_package(self, name, filename):
+        self._logger.debug("")
         self.get_thing(name, 'package_content', filename)
 
     def get_artifact(self, name, artifact, filename):
+        self._logger.debug("")
         self.get_thing(name, 'artifacts/{}'.format(artifact), filename)
 
     def delete(self, name, force=False):
+        self._logger.debug("")
         self._client.get_token()
         vnfd = self.get(name)
         querystring = ''
@@ -124,6 +134,7 @@ class Vnfd(object):
             raise ClientException("failed to delete vnfd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
+        self._logger.debug("")
         self._client.get_token()
         mime_type = magic.from_file(filename, mime=True)
         if mime_type is None:
@@ -181,6 +192,7 @@ class Vnfd(object):
             raise ClientException("failed to create/update vnfd - {}".format(msg))
 
     def update(self, name, filename):
+        self._logger.debug("")
         self._client.get_token()
         vnfd = self.get(name)
         endpoint = '{}/{}/package_content'.format(self._apiBase, vnfd['_id'])

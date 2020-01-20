@@ -23,12 +23,14 @@ from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
+import logging
 
 
 class Project(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/admin'
         self._apiVersion = '/v1'
         self._apiResource = '/projects'
@@ -38,6 +40,7 @@ class Project(object):
     def create(self, name, project):
         """Creates a new OSM project
         """
+        self._logger.debug("")
         self._client.get_token()
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                               postfields_dict=project)
@@ -62,6 +65,7 @@ class Project(object):
     def update(self, project, project_changes):
         """Updates an OSM project identified by name
         """
+        self._logger.debug("")
         self._client.get_token()
         proj = self.get(project)
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, proj['_id']),
@@ -89,6 +93,7 @@ class Project(object):
     def delete(self, name, force=False):
         """Deletes an OSM project identified by name
         """
+        self._logger.debug("")
         self._client.get_token()
         project = self.get(name)
         querystring = ''
@@ -116,6 +121,7 @@ class Project(object):
     def list(self, filter=None):
         """Returns the list of OSM projects
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -129,6 +135,7 @@ class Project(object):
     def get(self, name):
         """Returns a specific OSM project based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for proj in self.list():
@@ -139,5 +146,4 @@ class Project(object):
                 if name == proj['name']:
                     return proj
         raise NotFound("Project {} not found".format(name))
-
 

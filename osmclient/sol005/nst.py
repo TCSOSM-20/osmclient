@@ -23,6 +23,7 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common import utils
 import json
 import magic
+import logging
 #from os import stat
 #from os.path import basename
 
@@ -31,6 +32,7 @@ class Nst(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/nst'
         self._apiVersion = '/v1'
         self._apiResource = '/netslice_templates'
@@ -38,6 +40,7 @@ class Nst(object):
                                         self._apiVersion, self._apiResource)
 
     def list(self, filter=None):
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -49,6 +52,7 @@ class Nst(object):
         return list()
 
     def get(self, name):
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for nst in self.list():
@@ -61,6 +65,7 @@ class Nst(object):
         raise NotFound("nst {} not found".format(name))
 
     def get_individual(self, name):
+        self._logger.debug("")
         nst = self.get(name)
         # It is redundant, since the previous one already gets the whole nstinfo
         # The only difference is that a different primitive is exercised
@@ -71,6 +76,7 @@ class Nst(object):
         raise NotFound("nst {} not found".format(name))
 
     def get_thing(self, name, thing, filename):
+        self._logger.debug("")
         nst = self.get(name)
         headers = self._client._headers
         headers['Accept'] = 'application/binary'
@@ -91,15 +97,19 @@ class Nst(object):
             raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
 
     def get_descriptor(self, name, filename):
+        self._logger.debug("")
         self.get_thing(name, 'nst', filename)
 
     def get_package(self, name, filename):
+        self._logger.debug("")
         self.get_thing(name, 'nst_content', filename)
 
     def get_artifact(self, name, artifact, filename):
+        self._logger.debug("")
         self.get_thing(name, 'artifacts/{}'.format(artifact), filename)
 
     def delete(self, name, force=False):
+        self._logger.debug("")
         nst = self.get(name)
         querystring = ''
         if force:
@@ -122,6 +132,7 @@ class Nst(object):
             raise ClientException("failed to delete nst {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
+        self._logger.debug("")
         self._client.get_token()
         mime_type = magic.from_file(filename, mime=True)
         if mime_type is None:
@@ -176,6 +187,7 @@ class Nst(object):
             raise ClientException("failed to create/update nst - {}".format(msg))
 
     def update(self, name, filename):
+        self._logger.debug("")
         nst = self.get(name)
         endpoint = '{}/{}/nst_content'.format(self._apiBase, nst['_id'])
         self.create(filename=filename, update_endpoint=endpoint)

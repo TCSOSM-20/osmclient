@@ -24,17 +24,21 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 from osmclient.common import utils
 import json
+import logging
 
 
 class Package(object):
     def __init__(self, http=None, client=None):
         self._client = client
         self._http = http
+        self._logger = logging.getLogger('osmclient')
 
     def get_key_val_from_pkg(self, descriptor_file):
+        self._logger.debug("")
         return utils.get_key_val_from_pkg(descriptor_file)
 
     def _wait_for_package(self, pkg_type):
+        self._logger.debug("")
         if 'vnfd' in pkg_type['type']:
             get_method = self._client.vnfd.get
         elif 'nsd' in pkg_type['type']:
@@ -44,6 +48,7 @@ class Package(object):
 
         # helper method to check if pkg exists
         def check_exists(func):
+            self._logger.debug("")
             try:
                 func()
             except NotFound:
@@ -58,6 +63,7 @@ class Package(object):
         """wait(block) for an upload to succeed.
            The filename passed is assumed to be a descriptor tarball.
         """
+        self._logger.debug("")
         self._client.get_token()
         pkg_type = utils.get_key_val_from_pkg(filename)
 
@@ -69,6 +75,7 @@ class Package(object):
                                   .format(filename))
 
     def upload(self, filename):
+        self._logger.debug("")
         self._client.get_token()
         pkg_type = utils.get_key_val_from_pkg(filename)
         if pkg_type is None:

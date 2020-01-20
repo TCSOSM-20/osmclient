@@ -17,7 +17,10 @@
 from io import BytesIO
 import pycurl
 import json
+import logging
+import copy
 from osmclient.common import http
+
 
 class Http(http.Http):
 
@@ -26,10 +29,13 @@ class Http(http.Http):
         self._user = user
         self._password = password
         self._http_header = None
+        self._logger = logging.getLogger('osmclient')
 
     def _get_curl_cmd(self, endpoint):
+        self._logger.debug("")
         curl_cmd = pycurl.Curl()
-        #print(self._url + endpoint)
+        if self._logger.getEffectiveLevel() == logging.DEBUG:
+            curl_cmd.setopt(pycurl.VERBOSE, True)
         curl_cmd.setopt(pycurl.URL, self._url + endpoint)
         curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
         curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
@@ -38,16 +44,19 @@ class Http(http.Http):
         return curl_cmd
 
     def delete_cmd(self, endpoint):
+        self._logger.debug("")
         data = BytesIO()
         curl_cmd = self._get_curl_cmd(endpoint)
         curl_cmd.setopt(pycurl.CUSTOMREQUEST, "DELETE")
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._logger.info("Request METHOD: {} URL: {}".format("DELETE",self._url + endpoint))
         curl_cmd.perform()
         http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
-        #print('HTTP_CODE: {}'.format(http_code))
+        self._logger.info("Response HTTPCODE: {}".format(http_code))
         curl_cmd.close()
         # TODO 202 accepted should be returned somehow
         if data.getvalue():
+            self._logger.verbose("Response DATA: {}".format(json.loads(data.getvalue().decode())))
             return http_code, data.getvalue().decode()
         else:
             return http_code, None
@@ -55,6 +64,7 @@ class Http(http.Http):
     def send_cmd(self, endpoint='', postfields_dict=None,
                  formfile=None, filename=None,
                  put_method=False, patch_method=False):
+        self._logger.debug("")
         data = BytesIO()
         curl_cmd = self._get_curl_cmd(endpoint)
         if put_method:
@@ -66,6 +76,13 @@ class Http(http.Http):
 
         if postfields_dict is not None:
             jsondata = json.dumps(postfields_dict)
+            if 'password' in postfields_dict:
+                postfields_dict_copy = copy.deepcopy(postfields_dict)
+                postfields_dict_copy['password']='******'
+                jsondata_log = json.dumps(postfields_dict_copy)
+            else:
+                jsondata_log = jsondata
+            self._logger.verbose("Request POSTFIELDS: {}".format(jsondata_log))
             curl_cmd.setopt(pycurl.POSTFIELDS, jsondata)
         elif formfile is not None:
             curl_cmd.setopt(
@@ -76,18 +93,28 @@ class Http(http.Http):
         elif filename is not None:
             with open(filename, 'rb') as stream:
                 postdata=stream.read()
+            self._logger.verbose("Request POSTFIELDS: Binary content")
             curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
 
+        if put_method:
+            self._logger.info("Request METHOD: {} URL: {}".format("PUT",self._url + endpoint))
+        elif patch_method:
+            self._logger.info("Request METHOD: {} URL: {}".format("PATCH",self._url + endpoint))
+        else:
+            self._logger.info("Request METHOD: {} URL: {}".format("POST",self._url + endpoint))
         curl_cmd.perform()
         http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+        self._logger.info("Response HTTPCODE: {}".format(http_code))
         curl_cmd.close()
         if data.getvalue():
+            self._logger.verbose("Response DATA: {}".format(json.loads(data.getvalue().decode())))
             return http_code, data.getvalue().decode()
         else:
             return http_code, None
 
     def post_cmd(self, endpoint='', postfields_dict=None,
                  formfile=None, filename=None):
+        self._logger.debug("")
         return self.send_cmd(endpoint=endpoint,
                              postfields_dict=postfields_dict,
                              formfile=formfile,
@@ -96,6 +123,7 @@ class Http(http.Http):
 
     def put_cmd(self, endpoint='', postfields_dict=None,
                 formfile=None, filename=None):
+        self._logger.debug("")
         return self.send_cmd(endpoint=endpoint,
                              postfields_dict=postfields_dict,
                              formfile=formfile,
@@ -104,6 +132,7 @@ class Http(http.Http):
 
     def patch_cmd(self, endpoint='', postfields_dict=None,
                 formfile=None, filename=None):
+        self._logger.debug("")
         return self.send_cmd(endpoint=endpoint,
                              postfields_dict=postfields_dict,
                              formfile=formfile,
@@ -111,14 +140,18 @@ class Http(http.Http):
                              put_method=False, patch_method=True)
 
     def get2_cmd(self, endpoint):
+        self._logger.debug("")
         data = BytesIO()
         curl_cmd = self._get_curl_cmd(endpoint)
         curl_cmd.setopt(pycurl.HTTPGET, 1)
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._logger.info("Request METHOD: {} URL: {}".format("GET",self._url + endpoint))
         curl_cmd.perform()
         http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+        self._logger.info("Response HTTPCODE: {}".format(http_code))
         curl_cmd.close()
         if data.getvalue():
+            self._logger.debug("Response DATA: {}".format(json.loads(data.getvalue().decode())))
             return http_code, data.getvalue().decode()
         return http_code, None
 

@@ -29,7 +29,13 @@ import pycurl
 import os
 import textwrap
 import pkg_resources
+import logging
+from datetime import datetime
 
+
+# Global variables
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=160)
 
 def wrap_text(text, width):
     wrapper = textwrap.TextWrapper(width=width)
@@ -53,6 +59,7 @@ def check_client_version(obj, what, version='sol005'):
     :return: -
     :raises ClientError: if the specified version does not match the client version
     """
+    logger.debug("")
     fullclassname = obj.__module__ + "." + obj.__class__.__name__
     message = 'The following commands or options are only supported with the option "--sol005": {}'.format(what)
     if version == 'v1':
@@ -62,9 +69,7 @@ def check_client_version(obj, what, version='sol005'):
     return
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=160)
-
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=160))
 @click.option('--hostname',
               default="127.0.0.1",
               envvar='OSM_HOSTNAME',
@@ -90,6 +95,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=16
               envvar='OSM_PROJECT',
               help='project (defaults to admin). ' +
                    'Also can set OSM_PROJECT in environment')
+@click.option('-v', '--verbose', count=True,
+              help='increase verbosity (-v INFO, -vv VERBOSE, -vvv DEBUG)')
 #@click.option('--so-port',
 #              default=None,
 #              envvar='OSM_SO_PORT',
@@ -111,13 +118,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], max_content_width=16
 #              help='hostname of RO server.  ' +
 #                   'Also can set OSM_RO_PORT in environment')
 @click.pass_context
-def cli(ctx, hostname, user, password, project):
+def cli_osm(ctx, hostname, user, password, project, verbose):
+    global logger
     if hostname is None:
         print((
             "either hostname option or OSM_HOSTNAME " +
             "environment variable needs to be specified"))
         exit(1)
-    kwargs={}
+    kwargs = {'verbose': verbose}
 #    if so_port is not None:
 #        kwargs['so_port']=so_port
 #    if so_project is not None:
@@ -133,19 +141,21 @@ def cli(ctx, hostname, user, password, project):
         kwargs['password']=password
     if project is not None:
         kwargs['project']=project
-
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
+    logger = logging.getLogger('osmclient')
 
 
 ####################
 # LIST operations
 ####################
 
-@cli.command(name='ns-list', short_help='list all NS instances')
+@cli_osm.command(name='ns-list', short_help='list all NS instances')
 @click.option('--filter', default=None,
               help='restricts the list to the NS instances matching the filter.')
+@click.option('--details', is_flag=True,
+              help='get more details of current operation in the NS.')
 @click.pass_context
-def ns_list(ctx, filter):
+def ns_list(ctx, filter,details):
     """list all NS instances
 
     \b
@@ -193,46 +203,155 @@ def ns_list(ctx, filter):
        --filter  nsd.vendor=<VENDOR>&nsd-ref=<NSD_NAME>
        --filter  nsd.constituent-vnfd.vnfd-id-ref=<VNFD_NAME>
     """
+    def summarize_deployment_status(status_dict):
+        #Nets
+        summary = ""
+        n_nets = 0
+        status_nets = {}
+        net_list = status_dict['nets']
+        for net in net_list:
+            n_nets += 1
+            if net['status'] not in status_nets:
+                status_nets[net['status']] = 1
+            else:
+                status_nets[net['status']] +=1
+        message = "Nets: "
+        for k,v in status_nets.items():
+            message += "{}:{},".format(k,v)
+        message += "TOTAL:{}".format(n_nets)
+        summary += "{}".format(message)
+        #VMs and VNFs
+        n_vms = 0
+        status_vms = {}
+        status_vnfs = {}
+        vnf_list = status_dict['vnfs']
+        for vnf in vnf_list:
+            member_vnf_index = vnf['member_vnf_index']
+            if member_vnf_index not in status_vnfs:
+                status_vnfs[member_vnf_index] = {}
+            for vm in vnf['vms']:
+                n_vms += 1
+                if vm['status'] not in status_vms:
+                    status_vms[vm['status']] = 1
+                else:
+                    status_vms[vm['status']] +=1
+                if vm['status'] not in status_vnfs[member_vnf_index]:
+                    status_vnfs[member_vnf_index][vm['status']] = 1
+                else:
+                    status_vnfs[member_vnf_index][vm['status']] += 1
+        message = "VMs: "
+        for k,v in status_vms.items():
+            message += "{}:{},".format(k,v)
+        message += "TOTAL:{}".format(n_vms)
+        summary += "\n{}".format(message)
+        summary += "\nNFs:"
+        for k,v in status_vnfs.items():
+            total = 0
+            message = "\n  {} VMs: ".format(k)
+            for k2,v2 in v.items():
+                message += "{}:{},".format(k2,v2)
+                total += v2
+            message += "TOTAL:{}".format(total)
+        summary += message
+        return summary
+        
+    def summarize_config_status(ee_list):
+        n_ee = 0
+        status_ee = {}
+        for ee in ee_list:
+            n_ee += 1
+            if ee['elementType'] not in status_ee:
+                status_ee[ee['elementType']] = {}
+                status_ee[ee['elementType']][ee['status']] = 1
+                continue;
+            if ee['status'] in status_ee[ee['elementType']]:
+                status_ee[ee['elementType']][ee['status']] += 1
+            else:
+                status_ee[ee['elementType']][ee['status']] = 1
+        summary = ""
+        for elementType in ["KDU", "VDU", "PDU", "VNF", "NS"]:
+            if elementType in status_ee:
+                message = ""
+                total = 0
+                for k,v in status_ee[elementType].items():
+                    message += "{}:{},".format(k,v)
+                    total += v
+                message += "TOTAL:{}\n".format(total)
+                summary += "{}: {}".format(elementType, message)
+        summary += "TOTAL Exec. Env.: {}".format(n_ee)
+        return summary
+    logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.ns.list(filter)
     else:
         resp = ctx.obj.ns.list()
-    table = PrettyTable(
+    if details:
+        table = PrettyTable(
         ['ns instance name',
          'id',
-         'operational status',
-         'config status',
-         'detailed status'])
+         'ns state',
+         'current operation',
+         'error details',
+         'deployment status',
+         'configuration status'])
+    else:
+        table = PrettyTable(
+        ['ns instance name',
+         'id',
+         'ns state',
+         'current operation',
+         'error details'])
     for ns in resp:
         fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
         if fullclassname == 'osmclient.sol005.client.Client':
             nsr = ns
             nsr_name = nsr['name']
             nsr_id = nsr['_id']
+            ns_state = nsr['nsState']
+            if details:
+                deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
+                config_status = summarize_config_status(nsr['configurationStatus'])
+            current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
+            error_details = "N/A"
+            if ns_state == "BROKEN" or ns_state == "DEGRADED":
+                error_details = "{}\nDetail: {}".format(nsr['errorDescription'],nsr['errorDetail'])
         else:
             nsopdata = ctx.obj.ns.get_opdata(ns['id'])
             nsr = nsopdata['nsr:nsr']
             nsr_name = nsr['name-ref']
             nsr_id = nsr['ns-instance-config-ref']
-        opstatus = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
-        configstatus = nsr['config-status'] if 'config-status' in nsr else 'Not found'
-        detailed_status = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
-        detailed_status = wrap_text(text=detailed_status,width=50)
-        if configstatus == "config_not_needed":
-            configstatus = "configured (no charms)"
+            deployment_status = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
+            ns_state = deployment_status
+            config_status = nsr['config-status'] if 'config-status' in nsr else 'Not found'
+            current_operation = "Unknown"
+            error_details = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
+            if config_status == "config_not_needed":
+                config_status = "configured (no charms)"
 
-        table.add_row(
-            [nsr_name,
-             nsr_id,
-             opstatus,
-             configstatus,
-             detailed_status])
+        if details:
+            table.add_row(
+                 [nsr_name,
+                 nsr_id,
+                 ns_state,
+                 current_operation,
+                 wrap_text(text=error_details,width=40),
+                 deployment_status,
+                 config_status])
+        else:
+            table.add_row(
+                 [nsr_name,
+                 nsr_id,
+                 ns_state,
+                 current_operation,
+                 wrap_text(text=error_details,width=40)])
     table.align = 'l'
     print(table)
-
+    print('To get the history of all operations over a NS, run "osm ns-op-list NS_ID"')
+    print('For more details on the current operation, run "osm ns-op-show OPERATION_ID"')
 
 def nsd_list(ctx, filter):
+    logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.nsd.list(filter)
@@ -252,25 +371,28 @@ def nsd_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='nsd-list', short_help='list all NS packages')
+@cli_osm.command(name='nsd-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
 @click.pass_context
 def nsd_list1(ctx, filter):
     """list all NSD/NS pkg in the system"""
+    logger.debug("")
     nsd_list(ctx, filter)
 
 
-@cli.command(name='nspkg-list', short_help='list all NS packages')
+@cli_osm.command(name='nspkg-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
 @click.pass_context
 def nsd_list2(ctx, filter):
     """list all NS packages"""
+    logger.debug("")
     nsd_list(ctx, filter)
 
 
 def vnfd_list(ctx, nf_type, filter):
+    logger.debug("")
     if nf_type:
         check_client_version(ctx.obj, '--nf_type')
     elif filter:
@@ -306,54 +428,57 @@ def vnfd_list(ctx, nf_type, filter):
     print(table)
 
 
-@cli.command(name='vnfd-list', short_help='list all xNF packages (VNF, HNF, PNF)')
+@cli_osm.command(name='vnfd-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NF pkg matching the filter')
 @click.pass_context
 def vnfd_list1(ctx, nf_type, filter):
     """list all xNF packages (VNF, HNF, PNF)"""
+    logger.debug("")
     vnfd_list(ctx, nf_type, filter)
 
 
-@cli.command(name='vnfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
+@cli_osm.command(name='vnfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def vnfd_list2(ctx, nf_type, filter):
     """list all xNF packages (VNF, HNF, PNF)"""
+    logger.debug("")
     vnfd_list(ctx, nf_type, filter)
 
 
-@cli.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
+@cli_osm.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
 @click.pass_context
 def nfpkg_list(ctx, nf_type, filter):
     """list all xNF packages (VNF, HNF, PNF)"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        vnfd_list(ctx, nf_type, filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    vnfd_list(ctx, nf_type, filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 def vnf_list(ctx, ns, filter):
-    try:
-        if ns or filter:
-            if ns:
-                check_client_version(ctx.obj, '--ns')
-            if filter:
-                check_client_version(ctx.obj, '--filter')
-            resp = ctx.obj.vnf.list(ns, filter)
-        else:
-            resp = ctx.obj.vnf.list()
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    if ns or filter:
+        if ns:
+            check_client_version(ctx.obj, '--ns')
+        if filter:
+            check_client_version(ctx.obj, '--filter')
+        resp = ctx.obj.vnf.list(ns, filter)
+    else:
+        resp = ctx.obj.vnf.list()
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
         table = PrettyTable(
@@ -393,17 +518,18 @@ def vnf_list(ctx, ns, filter):
     print(table)
 
 
-@cli.command(name='vnf-list', short_help='list all NF instances')
+@cli_osm.command(name='vnf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
 @click.pass_context
 def vnf_list1(ctx, ns, filter):
     """list all NF instances"""
+    logger.debug("")
     vnf_list(ctx, ns, filter)
 
 
-@cli.command(name='nf-list', short_help='list all NF instances')
+@cli_osm.command(name='nf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
@@ -456,10 +582,11 @@ def nf_list(ctx, ns, filter):
        --filter  vdur.ip-address=<IP_ADDRESS>
        --filter  vnfd-ref=<VNFD_NAME>,vdur.ip-address=<IP_ADDRESS>
     """
+    logger.debug("")
     vnf_list(ctx, ns, filter)
 
 
-@cli.command(name='ns-op-list', short_help='shows the history of operations over a NS instance')
+@cli_osm.command(name='ns-op-list', short_help='shows the history of operations over a NS instance')
 @click.argument('name')
 @click.pass_context
 def ns_op_list(ctx, name):
@@ -467,33 +594,60 @@ def ns_op_list(ctx, name):
 
     NAME: name or ID of the NS instance
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.ns.list_op(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    def formatParams(params):
+        if params['lcmOperationType']=='instantiate':
+            params.pop('nsDescription')
+            params.pop('nsName')
+            params.pop('nsdId')
+            params.pop('nsr_id')
+        elif params['lcmOperationType']=='action':
+            params.pop('primitive')
+        params.pop('lcmOperationType')
+        params.pop('nsInstanceId')
+        return params
 
-    table = PrettyTable(['id', 'operation', 'action_name', 'status'])
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.ns.list_op(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
+
+    table = PrettyTable(['id', 'operation', 'action_name', 'operation_params', 'status', 'detail'])
     #print(yaml.safe_dump(resp))
     for op in resp:
         action_name = "N/A"
         if op['lcmOperationType']=='action':
             action_name = op['operationParams']['primitive']
-        table.add_row([op['id'], op['lcmOperationType'], action_name,
-                       op['operationState']])
+        detail = "-"
+        if op['operationState']=='PROCESSING':
+            if op['lcmOperationType']=='instantiate':
+                if op['stage']:
+                    detail = op['stage']
+            else:
+                detail = "In queue. Current position: {}".format(op['queuePosition'])
+        elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
+            detail = op['errorMessage']
+        table.add_row([op['id'],
+                      op['lcmOperationType'],
+                      action_name,
+                      wrap_text(text=json.dumps(formatParams(op['operationParams']),indent=2),width=70),
+                      op['operationState'],
+                      wrap_text(text=detail,width=50)])
     table.align = 'l'
     print(table)
 
 
 def nsi_list(ctx, filter):
     """list all Network Slice Instances"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.nsi.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.nsi.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(
         ['netslice instance name',
          'id',
@@ -518,31 +672,34 @@ def nsi_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='nsi-list', short_help='list all Network Slice Instances (NSI)')
+@cli_osm.command(name='nsi-list', short_help='list all Network Slice Instances (NSI)')
 @click.option('--filter', default=None,
               help='restricts the list to the Network Slice Instances matching the filter')
 @click.pass_context
 def nsi_list1(ctx, filter):
     """list all Network Slice Instances (NSI)"""
+    logger.debug("")
     nsi_list(ctx, filter)
 
 
-@cli.command(name='netslice-instance-list', short_help='list all Network Slice Instances (NSI)')
+@cli_osm.command(name='netslice-instance-list', short_help='list all Network Slice Instances (NSI)')
 @click.option('--filter', default=None,
               help='restricts the list to the Network Slice Instances matching the filter')
 @click.pass_context
 def nsi_list2(ctx, filter):
     """list all Network Slice Instances (NSI)"""
+    logger.debug("")
     nsi_list(ctx, filter)
 
 
 def nst_list(ctx, filter):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.nst.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.nst.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     # print(yaml.safe_dump(resp))
     table = PrettyTable(['nst name', 'id'])
     for nst in resp:
@@ -552,31 +709,34 @@ def nst_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='nst-list', short_help='list all Network Slice Templates (NST)')
+@cli_osm.command(name='nst-list', short_help='list all Network Slice Templates (NST)')
 @click.option('--filter', default=None,
               help='restricts the list to the NST matching the filter')
 @click.pass_context
 def nst_list1(ctx, filter):
     """list all Network Slice Templates (NST) in the system"""
+    logger.debug("")
     nst_list(ctx, filter)
 
 
-@cli.command(name='netslice-template-list', short_help='list all Network Slice Templates (NST)')
+@cli_osm.command(name='netslice-template-list', short_help='list all Network Slice Templates (NST)')
 @click.option('--filter', default=None,
               help='restricts the list to the NST matching the filter')
 @click.pass_context
 def nst_list2(ctx, filter):
     """list all Network Slice Templates (NST) in the system"""
+    logger.debug("")
     nst_list(ctx, filter)
 
 
 def nsi_op_list(ctx, name):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.nsi.list_op(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.nsi.list_op(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(['id', 'operation', 'status'])
     for op in resp:
         table.add_row([op['id'], op['lcmOperationType'],
@@ -585,7 +745,7 @@ def nsi_op_list(ctx, name):
     print(table)
 
 
-@cli.command(name='nsi-op-list', short_help='shows the history of operations over a Network Slice Instance (NSI)')
+@cli_osm.command(name='nsi-op-list', short_help='shows the history of operations over a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.pass_context
 def nsi_op_list1(ctx, name):
@@ -593,10 +753,11 @@ def nsi_op_list1(ctx, name):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_op_list(ctx, name)
 
 
-@cli.command(name='netslice-instance-op-list', short_help='shows the history of operations over a Network Slice Instance (NSI)')
+@cli_osm.command(name='netslice-instance-op-list', short_help='shows the history of operations over a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.pass_context
 def nsi_op_list2(ctx, name):
@@ -604,21 +765,23 @@ def nsi_op_list2(ctx, name):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_op_list(ctx, name)
 
 
-@cli.command(name='pdu-list', short_help='list all Physical Deployment Units (PDU)')
+@cli_osm.command(name='pdu-list', short_help='list all Physical Deployment Units (PDU)')
 @click.option('--filter', default=None,
               help='restricts the list to the Physical Deployment Units matching the filter')
 @click.pass_context
 def pdu_list(ctx, filter):
     """list all Physical Deployment Units (PDU)"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.pdu.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.pdu.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(
         ['pdu name',
          'id',
@@ -647,12 +810,13 @@ def pdu_list(ctx, filter):
 ####################
 
 def nsd_show(ctx, name, literal):
-    try:
-        resp = ctx.obj.nsd.get(name)
-        # resp = ctx.obj.nsd.get_individual(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    resp = ctx.obj.nsd.get(name)
+    # resp = ctx.obj.nsd.get_individual(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(resp))
@@ -665,7 +829,7 @@ def nsd_show(ctx, name, literal):
     print(table)
 
 
-@cli.command(name='nsd-show', short_help='shows the content of a NSD')
+@cli_osm.command(name='nsd-show', short_help='shows the content of a NSD')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -675,10 +839,11 @@ def nsd_show1(ctx, name, literal):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_show(ctx, name, literal)
 
 
-@cli.command(name='nspkg-show', short_help='shows the content of a NSD')
+@cli_osm.command(name='nspkg-show', short_help='shows the content of a NSD')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -688,16 +853,18 @@ def nsd_show2(ctx, name, literal):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_show(ctx, name, literal)
 
 
 def vnfd_show(ctx, name, literal):
-    try:
-        resp = ctx.obj.vnfd.get(name)
-        # resp = ctx.obj.vnfd.get_individual(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    resp = ctx.obj.vnfd.get(name)
+    # resp = ctx.obj.vnfd.get_individual(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(resp))
@@ -710,7 +877,7 @@ def vnfd_show(ctx, name, literal):
     print(table)
 
 
-@cli.command(name='vnfd-show', short_help='shows the content of a VNFD')
+@cli_osm.command(name='vnfd-show', short_help='shows the content of a VNFD')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -720,10 +887,11 @@ def vnfd_show1(ctx, name, literal):
 
     NAME: name or ID of the VNFD/VNFpkg
     """
+    logger.debug("")
     vnfd_show(ctx, name, literal)
 
 
-@cli.command(name='vnfpkg-show', short_help='shows the content of a VNFD')
+@cli_osm.command(name='vnfpkg-show', short_help='shows the content of a VNFD')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -733,10 +901,11 @@ def vnfd_show2(ctx, name, literal):
 
     NAME: name or ID of the VNFD/VNFpkg
     """
+    logger.debug("")
     vnfd_show(ctx, name, literal)
 
 
-@cli.command(name='nfpkg-show', short_help='shows the content of a NF Descriptor')
+@cli_osm.command(name='nfpkg-show', short_help='shows the content of a NF Descriptor')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -746,10 +915,11 @@ def nfpkg_show(ctx, name, literal):
 
     NAME: name or ID of the NFpkg
     """
+    logger.debug("")
     vnfd_show(ctx, name, literal)
 
 
-@cli.command(name='ns-show', short_help='shows the info of a NS instance')
+@cli_osm.command(name='ns-show', short_help='shows the info of a NS instance')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -760,11 +930,12 @@ def ns_show(ctx, name, literal, filter):
 
     NAME: name or ID of the NS instance
     """
-    try:
-        ns = ctx.obj.ns.get(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    ns = ctx.obj.ns.get(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(ns))
@@ -787,7 +958,7 @@ def ns_show(ctx, name, literal, filter):
     print(table)
 
 
-@cli.command(name='vnf-show', short_help='shows the info of a VNF instance')
+@cli_osm.command(name='vnf-show', short_help='shows the info of a VNF instance')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -799,51 +970,78 @@ def vnf_show(ctx, name, literal, filter, kdu):
 
     NAME: name or ID of the VNF instance
     """
+    def print_kdu_status(op_info_status):
+        """print KDU status properly formatted
+        """
+        try:
+            op_status = yaml.safe_load(op_info_status)
+            if "namespace" in op_status and "info" in op_status and \
+            "last_deployed" in op_status["info"] and "status" in op_status["info"] and \
+            "code" in op_status["info"]["status"] and "resources" in op_status["info"]["status"] and \
+            "notes" in op_status["info"]["status"] and "seconds" in op_status["info"]["last_deployed"]:
+                last_deployed_time = datetime.fromtimestamp(op_status["info"]["last_deployed"]["seconds"]).strftime("%a %b %d %I:%M:%S %Y")
+                print("LAST DEPLOYED: {}".format(last_deployed_time))
+                print("NAMESPACE: {}".format(op_status["namespace"]))
+                status_code = "UNKNOWN"
+                if op_status["info"]["status"]["code"]==1:
+                    status_code = "DEPLOYED"
+                print("STATUS: {}".format(status_code))
+                print()
+                print("RESOURCES:")
+                print(op_status["info"]["status"]["resources"])
+                print("NOTES:")
+                print(op_status["info"]["status"]["notes"])
+            else:
+                print(op_info_status)
+        except Exception:
+            print(op_info_status)
+
+    logger.debug("")
     if kdu:
         if literal:
             raise ClientException('"--literal" option is incompatible with "--kdu" option')
         if filter:
             raise ClientException('"--filter" option is incompatible with "--kdu" option')
 
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.vnf.get(name)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.vnf.get(name)
 
-        if kdu:
-            ns_id = resp['nsr-id-ref']
-            op_data={}
-            op_data['member_vnf_index'] = resp['member-vnf-index-ref']
-            op_data['kdu_name'] = kdu
-            op_data['primitive'] = 'status'
-            op_data['primitive_params'] = {}
-            op_id = ctx.obj.ns.exec_op(ns_id, op_name='action', op_data=op_data, wait=False)
-            t = 0 
-            while t<30:
-                op_info = ctx.obj.ns.get_op(op_id)
-                if op_info['operationState'] == 'COMPLETED':
-                    print(op_info['detailed-status'])
-                    return
-                time.sleep(5)
-                t += 5
-            print ("Could not determine KDU status")
+    if kdu:
+        ns_id = resp['nsr-id-ref']
+        op_data={}
+        op_data['member_vnf_index'] = resp['member-vnf-index-ref']
+        op_data['kdu_name'] = kdu
+        op_data['primitive'] = 'status'
+        op_data['primitive_params'] = {}
+        op_id = ctx.obj.ns.exec_op(ns_id, op_name='action', op_data=op_data, wait=False)
+        t = 0
+        while t<30:
+            op_info = ctx.obj.ns.get_op(op_id)
+            if op_info['operationState'] == 'COMPLETED':
+                print_kdu_status(op_info['detailed-status'])
+                return
+            time.sleep(5)
+            t += 5
+        print ("Could not determine KDU status")
 
-        if literal:
-            print(yaml.safe_dump(resp))
-            return
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
 
-        table = PrettyTable(['field', 'value'])
+    table = PrettyTable(['field', 'value'])
 
-        for k, v in list(resp.items()):
-            if filter is None or filter in k:
-                table.add_row([k, wrap_text(text=json.dumps(v,indent=2),width=100)])
-        table.align = 'l'
-        print(table)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    for k, v in list(resp.items()):
+        if filter is None or filter in k:
+            table.add_row([k, wrap_text(text=json.dumps(v,indent=2),width=100)])
+    table.align = 'l'
+    print(table)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-#@cli.command(name='vnf-monitoring-show')
+#@cli_osm.command(name='vnf-monitoring-show')
 #@click.argument('vnf_name')
 #@click.pass_context
 #def vnf_monitoring_show(ctx, vnf_name):
@@ -866,7 +1064,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
 #    print(table)
 
 
-#@cli.command(name='ns-monitoring-show')
+#@cli_osm.command(name='ns-monitoring-show')
 #@click.argument('ns_name')
 #@click.pass_context
 #def ns_monitoring_show(ctx, ns_name):
@@ -889,7 +1087,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
 #    print(table)
 
 
-@cli.command(name='ns-op-show', short_help='shows the info of a NS operation')
+@cli_osm.command(name='ns-op-show', short_help='shows the info of a NS operation')
 @click.argument('id')
 @click.option('--filter', default=None)
 @click.option('--literal', is_flag=True,
@@ -900,12 +1098,13 @@ def ns_op_show(ctx, id, filter, literal):
 
     ID: operation identifier
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        op_info = ctx.obj.ns.get_op(id)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    op_info = ctx.obj.ns.get_op(id)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(op_info))
@@ -920,13 +1119,14 @@ def ns_op_show(ctx, id, filter, literal):
 
 
 def nst_show(ctx, name, literal):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.nst.get(name)
-        #resp = ctx.obj.nst.get_individual(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.nst.get(name)
+    #resp = ctx.obj.nst.get_individual(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(resp))
@@ -939,7 +1139,7 @@ def nst_show(ctx, name, literal):
     print(table)
 
 
-@cli.command(name='nst-show', short_help='shows the content of a Network Slice Template (NST)')
+@cli_osm.command(name='nst-show', short_help='shows the content of a Network Slice Template (NST)')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -949,10 +1149,11 @@ def nst_show1(ctx, name, literal):
 
     NAME: name or ID of the NST
     """
+    logger.debug("")
     nst_show(ctx, name, literal)
 
 
-@cli.command(name='netslice-template-show', short_help='shows the content of a Network Slice Template (NST)')
+@cli_osm.command(name='netslice-template-show', short_help='shows the content of a Network Slice Template (NST)')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -962,16 +1163,18 @@ def nst_show2(ctx, name, literal):
 
     NAME: name or ID of the NST
     """
+    logger.debug("")
     nst_show(ctx, name, literal)
 
 
 def nsi_show(ctx, name, literal, filter):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        nsi = ctx.obj.nsi.get(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    nsi = ctx.obj.nsi.get(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(nsi))
@@ -987,7 +1190,7 @@ def nsi_show(ctx, name, literal, filter):
     print(table)
 
 
-@cli.command(name='nsi-show', short_help='shows the content of a Network Slice Instance (NSI)')
+@cli_osm.command(name='nsi-show', short_help='shows the content of a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -998,10 +1201,11 @@ def nsi_show1(ctx, name, literal, filter):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_show(ctx, name, literal, filter)
 
 
-@cli.command(name='netslice-instance-show', short_help='shows the content of a Network Slice Instance (NSI)')
+@cli_osm.command(name='netslice-instance-show', short_help='shows the content of a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -1012,16 +1216,18 @@ def nsi_show2(ctx, name, literal, filter):
 
     NAME: name or ID of the Network Slice Instance
     """
+    logger.debug("")
     nsi_show(ctx, name, literal, filter)
 
 
 def nsi_op_show(ctx, id, filter):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        op_info = ctx.obj.nsi.get_op(id)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    op_info = ctx.obj.nsi.get_op(id)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['field', 'value'])
     for k, v in list(op_info.items()):
@@ -1031,7 +1237,7 @@ def nsi_op_show(ctx, id, filter):
     print(table)
 
 
-@cli.command(name='nsi-op-show', short_help='shows the info of an operation over a Network Slice Instance(NSI)')
+@cli_osm.command(name='nsi-op-show', short_help='shows the info of an operation over a Network Slice Instance(NSI)')
 @click.argument('id')
 @click.option('--filter', default=None)
 @click.pass_context
@@ -1040,10 +1246,11 @@ def nsi_op_show1(ctx, id, filter):
 
     ID: operation identifier
     """
+    logger.debug("")
     nsi_op_show(ctx, id, filter)
 
 
-@cli.command(name='netslice-instance-op-show', short_help='shows the info of an operation over a Network Slice Instance(NSI)')
+@cli_osm.command(name='netslice-instance-op-show', short_help='shows the info of an operation over a Network Slice Instance(NSI)')
 @click.argument('id')
 @click.option('--filter', default=None)
 @click.pass_context
@@ -1052,10 +1259,11 @@ def nsi_op_show2(ctx, id, filter):
 
     ID: operation identifier
     """
+    logger.debug("")
     nsi_op_show(ctx, id, filter)
 
 
-@cli.command(name='pdu-show', short_help='shows the content of a Physical Deployment Unit (PDU)')
+@cli_osm.command(name='pdu-show', short_help='shows the content of a Physical Deployment Unit (PDU)')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -1066,12 +1274,13 @@ def pdu_show(ctx, name, literal, filter):
 
     NAME: name or ID of the PDU
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        pdu = ctx.obj.pdu.get(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    pdu = ctx.obj.pdu.get(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     if literal:
         print(yaml.safe_dump(pdu))
@@ -1092,18 +1301,19 @@ def pdu_show(ctx, name, literal, filter):
 ####################
 
 def nsd_create(ctx, filename, overwrite):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nsd.create(filename, overwrite)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.nsd.create(filename, overwrite)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nsd-create', short_help='creates a new NSD/NSpkg')
+@cli_osm.command(name='nsd-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1113,13 +1323,14 @@ def nsd_create1(ctx, filename, overwrite):
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
     """
+    logger.debug("")
     nsd_create(ctx, filename, overwrite)
 
 
-@cli.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
+@cli_osm.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1129,19 +1340,21 @@ def nsd_create2(ctx, filename, overwrite):
 
     FILENAME: NSD yaml file or NSpkg tar.gz file
     """
+    logger.debug("")
     nsd_create(ctx, filename, overwrite)
 
 
 def vnfd_create(ctx, filename, overwrite):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.vnfd.create(filename, overwrite)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.vnfd.create(filename, overwrite)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vnfd-create', short_help='creates a new VNFD/VNFpkg')
+@cli_osm.command(name='vnfd-create', short_help='creates a new VNFD/VNFpkg')
 @click.argument('filename')
 @click.option('--overwrite', 'overwrite', default=None,
               help='overwrite deprecated, use override')
@@ -1154,13 +1367,14 @@ def vnfd_create1(ctx, filename, overwrite):
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_create(ctx, filename, overwrite)
 
 
-@cli.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
+@cli_osm.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1170,13 +1384,14 @@ def vnfd_create2(ctx, filename, overwrite):
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_create(ctx, filename, overwrite)
 
 
-@cli.command(name='nfpkg-create', short_help='creates a new NFpkg')
+@cli_osm.command(name='nfpkg-create', short_help='creates a new NFpkg')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrite deprecated, use override')
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1186,10 +1401,11 @@ def nfpkg_create(ctx, filename, overwrite):
 
     FILENAME: NF Descriptor yaml file or NFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_create(ctx, filename, overwrite)
 
 
-@cli.command(name='ns-create', short_help='creates a new Network Service instance')
+@cli_osm.command(name='ns-create', short_help='creates a new Network Service instance')
 @click.option('--ns_name',
               prompt=True, help='name of the NS instance')
 @click.option('--nsd_name',
@@ -1212,8 +1428,8 @@ def nfpkg_create(ctx, filename, overwrite):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def ns_create(ctx,
               nsd_name,
@@ -1225,39 +1441,41 @@ def ns_create(ctx,
               config_file,
               wait):
     """creates a new NS instance"""
-    try:
-        if config_file:
-            check_client_version(ctx.obj, '--config_file')
-            if config:
-                raise ClientException('"--config" option is incompatible with "--config_file" option')
-            with open(config_file, 'r') as cf:
-                config=cf.read()
-        ctx.obj.ns.create(
-            nsd_name,
-            ns_name,
-            config=config,
-            ssh_keys=ssh_keys,
-            account=vim_account,
-            wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    if config_file:
+        check_client_version(ctx.obj, '--config_file')
+        if config:
+            raise ClientException('"--config" option is incompatible with "--config_file" option')
+        with open(config_file, 'r') as cf:
+            config=cf.read()
+    ctx.obj.ns.create(
+        nsd_name,
+        ns_name,
+        config=config,
+        ssh_keys=ssh_keys,
+        account=vim_account,
+        wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 def nst_create(ctx, filename, overwrite):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nst.create(filename, overwrite)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.nst.create(filename, overwrite)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nst-create', short_help='creates a new Network Slice Template (NST)')
+@cli_osm.command(name='nst-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrites deprecated use override')
-@click.option('--override', 'overwrite' ,default=None,
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
+              help='Deprecated. Use override')
+@click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
@@ -1266,13 +1484,14 @@ def nst_create1(ctx, filename, overwrite):
 
     FILENAME: NST yaml file or NSTpkg tar.gz file
     """
+    logger.debug("")
     nst_create(ctx, filename, overwrite)
 
 
-@cli.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
+@cli_osm.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')
 @click.argument('filename')
-@click.option('--overwrite', 'overwrite', default=None,
-              help='overwrites deprecated use override')
+@click.option('--overwrite', 'overwrite', default=None,  # hidden=True,
+              help='Deprecated. Use override')
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
@@ -1282,26 +1501,28 @@ def nst_create2(ctx, filename, overwrite):
 
     FILENAME: NST yaml file or NSTpkg tar.gz file
     """
+    logger.debug("")
     nst_create(ctx, filename, overwrite)
 
 
 def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        if config_file:
-            if config:
-                raise ClientException('"--config" option is incompatible with "--config_file" option')
-            with open(config_file, 'r') as cf:
-                config=cf.read()
-        ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
-                           account=vim_account, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    if config_file:
+        if config:
+            raise ClientException('"--config" option is incompatible with "--config_file" option')
+        with open(config_file, 'r') as cf:
+            config=cf.read()
+    ctx.obj.nsi.create(nst_name, nsi_name, config=config, ssh_keys=ssh_keys,
+                       account=vim_account, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nsi-create', short_help='creates a new Network Slice Instance')
+@cli_osm.command(name='nsi-create', short_help='creates a new Network Slice Instance')
 @click.option('--nsi_name', prompt=True, help='name of the Network Slice Instance')
 @click.option('--nst_name', prompt=True, help='name of the Network Slice Template')
 @click.option('--vim_account', prompt=True, help='default VIM account id or name for the deployment')
@@ -1325,15 +1546,16 @@ def nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_fi
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
+    logger.debug("")
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait=wait)
 
 
-@cli.command(name='netslice-instance-create', short_help='creates a new Network Slice Instance')
+@cli_osm.command(name='netslice-instance-create', short_help='creates a new Network Slice Instance')
 @click.option('--nsi_name', prompt=True, help='name of the Network Slice Instance')
 @click.option('--nst_name', prompt=True, help='name of the Network Slice Template')
 @click.option('--vim_account', prompt=True, help='default VIM account id or name for the deployment')
@@ -1355,15 +1577,16 @@ def nsi_create1(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait):
     """creates a new Network Slice Instance (NSI)"""
+    logger.debug("")
     nsi_create(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_file, wait=wait)
 
 
-@cli.command(name='pdu-create', short_help='adds a new Physical Deployment Unit to the catalog')
+@cli_osm.command(name='pdu-create', short_help='adds a new Physical Deployment Unit to the catalog')
 @click.option('--name', help='name of the Physical Deployment Unit')
 @click.option('--pdu_type', help='type of PDU (e.g. router, firewall, FW001)')
 @click.option('--interface',
@@ -1372,55 +1595,59 @@ def nsi_create2(ctx, nst_name, nsi_name, vim_account, ssh_keys, config, config_f
               multiple=True)
 @click.option('--description', help='human readable description')
 @click.option('--vim_account', help='list of VIM accounts (in the same VIM) that can reach this PDU', multiple=True)
-@click.option('--descriptor_file', default=None, help='PDU descriptor file (as an alternative to using the other arguments')
+@click.option('--descriptor_file', default=None,
+              help='PDU descriptor file (as an alternative to using the other arguments')
 @click.pass_context
 def pdu_create(ctx, name, pdu_type, interface, description, vim_account, descriptor_file):
     """creates a new Physical Deployment Unit (PDU)"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        pdu = {}
-        if not descriptor_file:
-            if not name:
-                raise ClientException('in absence of descriptor file, option "--name" is mandatory')
-            if not pdu_type:
-                raise ClientException('in absence of descriptor file, option "--pdu_type" is mandatory')
-            if not interface:
-                raise ClientException('in absence of descriptor file, option "--interface" is mandatory (at least once)')
-            if not vim_account:
-                raise ClientException('in absence of descriptor file, option "--vim_account" is mandatory (at least once)')
-        else:
-            with open(descriptor_file, 'r') as df:
-                pdu = yaml.safe_load(df.read())
-        if name: pdu["name"] = name
-        if pdu_type: pdu["type"] = pdu_type
-        if description: pdu["description"] = description
-        if vim_account: pdu["vim_accounts"] = vim_account
-        if interface:
-            ifaces_list = []
-            for iface in interface:
-                new_iface={k:v for k,v in [i.split('=') for i in iface.split(',')]}
-                new_iface["mgmt"] = (new_iface.get("mgmt","false").lower() == "true")
-                ifaces_list.append(new_iface)
-            pdu["interfaces"] = ifaces_list
-        ctx.obj.pdu.create(pdu)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    pdu = {}
+    if not descriptor_file:
+        if not name:
+            raise ClientException('in absence of descriptor file, option "--name" is mandatory')
+        if not pdu_type:
+            raise ClientException('in absence of descriptor file, option "--pdu_type" is mandatory')
+        if not interface:
+            raise ClientException('in absence of descriptor file, option "--interface" is mandatory (at least once)')
+        if not vim_account:
+            raise ClientException('in absence of descriptor file, option "--vim_account" is mandatory (at least once)')
+    else:
+        with open(descriptor_file, 'r') as df:
+            pdu = yaml.safe_load(df.read())
+    if name: pdu["name"] = name
+    if pdu_type: pdu["type"] = pdu_type
+    if description: pdu["description"] = description
+    if vim_account: pdu["vim_accounts"] = vim_account
+    if interface:
+        ifaces_list = []
+        for iface in interface:
+            new_iface={k:v for k,v in [i.split('=') for i in iface.split(',')]}
+            new_iface["mgmt"] = (new_iface.get("mgmt","false").lower() == "true")
+            ifaces_list.append(new_iface)
+        pdu["interfaces"] = ifaces_list
+    ctx.obj.pdu.create(pdu)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
+
 
 ####################
 # UPDATE operations
 ####################
 
 def nsd_update(ctx, name, content):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nsd.update(name, content)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.nsd.update(name, content)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nsd-update', short_help='updates a NSD/NSpkg')
+@cli_osm.command(name='nsd-update', short_help='updates a NSD/NSpkg')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the NSD/NSpkg replacing the current one')
@@ -1430,10 +1657,11 @@ def nsd_update1(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_update(ctx, name, content)
 
 
-@cli.command(name='nspkg-update', short_help='updates a NSD/NSpkg')
+@cli_osm.command(name='nspkg-update', short_help='updates a NSD/NSpkg')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the NSD/NSpkg replacing the current one')
@@ -1443,19 +1671,21 @@ def nsd_update2(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nsd_update(ctx, name, content)
 
 
 def vnfd_update(ctx, name, content):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.vnfd.update(name, content)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.vnfd.update(name, content)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vnfd-update', short_help='updates a new VNFD/VNFpkg')
+@cli_osm.command(name='vnfd-update', short_help='updates a new VNFD/VNFpkg')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the VNFD/VNFpkg replacing the current one')
@@ -1465,10 +1695,11 @@ def vnfd_update1(ctx, name, content):
 
     NAME: name or ID of the VNFD/VNFpkg
     """
+    logger.debug("")
     vnfd_update(ctx, name, content)
 
 
-@cli.command(name='vnfpkg-update', short_help='updates a VNFD/VNFpkg')
+@cli_osm.command(name='vnfpkg-update', short_help='updates a VNFD/VNFpkg')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the VNFD/VNFpkg replacing the current one')
@@ -1478,10 +1709,11 @@ def vnfd_update2(ctx, name, content):
 
     NAME: VNFD yaml file or VNFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_update(ctx, name, content)
 
 
-@cli.command(name='nfpkg-update', short_help='updates a NFpkg')
+@cli_osm.command(name='nfpkg-update', short_help='updates a NFpkg')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the NFpkg replacing the current one')
@@ -1491,19 +1723,21 @@ def nfpkg_update(ctx, name, content):
 
     NAME: NF Descriptor yaml file or NFpkg tar.gz file
     """
+    logger.debug("")
     vnfd_update(ctx, name, content)
 
 
 def nst_update(ctx, name, content):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nst.update(name, content)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.nst.update(name, content)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nst-update', short_help='updates a Network Slice Template (NST)')
+@cli_osm.command(name='nst-update', short_help='updates a Network Slice Template (NST)')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the NST/NSTpkg replacing the current one')
@@ -1513,10 +1747,11 @@ def nst_update1(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nst_update(ctx, name, content)
 
 
-@cli.command(name='netslice-template-update', short_help='updates a Network Slice Template (NST)')
+@cli_osm.command(name='netslice-template-update', short_help='updates a Network Slice Template (NST)')
 @click.argument('name')
 @click.option('--content', default=None,
               help='filename with the NST/NSTpkg replacing the current one')
@@ -1526,6 +1761,7 @@ def nst_update2(ctx, name, content):
 
     NAME: name or ID of the NSD/NSpkg
     """
+    logger.debug("")
     nst_update(ctx, name, content)
 
 
@@ -1534,18 +1770,19 @@ def nst_update2(ctx, name, content):
 ####################
 
 def nsd_delete(ctx, name, force):
-    try:
-        if not force:
-            ctx.obj.nsd.delete(name)
-        else:
-            check_client_version(ctx.obj, '--force')
-            ctx.obj.nsd.delete(name, force)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    if not force:
+        ctx.obj.nsd.delete(name)
+    else:
+        check_client_version(ctx.obj, '--force')
+        ctx.obj.nsd.delete(name, force)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nsd-delete', short_help='deletes a NSD/NSpkg')
+@cli_osm.command(name='nsd-delete', short_help='deletes a NSD/NSpkg')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1554,10 +1791,11 @@ def nsd_delete1(ctx, name, force):
 
     NAME: name or ID of the NSD/NSpkg to be deleted
     """
+    logger.debug("")
     nsd_delete(ctx, name, force)
 
 
-@cli.command(name='nspkg-delete', short_help='deletes a NSD/NSpkg')
+@cli_osm.command(name='nspkg-delete', short_help='deletes a NSD/NSpkg')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1566,22 +1804,24 @@ def nsd_delete2(ctx, name, force):
 
     NAME: name or ID of the NSD/NSpkg to be deleted
     """
+    logger.debug("")
     nsd_delete(ctx, name, force)
 
 
 def vnfd_delete(ctx, name, force):
-    try:
-        if not force:
-            ctx.obj.vnfd.delete(name)
-        else:
-            check_client_version(ctx.obj, '--force')
-            ctx.obj.vnfd.delete(name, force)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    if not force:
+        ctx.obj.vnfd.delete(name)
+    else:
+        check_client_version(ctx.obj, '--force')
+        ctx.obj.vnfd.delete(name, force)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vnfd-delete', short_help='deletes a VNFD/VNFpkg')
+@cli_osm.command(name='vnfd-delete', short_help='deletes a VNFD/VNFpkg')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1590,10 +1830,11 @@ def vnfd_delete1(ctx, name, force):
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
     """
+    logger.debug("")
     vnfd_delete(ctx, name, force)
 
 
-@cli.command(name='vnfpkg-delete', short_help='deletes a VNFD/VNFpkg')
+@cli_osm.command(name='vnfpkg-delete', short_help='deletes a VNFD/VNFpkg')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1602,10 +1843,11 @@ def vnfd_delete2(ctx, name, force):
 
     NAME: name or ID of the VNFD/VNFpkg to be deleted
     """
+    logger.debug("")
     vnfd_delete(ctx, name, force)
 
 
-@cli.command(name='nfpkg-delete', short_help='deletes a NFpkg')
+@cli_osm.command(name='nfpkg-delete', short_help='deletes a NFpkg')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1614,45 +1856,48 @@ def nfpkg_delete(ctx, name, force):
 
     NAME: name or ID of the NFpkg to be deleted
     """
+    logger.debug("")
     vnfd_delete(ctx, name, force)
 
 
-@cli.command(name='ns-delete', short_help='deletes a NS instance')
+@cli_osm.command(name='ns-delete', short_help='deletes a NS instance')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def ns_delete(ctx, name, force, wait):
     """deletes a NS instance
 
     NAME: name or ID of the NS instance to be deleted
     """
-    try:
-        if not force:
-            ctx.obj.ns.delete(name, wait=wait)
-        else:
-            check_client_version(ctx.obj, '--force')
-            ctx.obj.ns.delete(name, force, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    if not force:
+        ctx.obj.ns.delete(name, wait=wait)
+    else:
+        check_client_version(ctx.obj, '--force')
+        ctx.obj.ns.delete(name, force, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 def nst_delete(ctx, name, force):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nst.delete(name, force)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.nst.delete(name, force)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nst-delete', short_help='deletes a Network Slice Template (NST)')
+@cli_osm.command(name='nst-delete', short_help='deletes a Network Slice Template (NST)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1661,10 +1906,11 @@ def nst_delete1(ctx, name, force):
 
     NAME: name or ID of the NST/NSTpkg to be deleted
     """
+    logger.debug("")
     nst_delete(ctx, name, force)
 
 
-@cli.command(name='netslice-template-delete', short_help='deletes a Network Slice Template (NST)')
+@cli_osm.command(name='netslice-template-delete', short_help='deletes a Network Slice Template (NST)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1673,37 +1919,40 @@ def nst_delete2(ctx, name, force):
 
     NAME: name or ID of the NST/NSTpkg to be deleted
     """
+    logger.debug("")
     nst_delete(ctx, name, force)
 
 
 def nsi_delete(ctx, name, force, wait):
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.nsi.delete(name, force, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.nsi.delete(name, force, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='nsi-delete', short_help='deletes a Network Slice Instance (NSI)')
+@cli_osm.command(name='nsi-delete', short_help='deletes a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def nsi_delete1(ctx, name, force, wait):
     """deletes a Network Slice Instance (NSI)
 
     NAME: name or ID of the Network Slice instance to be deleted
     """
+    logger.debug("")
     nsi_delete(ctx, name, force, wait=wait)
 
 
-@cli.command(name='netslice-instance-delete', short_help='deletes a Network Slice Instance (NSI)')
+@cli_osm.command(name='netslice-instance-delete', short_help='deletes a Network Slice Instance (NSI)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1712,10 +1961,11 @@ def nsi_delete2(ctx, name, force, wait):
 
     NAME: name or ID of the Network Slice instance to be deleted
     """
+    logger.debug("")
     nsi_delete(ctx, name, force, wait=wait)
 
 
-@cli.command(name='pdu-delete', short_help='deletes a Physical Deployment Unit (PDU)')
+@cli_osm.command(name='pdu-delete', short_help='deletes a Physical Deployment Unit (PDU)')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -1724,19 +1974,20 @@ def pdu_delete(ctx, name, force):
 
     NAME: name or ID of the PDU to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.pdu.delete(name, force)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.pdu.delete(name, force)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 #################
 # VIM operations
 #################
 
-@cli.command(name='vim-create', short_help='creates a new VIM account')
+@cli_osm.command(name='vim-create', short_help='creates a new VIM account')
 @click.option('--name',
               prompt=True,
               help='Name to create datacenter')
@@ -1769,8 +2020,8 @@ def pdu_delete(ctx, name, force):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def vim_create(ctx,
                name,
@@ -1785,29 +2036,30 @@ def vim_create(ctx,
                sdn_port_mapping,
                wait):
     """creates a new VIM account"""
-    try:
-        if sdn_controller:
-            check_client_version(ctx.obj, '--sdn_controller')
-        if sdn_port_mapping:
-            check_client_version(ctx.obj, '--sdn_port_mapping')
-        vim = {}
-        vim['vim-username'] = user
-        vim['vim-password'] = password
-        vim['vim-url'] = auth_url
-        vim['vim-tenant-name'] = tenant
-        vim['vim-type'] = account_type
-        vim['description'] = description
-        vim['config'] = config
-        if sdn_controller or sdn_port_mapping:
-            ctx.obj.vim.create(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
-        else:
-            ctx.obj.vim.create(name, vim, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    if sdn_controller:
+        check_client_version(ctx.obj, '--sdn_controller')
+    if sdn_port_mapping:
+        check_client_version(ctx.obj, '--sdn_port_mapping')
+    vim = {}
+    vim['vim-username'] = user
+    vim['vim-password'] = password
+    vim['vim-url'] = auth_url
+    vim['vim-tenant-name'] = tenant
+    vim['vim-type'] = account_type
+    vim['description'] = description
+    vim['config'] = config
+    if sdn_controller or sdn_port_mapping:
+        ctx.obj.vim.create(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
+    else:
+        ctx.obj.vim.create(name, vim, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vim-update', short_help='updates a VIM account')
+@cli_osm.command(name='vim-update', short_help='updates a VIM account')
 @click.argument('name')
 @click.option('--newname', help='New name for the VIM account')
 @click.option('--user', help='VIM username')
@@ -1823,8 +2075,8 @@ def vim_create(ctx,
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def vim_update(ctx,
                name,
@@ -1843,50 +2095,52 @@ def vim_update(ctx,
 
     NAME: name or ID of the VIM account
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        vim = {}
-        if newname: vim['name'] = newname
-        if user: vim['vim_user'] = user
-        if password: vim['vim_password'] = password
-        if auth_url: vim['vim_url'] = auth_url
-        if tenant: vim['vim-tenant-name'] = tenant
-        if account_type: vim['vim_type'] = account_type
-        if description: vim['description'] = description
-        if config: vim['config'] = config
-        ctx.obj.vim.update(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    vim = {}
+    if newname: vim['name'] = newname
+    if user: vim['vim_user'] = user
+    if password: vim['vim_password'] = password
+    if auth_url: vim['vim_url'] = auth_url
+    if tenant: vim['vim-tenant-name'] = tenant
+    if account_type: vim['vim_type'] = account_type
+    if description: vim['description'] = description
+    if config: vim['config'] = config
+    ctx.obj.vim.update(name, vim, sdn_controller, sdn_port_mapping, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vim-delete', short_help='deletes a VIM account')
+@cli_osm.command(name='vim-delete', short_help='deletes a VIM account')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def vim_delete(ctx, name, force, wait):
     """deletes a VIM account
 
     NAME: name or ID of the VIM account to be deleted
     """
-    try:
-        if not force:
-            ctx.obj.vim.delete(name, wait=wait)
-        else:
-            check_client_version(ctx.obj, '--force')
-            ctx.obj.vim.delete(name, force, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    if not force:
+        ctx.obj.vim.delete(name, wait=wait)
+    else:
+        check_client_version(ctx.obj, '--force')
+        ctx.obj.vim.delete(name, force, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vim-list', short_help='list all VIM accounts')
+@cli_osm.command(name='vim-list', short_help='list all VIM accounts')
 #@click.option('--ro_update/--no_ro_update',
 #              default=False,
 #              help='update list from RO')
@@ -1895,6 +2149,7 @@ def vim_delete(ctx, name, force, wait):
 @click.pass_context
 def vim_list(ctx, filter):
     """list all VIM accounts"""
+    logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
 #    if ro_update:
@@ -1911,7 +2166,7 @@ def vim_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='vim-show', short_help='shows the details of a VIM account')
+@cli_osm.command(name='vim-show', short_help='shows the details of a VIM account')
 @click.argument('name')
 @click.pass_context
 def vim_show(ctx, name):
@@ -1919,13 +2174,14 @@ def vim_show(ctx, name):
 
     NAME: name or ID of the VIM account
     """
-    try:
-        resp = ctx.obj.vim.get(name)
-        if 'vim_password' in resp:
-            resp['vim_password']='********'
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    resp = ctx.obj.vim.get(name)
+    if 'vim_password' in resp:
+        resp['vim_password']='********'
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in list(resp.items()):
@@ -1938,7 +2194,7 @@ def vim_show(ctx, name):
 # WIM operations
 ####################
 
-@cli.command(name='wim-create', short_help='creates a new WIM account')
+@cli_osm.command(name='wim-create', short_help='creates a new WIM account')
 @click.option('--name',
               prompt=True,
               help='Name for the WIM account')
@@ -1959,13 +2215,15 @@ def vim_show(ctx, name):
 @click.option('--description',
               default='no description',
               help='human readable description')
-@click.option('--wim_port_mapping', default=None, help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge (WAN service endpoint id and info)")
+@click.option('--wim_port_mapping', default=None,
+              help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge "
+                   "(WAN service endpoint id and info)")
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it '
+                   'until the operation is completed, or timeout')
 @click.pass_context
 def wim_create(ctx,
                name,
@@ -1979,27 +2237,28 @@ def wim_create(ctx,
                wim_port_mapping,
                wait):
     """creates a new WIM account"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        # if sdn_controller:
-        #     check_client_version(ctx.obj, '--sdn_controller')
-        # if sdn_port_mapping:
-        #     check_client_version(ctx.obj, '--sdn_port_mapping')
-        wim = {}
-        if user: wim['user'] = user
-        if password: wim['password'] = password
-        if url: wim['wim_url'] = url
-        # if tenant: wim['tenant'] = tenant
-        wim['wim_type'] = wim_type
-        if description: wim['description'] = description
-        if config: wim['config'] = config
-        ctx.obj.wim.create(name, wim, wim_port_mapping, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    # if sdn_controller:
+    #     check_client_version(ctx.obj, '--sdn_controller')
+    # if sdn_port_mapping:
+    #     check_client_version(ctx.obj, '--sdn_port_mapping')
+    wim = {}
+    if user: wim['user'] = user
+    if password: wim['password'] = password
+    if url: wim['wim_url'] = url
+    # if tenant: wim['tenant'] = tenant
+    wim['wim_type'] = wim_type
+    if description: wim['description'] = description
+    if config: wim['config'] = config
+    ctx.obj.wim.create(name, wim, wim_port_mapping, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='wim-update', short_help='updates a WIM account')
+@cli_osm.command(name='wim-update', short_help='updates a WIM account')
 @click.argument('name')
 @click.option('--newname', help='New name for the WIM account')
 @click.option('--user', help='WIM username')
@@ -2008,13 +2267,14 @@ def wim_create(ctx,
 @click.option('--config', help='WIM specific config parameters')
 @click.option('--wim_type', help='WIM type')
 @click.option('--description', help='human readable description')
-@click.option('--wim_port_mapping', default=None, help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge (WAN service endpoint id and info)")
+@click.option('--wim_port_mapping', default=None,
+              help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge "
+                   "(WAN service endpoint id and info)")
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def wim_update(ctx,
                name,
@@ -2031,66 +2291,68 @@ def wim_update(ctx,
 
     NAME: name or ID of the WIM account
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        wim = {}
-        if newname: wim['name'] = newname
-        if user: wim['user'] = user
-        if password: wim['password'] = password
-        if url: wim['url'] = url
-        # if tenant: wim['tenant'] = tenant
-        if wim_type: wim['wim_type'] = wim_type
-        if description: wim['description'] = description
-        if config: wim['config'] = config
-        ctx.obj.wim.update(name, wim, wim_port_mapping, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    wim = {}
+    if newname: wim['name'] = newname
+    if user: wim['user'] = user
+    if password: wim['password'] = password
+    if url: wim['url'] = url
+    # if tenant: wim['tenant'] = tenant
+    if wim_type: wim['wim_type'] = wim_type
+    if description: wim['description'] = description
+    if config: wim['config'] = config
+    ctx.obj.wim.update(name, wim, wim_port_mapping, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='wim-delete', short_help='deletes a WIM account')
+@cli_osm.command(name='wim-delete', short_help='deletes a WIM account')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def wim_delete(ctx, name, force, wait):
     """deletes a WIM account
 
     NAME: name or ID of the WIM account to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.wim.delete(name, force, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.wim.delete(name, force, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='wim-list', short_help='list all WIM accounts')
+@cli_osm.command(name='wim-list', short_help='list all WIM accounts')
 @click.option('--filter', default=None,
               help='restricts the list to the WIM accounts matching the filter')
 @click.pass_context
 def wim_list(ctx, filter):
     """list all WIM accounts"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.wim.list(filter)
-        table = PrettyTable(['wim name', 'uuid'])
-        for wim in resp:
-            table.add_row([wim['name'], wim['uuid']])
-        table.align = 'l'
-        print(table)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.wim.list(filter)
+    table = PrettyTable(['wim name', 'uuid'])
+    for wim in resp:
+        table.add_row([wim['name'], wim['uuid']])
+    table.align = 'l'
+    print(table)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='wim-show', short_help='shows the details of a WIM account')
+@cli_osm.command(name='wim-show', short_help='shows the details of a WIM account')
 @click.argument('name')
 @click.pass_context
 def wim_show(ctx, name):
@@ -2098,14 +2360,15 @@ def wim_show(ctx, name):
 
     NAME: name or ID of the WIM account
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.wim.get(name)
-        if 'password' in resp:
-            resp['wim_password']='********'
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.wim.get(name)
+    if 'password' in resp:
+        resp['wim_password']='********'
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in list(resp.items()):
@@ -2118,169 +2381,143 @@ def wim_show(ctx, name):
 # SDN controller operations
 ####################
 
-@cli.command(name='sdnc-create', short_help='creates a new SDN controller')
+@cli_osm.command(name='sdnc-create', short_help='creates a new SDN controller')
 @click.option('--name',
               prompt=True,
               help='Name to create sdn controller')
 @click.option('--type',
               prompt=True,
               help='SDN controller type')
-@click.option('--sdn_controller_version',
-              help='SDN controller version')
-@click.option('--ip_address',
-              prompt=True,
-              help='SDN controller IP address')
-@click.option('--port',
-              prompt=True,
-              help='SDN controller port')
-@click.option('--switch_dpid',
-              prompt=True,
-              help='Switch DPID (Openflow Datapath ID)')
+@click.option('--sdn_controller_version',  # hidden=True,
+              help='Deprecated. Use --config {version: sdn_controller_version}')
+@click.option('--url',
+              help='URL in format http[s]://HOST:IP/')
+@click.option('--ip_address',  # hidden=True,
+              help='Deprecated. Use --url')
+@click.option('--port',  # hidden=True,
+              help='Deprecated. Use --url')
+@click.option('--switch_dpid',  # hidden=True,
+              help='Deprecated. Use --config {dpid: DPID}')
+@click.option('--config',
+              help='Extra information for SDN in yaml format, as {dpid: (Openflow Datapath ID), version: version}')
 @click.option('--user',
               help='SDN controller username')
 @click.option('--password',
               hide_input=True,
               confirmation_prompt=True,
               help='SDN controller password')
-#@click.option('--description',
-#              default='no description',
-#              help='human readable description')
+@click.option('--description', default=None, help='human readable description')
 @click.option('--wait',
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help="do not return the control immediately, but keep it until the operation is completed, or timeout")
 @click.pass_context
-def sdnc_create(ctx,
-                name,
-                type,
-                sdn_controller_version,
-                ip_address,
-                port,
-                switch_dpid,
-                user,
-                password,
-                wait):
+def sdnc_create(ctx, **kwargs):
     """creates a new SDN controller"""
-    sdncontroller = {}
-    sdncontroller['name'] = name
-    sdncontroller['type'] = type
-    sdncontroller['ip'] = ip_address
-    sdncontroller['port'] = int(port)
-    sdncontroller['dpid'] = switch_dpid
-    if sdn_controller_version:
-        sdncontroller['version'] = sdn_controller_version
-    if user:
-        sdncontroller['user'] = user
-    if password:
-        sdncontroller['password'] = password
-#    sdncontroller['description'] = description
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.create(name, sdncontroller, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
+                     x not in ("wait", "ip_address", "port", "switch_dpid")}
+    if kwargs.get("port"):
+        print("option '--port' is deprecated, use '-url' instead")
+        sdncontroller["port"] = int(kwargs["port"])
+    if kwargs.get("ip_address"):
+        print("option '--ip_address' is deprecated, use '-url' instead")
+        sdncontroller["ip"] = kwargs["ip_address"]
+    if kwargs.get("switch_dpid"):
+        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        sdncontroller["dpid"] = kwargs["switch_dpid"]
+    if kwargs.get("sdn_controller_version"):
+        print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
+              " instead")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.sdnc.create(kwargs["name"], sdncontroller, wait=kwargs["wait"])
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
-@cli.command(name='sdnc-update', short_help='updates an SDN controller')
+@cli_osm.command(name='sdnc-update', short_help='updates an SDN controller')
 @click.argument('name')
 @click.option('--newname', help='New name for the SDN controller')
+@click.option('--description',  default=None, help='human readable description')
 @click.option('--type', help='SDN controller type')
-@click.option('--sdn_controller_version', help='SDN controller username')
-@click.option('--ip_address', help='SDN controller IP address')
-@click.option('--port', help='SDN controller port')
-@click.option('--switch_dpid', help='Switch DPID (Openflow Datapath ID)')
+@click.option('--url', help='URL in format http[s]://HOST:IP/')
+@click.option('--config', help='Extra information for SDN in yaml format, as '
+                               '{dpid: (Openflow Datapath ID), version: version}')
 @click.option('--user', help='SDN controller username')
 @click.option('--password', help='SDN controller password')
-#@click.option('--description',  default=None, help='human readable description')
-@click.option('--wait',
-              required=False,
-              default=False,
-              is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+@click.option('--ip_address', help='Deprecated. Use --url')  # hidden=True
+@click.option('--port', help='Deprecated. Use --url')  # hidden=True
+@click.option('--switch_dpid', help='Deprecated. Use --config {switch_dpid: DPID}')  # hidden=True
+@click.option('--sdn_controller_version', help='Deprecated. Use --config {version: VERSION}')  # hidden=True
+@click.option('--wait', required=False, default=False, is_flag=True,
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
-def sdnc_update(ctx,
-                name,
-                newname,
-                type,
-                sdn_controller_version,
-                ip_address,
-                port,
-                switch_dpid,
-                user,
-                password,
-                wait):
+def sdnc_update(ctx, **kwargs):
     """updates an SDN controller
 
     NAME: name or ID of the SDN controller
     """
-    sdncontroller = {}
-    if newname: sdncontroller['name'] = newname
-    if type: sdncontroller['type'] = type
-    if ip_address: sdncontroller['ip'] = ip_address
-    if port: sdncontroller['port'] = int(port)
-    if switch_dpid: sdncontroller['dpid'] = switch_dpid
-#    sdncontroller['description'] = description
-    if sdn_controller_version is not None:
-        if sdn_controller_version=="":
-            sdncontroller['version'] = None
-        else:
-            sdncontroller['version'] = sdn_controller_version
-    if user is not None:
-        if user=="":
-            sdncontroller['user'] = None
-        else:
-            sdncontroller['user'] = user
-    if password is not None:
-        if password=="":
-            sdncontroller['password'] = None
-        else:
-            sdncontroller['password'] = user
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.update(name, sdncontroller, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
+                     x not in ("wait", "ip_address", "port", "switch_dpid", "new_name")}
+    if kwargs.get("newname"):
+        sdncontroller["name"] = kwargs["newname"]
+    if kwargs.get("port"):
+        print("option '--port' is deprecated, use '-url' instead")
+        sdncontroller["port"] = int(kwargs["port"])
+    if kwargs.get("ip_address"):
+        print("option '--ip_address' is deprecated, use '-url' instead")
+        sdncontroller["ip"] = kwargs["ip_address"]
+    if kwargs.get("switch_dpid"):
+        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        sdncontroller["dpid"] = kwargs["switch_dpid"]
+    if kwargs.get("sdn_controller_version"):
+        print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
+              " instead")
+
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.sdnc.update(kwargs["name"], sdncontroller, wait=kwargs["wait"])
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='sdnc-delete', short_help='deletes an SDN controller')
+@cli_osm.command(name='sdnc-delete', short_help='deletes an SDN controller')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
-@click.option('--wait',
-              required=False,
-              default=False,
-              is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+@click.option('--wait', required=False, default=False, is_flag=True,
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def sdnc_delete(ctx, name, force, wait):
     """deletes an SDN controller
 
     NAME: name or ID of the SDN controller to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.sdnc.delete(name, force, wait=wait)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.sdnc.delete(name, force, wait=wait)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='sdnc-list', short_help='list all SDN controllers')
+@cli_osm.command(name='sdnc-list', short_help='list all SDN controllers')
 @click.option('--filter', default=None,
-              help='restricts the list to the SDN controllers matching the filter')
+              help="restricts the list to the SDN controllers matching the filter with format: 'k[.k..]=v[&k[.k]=v2]'")
 @click.pass_context
 def sdnc_list(ctx, filter):
     """list all SDN controllers"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.sdnc.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.sdnc.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(['sdnc name', 'id'])
     for sdnc in resp:
         table.add_row([sdnc['name'], sdnc['_id']])
@@ -2288,7 +2525,7 @@ def sdnc_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='sdnc-show', short_help='shows the details of an SDN controller')
+@cli_osm.command(name='sdnc-show', short_help='shows the details of an SDN controller')
 @click.argument('name')
 @click.pass_context
 def sdnc_show(ctx, name):
@@ -2296,12 +2533,13 @@ def sdnc_show(ctx, name):
 
     NAME: name or ID of the SDN controller
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.sdnc.get(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.sdnc.get(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in list(resp.items()):
@@ -2314,7 +2552,7 @@ def sdnc_show(ctx, name):
 # K8s cluster operations
 ###########################
 
-@cli.command(name='k8scluster-add')
+@cli_osm.command(name='k8scluster-add')
 @click.argument('name')
 @click.option('--creds',
               prompt=True,
@@ -2342,8 +2580,7 @@ def sdnc_show(ctx, name):
 #              help='If set, K8s cluster is assumed to be ready for its use with OSM')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def k8scluster_add(ctx,
                name,
@@ -2358,25 +2595,25 @@ def k8scluster_add(ctx,
 
     NAME: name of the K8s cluster
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        cluster = {}
-        cluster['name'] = name
-        with open(creds, 'r') as cf:
-            cluster['credentials'] = yaml.safe_load(cf.read())
-        cluster['k8s_version'] = version
-        cluster['vim_account'] = vim
-        cluster['nets'] = yaml.safe_load(k8s_nets)
-        cluster['description'] = description
-        if namespace: cluster['namespace'] = namespace
-        if cni: cluster['cni'] = yaml.safe_load(cni)
-        ctx.obj.k8scluster.create(name, cluster)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    cluster = {}
+    cluster['name'] = name
+    with open(creds, 'r') as cf:
+        cluster['credentials'] = yaml.safe_load(cf.read())
+    cluster['k8s_version'] = version
+    cluster['vim_account'] = vim
+    cluster['nets'] = yaml.safe_load(k8s_nets)
+    cluster['description'] = description
+    if namespace: cluster['namespace'] = namespace
+    if cni: cluster['cni'] = yaml.safe_load(cni)
+    ctx.obj.k8scluster.create(name, cluster)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='k8scluster-update', short_help='updates a K8s cluster')
+@cli_osm.command(name='k8scluster-update', short_help='updates a K8s cluster')
 @click.argument('name')
 @click.option('--newname', help='New name for the K8s cluster')
 @click.option('--creds', help='credentials file, i.e. a valid `.kube/config` file')
@@ -2401,47 +2638,46 @@ def k8scluster_update(ctx,
 
     NAME: name or ID of the K8s cluster
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        cluster = {}
-        if newname: cluster['name'] = newname
-        if creds:
-            with open(creds, 'r') as cf:
-                cluster['credentials'] = yaml.safe_load(cf.read())
-        if version: cluster['k8s_version'] = version
-        if vim: cluster['vim_account'] = vim
-        if k8s_nets: cluster['nets'] = yaml.safe_load(k8s_nets)
-        if description: cluster['description'] = description
-        if namespace: cluster['namespace'] = namespace
-        if cni: cluster['cni'] = yaml.safe_load(cni)
-        ctx.obj.k8scluster.update(name, cluster)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    cluster = {}
+    if newname: cluster['name'] = newname
+    if creds:
+        with open(creds, 'r') as cf:
+            cluster['credentials'] = yaml.safe_load(cf.read())
+    if version: cluster['k8s_version'] = version
+    if vim: cluster['vim_account'] = vim
+    if k8s_nets: cluster['nets'] = yaml.safe_load(k8s_nets)
+    if description: cluster['description'] = description
+    if namespace: cluster['namespace'] = namespace
+    if cni: cluster['cni'] = yaml.safe_load(cni)
+    ctx.obj.k8scluster.update(name, cluster)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='k8scluster-delete')
+@cli_osm.command(name='k8scluster-delete')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def k8scluster_delete(ctx, name, force):
     """deletes a K8s cluster
 
     NAME: name or ID of the K8s cluster to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.k8scluster.delete(name, force=force)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.k8scluster.delete(name, force=force)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='k8scluster-list')
+@cli_osm.command(name='k8scluster-list')
 @click.option('--filter', default=None,
               help='restricts the list to the K8s clusters matching the filter')
 @click.option('--literal', is_flag=True,
@@ -2449,25 +2685,25 @@ def k8scluster_delete(ctx, name, force):
 @click.pass_context
 def k8scluster_list(ctx, filter, literal):
     """list all K8s clusters"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.k8scluster.list(filter)
-        if literal:
-            print(yaml.safe_dump(resp))
-            return
-        table = PrettyTable(['Name', 'Id', 'Version', 'VIM', 'K8s-nets', 'Description'])
-        for cluster in resp:
-            table.add_row([cluster['name'], cluster['_id'], cluster['k8s_version'], cluster['vim_account'],
-                           json.dumps(cluster['nets']), trunc_text(cluster.get('description',''),40)
-                          ])
-        table.align = 'l'
-        print(table)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.k8scluster.list(filter)
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
+    table = PrettyTable(['Name', 'Id', 'Version', 'VIM', 'K8s-nets', 'Operational State', 'Description'])
+    for cluster in resp:
+        table.add_row([cluster['name'], cluster['_id'], cluster['k8s_version'], cluster['vim_account'],
+                       json.dumps(cluster['nets']), cluster["_admin"]["operationalState"],
+                       trunc_text(cluster.get('description',''),40)])
+    table.align = 'l'
+    print(table)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='k8scluster-show')
+@cli_osm.command(name='k8scluster-show')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -2477,19 +2713,19 @@ def k8scluster_show(ctx, name, literal):
 
     NAME: name or ID of the K8s cluster
     """
-    try:
-        resp = ctx.obj.k8scluster.get(name)
-        if literal:
-            print(yaml.safe_dump(resp))
-            return
-        table = PrettyTable(['key', 'attribute'])
-        for k, v in list(resp.items()):
-            table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
-        table.align = 'l'
-        print(table)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    resp = ctx.obj.k8scluster.get(name)
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
+    table = PrettyTable(['key', 'attribute'])
+    for k, v in list(resp.items()):
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
+    table.align = 'l'
+    print(table)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 
@@ -2497,7 +2733,7 @@ def k8scluster_show(ctx, name, literal):
 # Repo operations
 ###########################
 
-@cli.command(name='repo-add')
+@cli_osm.command(name='repo-add')
 @click.argument('name')
 @click.argument('uri')
 @click.option('--type',
@@ -2509,8 +2745,7 @@ def k8scluster_show(ctx, name, literal):
               help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def repo_add(ctx,
              name,
@@ -2522,20 +2757,20 @@ def repo_add(ctx,
     NAME: name of the repo
     URI: URI of the repo
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        repo = {}
-        repo['name'] = name
-        repo['url'] = uri
-        repo['type'] = type
-        repo['description'] = description
-        ctx.obj.repo.create(name, repo)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    repo = {}
+    repo['name'] = name
+    repo['url'] = uri
+    repo['type'] = type
+    repo['description'] = description
+    ctx.obj.repo.create(name, repo)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='repo-update')
+@cli_osm.command(name='repo-update')
 @click.argument('name')
 @click.option('--newname', help='New name for the repo')
 @click.option('--uri', help='URI of the repo')
@@ -2544,8 +2779,7 @@ def repo_add(ctx,
 @click.option('--description', help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def repo_update(ctx,
              name,
@@ -2557,41 +2791,40 @@ def repo_update(ctx,
 
     NAME: name of the repo
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        repo = {}
-        if newname: repo['name'] = newname
-        if uri: repo['uri'] = uri
-        if type: repo['type'] = type
-        if description: repo['description'] = description
-        ctx.obj.repo.update(name, repo)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    repo = {}
+    if newname: repo['name'] = newname
+    if uri: repo['uri'] = uri
+    if type: repo['type'] = type
+    if description: repo['description'] = description
+    ctx.obj.repo.update(name, repo)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='repo-delete')
+@cli_osm.command(name='repo-delete')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
 #              is_flag=True,
-#              help='do not return the control immediately, but keep it \
-#              until the operation is completed, or timeout')
+#              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def repo_delete(ctx, name, force):
     """deletes a repo
 
     NAME: name or ID of the repo to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.repo.delete(name, force=force)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.repo.delete(name, force=force)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='repo-list')
+@cli_osm.command(name='repo-list')
 @click.option('--filter', default=None,
               help='restricts the list to the repos matching the filter')
 @click.option('--literal', is_flag=True,
@@ -2599,24 +2832,24 @@ def repo_delete(ctx, name, force):
 @click.pass_context
 def repo_list(ctx, filter, literal):
     """list all repos"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.repo.list(filter)
-        if literal:
-            print(yaml.safe_dump(resp))
-            return
-        table = PrettyTable(['Name', 'Id', 'Type', 'URI', 'Description'])
-        for repo in resp:
-            #cluster['k8s-nets'] = json.dumps(yaml.safe_load(cluster['k8s-nets']))
-            table.add_row([repo['name'], repo['_id'], repo['type'], repo['url'], trunc_text(repo.get('description',''),40)])
-        table.align = 'l'
-        print(table)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.repo.list(filter)
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
+    table = PrettyTable(['Name', 'Id', 'Type', 'URI', 'Description'])
+    for repo in resp:
+        #cluster['k8s-nets'] = json.dumps(yaml.safe_load(cluster['k8s-nets']))
+        table.add_row([repo['name'], repo['_id'], repo['type'], repo['url'], trunc_text(repo.get('description',''),40)])
+    table.align = 'l'
+    print(table)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='repo-show')
+@cli_osm.command(name='repo-show')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -2626,19 +2859,19 @@ def repo_show(ctx, name, literal):
 
     NAME: name or ID of the repo
     """
-    try:
-        resp = ctx.obj.repo.get(name)
-        if literal:
-            print(yaml.safe_dump(resp))
-            return
-        table = PrettyTable(['key', 'attribute'])
-        for k, v in list(resp.items()):
-            table.add_row([k, json.dumps(v, indent=2)])
-        table.align = 'l'
-        print(table)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    resp = ctx.obj.repo.get(name)
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
+    table = PrettyTable(['key', 'attribute'])
+    for k, v in list(resp.items()):
+        table.add_row([k, json.dumps(v, indent=2)])
+    table.align = 'l'
+    print(table)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 
@@ -2646,7 +2879,7 @@ def repo_show(ctx, name, literal):
 # Project mgmt operations
 ####################
 
-@cli.command(name='project-create', short_help='creates a new project')
+@cli_osm.command(name='project-create', short_help='creates a new project')
 @click.argument('name')
 #@click.option('--description',
 #              default='no description',
@@ -2657,17 +2890,18 @@ def project_create(ctx, name):
 
     NAME: name of the project
     """
+    logger.debug("")
     project = {}
     project['name'] = name
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.project.create(name, project)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.project.create(name, project)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='project-delete', short_help='deletes a project')
+@cli_osm.command(name='project-delete', short_help='deletes a project')
 @click.argument('name')
 #@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -2676,26 +2910,28 @@ def project_delete(ctx, name):
 
     NAME: name or ID of the project to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.project.delete(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.project.delete(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='project-list', short_help='list all projects')
+@cli_osm.command(name='project-list', short_help='list all projects')
 @click.option('--filter', default=None,
               help='restricts the list to the projects matching the filter')
 @click.pass_context
 def project_list(ctx, filter):
     """list all projects"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.project.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.project.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(['name', 'id'])
     for proj in resp:
         table.add_row([proj['name'], proj['_id']])
@@ -2703,7 +2939,7 @@ def project_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='project-show', short_help='shows the details of a project')
+@cli_osm.command(name='project-show', short_help='shows the details of a project')
 @click.argument('name')
 @click.pass_context
 def project_show(ctx, name):
@@ -2711,12 +2947,13 @@ def project_show(ctx, name):
 
     NAME: name or ID of the project
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.project.get(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.project.get(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in resp.items():
@@ -2725,7 +2962,7 @@ def project_show(ctx, name):
     print(table)
 
 
-@cli.command(name='project-update', short_help='updates a project (only the name can be updated)')
+@cli_osm.command(name='project-update', short_help='updates a project (only the name can be updated)')
 @click.argument('project')
 @click.option('--name',
               prompt=True,
@@ -2741,22 +2978,22 @@ def project_update(ctx, project, name):
     :param name:  new name for the project
     :return:
     """
-
+    logger.debug("")
     project_changes = {}
     project_changes['name'] = name
 
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.project.update(project, project_changes)
-    except ClientException as e:
-        print(str(e))
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.project.update(project, project_changes)
+    # except ClientException as e:
+    #     print(str(e))
 
 
 ####################
 # User mgmt operations
 ####################
 
-@cli.command(name='user-create', short_help='creates a new user')
+@cli_osm.command(name='user-create', short_help='creates a new user')
 @click.argument('username')
 @click.option('--password',
               prompt=True,
@@ -2781,21 +3018,22 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     PROJECTS: projects assigned to user (internal only)
     PROJECT_ROLE_MAPPING: roles in projects assigned to user (keystone)
     """
+    logger.debug("")
     user = {}
     user['username'] = username
     user['password'] = password
     user['projects'] = projects
     user['project_role_mappings'] = project_role_mappings
     
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.user.create(username, user)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.user.create(username, user)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='user-update', short_help='updates user information')
+@cli_osm.command(name='user-update', short_help='updates user information')
 @click.argument('username')
 @click.option('--password',
               # prompt=True,
@@ -2831,6 +3069,7 @@ def user_update(ctx, username, password, set_username, set_project, remove_proje
     ADD_PROJECT_ROLE: adding mappings for project/role(s)
     REMOVE_PROJECT_ROLE: removing mappings for project/role(s)
     """
+    logger.debug("")
     user = {}
     user['password'] = password
     user['username'] = set_username
@@ -2839,15 +3078,15 @@ def user_update(ctx, username, password, set_username, set_project, remove_proje
     user['add-project-role'] = add_project_role
     user['remove-project-role'] = remove_project_role
     
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.user.update(username, user)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.user.update(username, user)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='user-delete', short_help='deletes a user')
+@cli_osm.command(name='user-delete', short_help='deletes a user')
 @click.argument('name')
 #@click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -2857,26 +3096,27 @@ def user_delete(ctx, name):
     \b
     NAME: name or ID of the user to be deleted
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.user.delete(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.user.delete(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='user-list', short_help='list all users')
+@cli_osm.command(name='user-list', short_help='list all users')
 @click.option('--filter', default=None,
               help='restricts the list to the users matching the filter')
 @click.pass_context
 def user_list(ctx, filter):
     """list all users"""
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.user.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.user.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(['name', 'id'])
     for user in resp:
         table.add_row([user['username'], user['_id']])
@@ -2884,7 +3124,7 @@ def user_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='user-show', short_help='shows the details of a user')
+@cli_osm.command(name='user-show', short_help='shows the details of a user')
 @click.argument('name')
 @click.pass_context
 def user_show(ctx, name):
@@ -2892,14 +3132,15 @@ def user_show(ctx, name):
 
     NAME: name or ID of the user
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.user.get(name)
-        if 'password' in resp:
-            resp['password']='********'
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.user.get(name)
+    if 'password' in resp:
+        resp['password']='********'
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in resp.items():
@@ -2912,7 +3153,7 @@ def user_show(ctx, name):
 # Fault Management operations
 ####################
 
-@cli.command(name='ns-alarm-create')
+@cli_osm.command(name='ns-alarm-create')
 @click.argument('name')
 @click.option('--ns', prompt=True, help='NS instance id or name')
 @click.option('--vnf', prompt=True,
@@ -2935,27 +3176,28 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
     """creates a new alarm for a NS instance"""
     # TODO: Check how to validate threshold_value.
     # Should it be an integer (1-100), percentage, or decimal (0.01-1.00)?
-    try:
-        ns_instance = ctx.obj.ns.get(ns)
-        alarm = {}
-        alarm['alarm_name'] = name
-        alarm['ns_id'] = ns_instance['_id']
-        alarm['correlation_id'] = ns_instance['_id']
-        alarm['vnf_member_index'] = vnf
-        alarm['vdu_name'] = vdu
-        alarm['metric_name'] = metric
-        alarm['severity'] = severity
-        alarm['threshold_value'] = int(threshold_value)
-        alarm['operation'] = threshold_operator
-        alarm['statistic'] = statistic
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.ns.create_alarm(alarm)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    ns_instance = ctx.obj.ns.get(ns)
+    alarm = {}
+    alarm['alarm_name'] = name
+    alarm['ns_id'] = ns_instance['_id']
+    alarm['correlation_id'] = ns_instance['_id']
+    alarm['vnf_member_index'] = vnf
+    alarm['vdu_name'] = vdu
+    alarm['metric_name'] = metric
+    alarm['severity'] = severity
+    alarm['threshold_value'] = int(threshold_value)
+    alarm['operation'] = threshold_operator
+    alarm['statistic'] = statistic
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.ns.create_alarm(alarm)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-#@cli.command(name='ns-alarm-delete')
+#@cli_osm.command(name='ns-alarm-delete')
 #@click.argument('name')
 #@click.pass_context
 #def ns_alarm_delete(ctx, name):
@@ -2975,7 +3217,7 @@ def ns_alarm_create(ctx, name, ns, vnf, vdu, metric, severity,
 # Performance Management operations
 ####################
 
-@cli.command(name='ns-metric-export', short_help='exports a metric to the internal OSM bus, which can be read by other apps')
+@cli_osm.command(name='ns-metric-export', short_help='exports a metric to the internal OSM bus, which can be read by other apps')
 @click.option('--ns', prompt=True, help='NS instance id or name')
 @click.option('--vnf', prompt=True,
               help='VNF name (VNF member index as declared in the NSD)')
@@ -2991,46 +3233,47 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
     """exports a metric to the internal OSM bus, which can be read by other apps"""
     # TODO: Check how to validate interval.
     # Should it be an integer (seconds), or should a suffix (s,m,h,d,w) also be permitted?
-    try:
-        ns_instance = ctx.obj.ns.get(ns)
-        metric_data = {}
-        metric_data['ns_id'] = ns_instance['_id']
-        metric_data['correlation_id'] = ns_instance['_id']
-        metric_data['vnf_member_index'] = vnf
-        metric_data['vdu_name'] = vdu
-        metric_data['metric_name'] = metric
-        metric_data['collection_unit'] = 'WEEK'
-        metric_data['collection_period'] = 1
-        check_client_version(ctx.obj, ctx.command.name)
-        if not interval:
-            print('{}'.format(ctx.obj.ns.export_metric(metric_data)))
-        else:
-            i = 1
-            while True:
-                print('{} {}'.format(ctx.obj.ns.export_metric(metric_data),i))
-                time.sleep(int(interval))
-                i+=1
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    ns_instance = ctx.obj.ns.get(ns)
+    metric_data = {}
+    metric_data['ns_id'] = ns_instance['_id']
+    metric_data['correlation_id'] = ns_instance['_id']
+    metric_data['vnf_member_index'] = vnf
+    metric_data['vdu_name'] = vdu
+    metric_data['metric_name'] = metric
+    metric_data['collection_unit'] = 'WEEK'
+    metric_data['collection_period'] = 1
+    check_client_version(ctx.obj, ctx.command.name)
+    if not interval:
+        print('{}'.format(ctx.obj.ns.export_metric(metric_data)))
+    else:
+        i = 1
+        while True:
+            print('{} {}'.format(ctx.obj.ns.export_metric(metric_data),i))
+            time.sleep(int(interval))
+            i+=1
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 ####################
 # Other operations
 ####################
 
-@cli.command(name='version')
+@cli_osm.command(name='version')
 @click.pass_context
 def get_version(ctx):
-    try:
-        check_client_version(ctx.obj, "version")
-        print ("Server version: {}".format(ctx.obj.get_version()))
-        print ("Client version: {}".format(pkg_resources.get_distribution("osmclient").version))
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, "version")
+    print ("Server version: {}".format(ctx.obj.get_version()))
+    print ("Client version: {}".format(pkg_resources.get_distribution("osmclient").version))
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
-@cli.command(name='upload-package', short_help='uploads a VNF package or NS package')
+@cli_osm.command(name='upload-package', short_help='uploads a VNF package or NS package')
 @click.argument('filename')
 @click.pass_context
 def upload_package(ctx, filename):
@@ -3038,17 +3281,18 @@ def upload_package(ctx, filename):
 
     FILENAME: VNF or NS package file (tar.gz)
     """
-    try:
-        ctx.obj.package.upload(filename)
-        fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
-        if fullclassname != 'osmclient.sol005.client.Client':
-            ctx.obj.package.wait_for_upload(filename)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    ctx.obj.package.upload(filename)
+    fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
+    if fullclassname != 'osmclient.sol005.client.Client':
+        ctx.obj.package.wait_for_upload(filename)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-#@cli.command(name='ns-scaling-show')
+#@cli_osm.command(name='ns-scaling-show')
 #@click.argument('ns_name')
 #@click.pass_context
 #def show_ns_scaling(ctx, ns_name):
@@ -3090,7 +3334,7 @@ def upload_package(ctx, filename):
 #    print(table)
 
 
-#@cli.command(name='ns-scale')
+#@cli_osm.command(name='ns-scale')
 #@click.argument('ns_name')
 #@click.option('--ns_scale_group', prompt=True)
 #@click.option('--index', prompt=True)
@@ -3114,7 +3358,7 @@ def upload_package(ctx, filename):
 #        exit(1)
 
 
-#@cli.command(name='config-agent-list')
+#@cli_osm.command(name='config-agent-list')
 #@click.pass_context
 #def config_agent_list(ctx):
 #    """list config agents"""
@@ -3133,7 +3377,7 @@ def upload_package(ctx, filename):
 #    print(table)
 
 
-#@cli.command(name='config-agent-delete')
+#@cli_osm.command(name='config-agent-delete')
 #@click.argument('name')
 #@click.pass_context
 #def config_agent_delete(ctx, name):
@@ -3149,7 +3393,7 @@ def upload_package(ctx, filename):
 #        exit(1)
 
 
-#@cli.command(name='config-agent-add')
+#@cli_osm.command(name='config-agent-add')
 #@click.option('--name',
 #              prompt=True)
 #@click.option('--account_type',
@@ -3173,7 +3417,7 @@ def upload_package(ctx, filename):
 #        exit(1)
 
 
-#@cli.command(name='ro-dump')
+#@cli_osm.command(name='ro-dump')
 #@click.pass_context
 #def ro_dump(ctx):
 #    """shows RO agent information"""
@@ -3186,7 +3430,7 @@ def upload_package(ctx, filename):
 #    print(table)
 
 
-#@cli.command(name='vcs-list')
+#@cli_osm.command(name='vcs-list')
 #@click.pass_context
 #def vcs_list(ctx):
 #    check_client_version(ctx.obj, ctx.command.name, 'v1')
@@ -3198,7 +3442,7 @@ def upload_package(ctx, filename):
 #    print(table)
 
 
-@cli.command(name='ns-action', short_help='executes an action/primitive over a NS instance')
+@cli_osm.command(name='ns-action', short_help='executes an action/primitive over a NS instance')
 @click.argument('ns_name')
 @click.option('--vnf_name', default=None, help='member-vnf-index if the target is a vnf instead of a ns)')
 @click.option('--kdu_name', default=None, help='kdu-name if the target is a kdu)')
@@ -3211,8 +3455,7 @@ def upload_package(ctx, filename):
               required=False,
               default=False,
               is_flag=True,
-              help='do not return the control immediately, but keep it \
-              until the operation is completed, or timeout')
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def ns_action(ctx,
               ns_name,
@@ -3228,33 +3471,34 @@ def ns_action(ctx,
 
     NS_NAME: name or ID of the NS instance
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        op_data = {}
-        if vnf_name:
-            op_data['member_vnf_index'] = vnf_name
-        if kdu_name:
-            op_data['kdu_name'] = kdu_name
-        if vdu_id:
-            op_data['vdu_id'] = vdu_id
-        if vdu_count:
-            op_data['vdu_count_index'] = vdu_count
-        op_data['primitive'] = action_name
-        if params_file:
-            with open(params_file, 'r') as pf:
-                params = pf.read()
-        if params:
-            op_data['primitive_params'] = yaml.safe_load(params)
-        else:
-            op_data['primitive_params'] = {}
-        print(ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait))
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    op_data = {}
+    if vnf_name:
+        op_data['member_vnf_index'] = vnf_name
+    if kdu_name:
+        op_data['kdu_name'] = kdu_name
+    if vdu_id:
+        op_data['vdu_id'] = vdu_id
+    if vdu_count:
+        op_data['vdu_count_index'] = vdu_count
+    op_data['primitive'] = action_name
+    if params_file:
+        with open(params_file, 'r') as pf:
+            params = pf.read()
+    if params:
+        op_data['primitive_params'] = yaml.safe_load(params)
+    else:
+        op_data['primitive_params'] = {}
+    print(ctx.obj.ns.exec_op(ns_name, op_name='action', op_data=op_data, wait=wait))
 
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='vnf-scale', short_help='executes a VNF scale (adding/removing VDUs)')
+@cli_osm.command(name='vnf-scale', short_help='executes a VNF scale (adding/removing VDUs)')
 @click.argument('ns_name')
 @click.argument('vnf_name')
 @click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
@@ -3274,21 +3518,22 @@ def vnf_scale(ctx,
     NS_NAME: name or ID of the NS instance.
     VNF_NAME: member-vnf-index in the NS to be scaled.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        if not scale_in and not scale_out:
-            scale_out = True
-        ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    if not scale_in and not scale_out:
+        scale_out = True
+    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
 ##############################
 # Role Management Operations #
 ##############################
 
-@cli.command(name='role-create', short_help='creates a new role')
+@cli_osm.command(name='role-create', short_help='creates a new role')
 @click.argument('name')
 @click.option('--permissions',
               default=None,
@@ -3302,15 +3547,16 @@ def role_create(ctx, name, permissions):
     NAME: Name or ID of the role.
     DEFINITION: Definition of grant/denial of access to resources.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.role.create(name, permissions)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.role.create(name, permissions)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='role-update', short_help='updates a role')
+@cli_osm.command(name='role-update', short_help='updates a role')
 @click.argument('name')
 @click.option('--set-name',
               default=None,
@@ -3335,15 +3581,16 @@ def role_update(ctx, name, set_name, add, remove):
     ADD: Grant/denial of access to resource to add.
     REMOVE: Grant/denial of access to resource to remove.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.role.update(name, set_name, None, add, remove)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.role.update(name, set_name, None, add, remove)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='role-delete', short_help='deletes a role')
+@cli_osm.command(name='role-delete', short_help='deletes a role')
 @click.argument('name')
 # @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
 @click.pass_context
@@ -3354,15 +3601,16 @@ def role_delete(ctx, name):
     \b
     NAME: Name or ID of the role.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        ctx.obj.role.delete(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.role.delete(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
 
-@cli.command(name='role-list', short_help='list all roles')
+@cli_osm.command(name='role-list', short_help='list all roles')
 @click.option('--filter', default=None,
               help='restricts the list to the projects matching the filter')
 @click.pass_context
@@ -3370,12 +3618,13 @@ def role_list(ctx, filter):
     """
     List all roles.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.role.list(filter)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.role.list(filter)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
     table = PrettyTable(['name', 'id'])
     for role in resp:
         table.add_row([role['name'], role['_id']])
@@ -3383,7 +3632,7 @@ def role_list(ctx, filter):
     print(table)
 
 
-@cli.command(name='role-show', short_help='show specific role')
+@cli_osm.command(name='role-show', short_help='show specific role')
 @click.argument('name')
 @click.pass_context
 def role_show(ctx, name):
@@ -3393,12 +3642,13 @@ def role_show(ctx, name):
     \b
     NAME: Name or ID of the role.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        resp = ctx.obj.role.get(name)
-    except ClientException as e:
-        print(str(e))
-        exit(1)
+    logger.debug("")
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    resp = ctx.obj.role.get(name)
+    # except ClientException as e:
+    #     print(str(e))
+    #     exit(1)
 
     table = PrettyTable(['key', 'attribute'])
     for k, v in resp.items():
@@ -3407,7 +3657,7 @@ def role_show(ctx, name):
     print(table)
 
 
-@cli.command(name='package-create',
+@cli_osm.command(name='package-create',
              short_help='Create a package descriptor')
 @click.argument('package-type')
 @click.argument('package-name')
@@ -3473,29 +3723,29 @@ def package_create(ctx,
     PACKAGE_NAME: Name of the package to create the folder with the content.
     """
 
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        print("Creating the {} structure: {}/{}".format(package_type.upper(), base_directory, package_name))
-        resp = ctx.obj.package_tool.create(package_type,
-                                           base_directory,
-                                           package_name,
-                                           override=override,
-                                           image=image,
-                                           vdus=vdus,
-                                           vcpu=vcpu,
-                                           memory=memory,
-                                           storage=storage,
-                                           interfaces=interfaces,
-                                           vendor=vendor,
-                                           detailed=detailed,
-                                           netslice_subnets=netslice_subnets,
-                                           netslice_vlds=netslice_vlds)
-        print(resp)
-    except ClientException as inst:
-        print("ERROR: {}".format(inst))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    print("Creating the {} structure: {}/{}".format(package_type.upper(), base_directory, package_name))
+    resp = ctx.obj.package_tool.create(package_type,
+                                       base_directory,
+                                       package_name,
+                                       override=override,
+                                       image=image,
+                                       vdus=vdus,
+                                       vcpu=vcpu,
+                                       memory=memory,
+                                       storage=storage,
+                                       interfaces=interfaces,
+                                       vendor=vendor,
+                                       detailed=detailed,
+                                       netslice_subnets=netslice_subnets,
+                                       netslice_vlds=netslice_vlds)
+    print(resp)
+    # except ClientException as inst:
+    #     print("ERROR: {}".format(inst))
+    #     exit(1)
 
-@cli.command(name='package-validate',
+@cli_osm.command(name='package-validate',
              short_help='Validate a package descriptor')
 @click.argument('base-directory',
                 default=".",
@@ -3509,24 +3759,24 @@ def package_validate(ctx,
     \b
     BASE_DIRECTORY: Stub folder for NS, VNF or NST package.
     """
-    try:
-        check_client_version(ctx.obj, ctx.command.name)
-        results = ctx.obj.package_tool.validate(base_directory)
-        table = PrettyTable()
-        table.field_names = ["TYPE", "PATH", "VALID", "ERROR"]
-        # Print the dictionary generated by the validation function
-        for result in results:
-            table.add_row([result["type"], result["path"], result["valid"], result["error"]])
-        table.sortby = "VALID"
-        table.align["PATH"] = "l"
-        table.align["TYPE"] = "l"
-        table.align["ERROR"] = "l"
-        print(table)
-    except ClientException as inst:
-        print("ERROR: {}".format(inst))
-        exit(1)
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    results = ctx.obj.package_tool.validate(base_directory)
+    table = PrettyTable()
+    table.field_names = ["TYPE", "PATH", "VALID", "ERROR"]
+    # Print the dictionary generated by the validation function
+    for result in results:
+        table.add_row([result["type"], result["path"], result["valid"], result["error"]])
+    table.sortby = "VALID"
+    table.align["PATH"] = "l"
+    table.align["TYPE"] = "l"
+    table.align["ERROR"] = "l"
+    print(table)
+    # except ClientException as inst:
+    #     print("ERROR: {}".format(inst))
+    #     exit(1)
 
-@cli.command(name='package-build',
+@cli_osm.command(name='package-build',
              short_help='Build the tar.gz of the package')
 @click.argument('package-folder')
 @click.option('--skip-validation',
@@ -3543,20 +3793,29 @@ def package_build(ctx,
     \b
     PACKAGE_FOLDER: Folder of the NS, VNF or NST to be packaged
     """
+    # try:
+    check_client_version(ctx.obj, ctx.command.name)
+    results = ctx.obj.package_tool.build(package_folder, skip_validation)
+    print(results)
+    # except ClientException as inst:
+    #     print("ERROR: {}".format(inst))
+    #     exit(1)
+
+
+def cli():
     try:
-        check_client_version(ctx.obj, ctx.command.name)
-        results = ctx.obj.package_tool.build(package_folder, skip_validation)
-        print(results)
-    except ClientException as inst:
-        print("ERROR: {}".format(inst))
+        cli_osm()
+    except pycurl.error as exc:
+        print(exc)
+        print('Maybe "--hostname" option or OSM_HOSTNAME environment variable needs to be specified')
         exit(1)
+    except ClientException as exc:
+        print("ERROR: {}".format(exc))
+        exit(1)
+    # TODO capture other controlled exceptions here
+    # TODO remove the ClientException captures from all places, unless they do something different
 
 
 if __name__ == '__main__':
-    try:
-        cli()
-    except pycurl.error as e:
-        print(e)
-        print('Maybe "--hostname" option or OSM_HOSTNAME' +
-              'environment variable needs to be specified')
-        exit(1)
+    cli()
+

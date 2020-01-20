@@ -23,12 +23,14 @@ from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
+import logging
 
 
 class SdnController(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/admin'
         self._apiVersion = '/v1'
         self._apiResource = '/sdns'
@@ -37,6 +39,7 @@ class SdnController(object):
 
     # SDNC '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/sdns')
@@ -50,7 +53,9 @@ class SdnController(object):
             deleteFlag=deleteFlag)
 
     def _get_id_for_wait(self, name):
-        # Returns id of name, or the id itself if given as argument
+        """Returns id of name, or the id itself if given as argument
+        """
+        self._logger.debug("")
         for sdnc in self.list():
             if name == sdnc['_id']:
                 return sdnc['_id']
@@ -60,17 +65,16 @@ class SdnController(object):
         return ''
 
     def create(self, name, sdn_controller, wait=False):
+        self._logger.debug("")
         self._client.get_token()
-        http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                       postfields_dict=sdn_controller)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
+        http_code, resp = self._http.post_cmd(endpoint=self._apiBase, postfields_dict=sdn_controller)
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
+                raise ClientException('unexpected response from server - {}'.format(resp))
             if wait:
                 # Wait for status for SDNC instance creation
                 self._wait(resp.get('id'))
@@ -85,11 +89,12 @@ class SdnController(object):
             raise ClientException("failed to create SDN controller {} - {}".format(name, msg))
 
     def update(self, name, sdn_controller, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         sdnc = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,sdnc['_id']),
-                                       postfields_dict=sdn_controller)
+                                               postfields_dict=sdn_controller)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202, 204):
@@ -111,6 +116,7 @@ class SdnController(object):
             raise ClientException("failed to update SDN controller {} - {}".format(name, msg))
 
     def delete(self, name, force=False, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         sdn_controller = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
@@ -118,9 +124,9 @@ class SdnController(object):
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                         sdn_controller['_id'], querystring))
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
+                                                                 sdn_controller['_id'], querystring))
+        # print('HTTP CODE: {}'.format(http_code))
+        # print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait:
                 # Wait for status for SDNC instance deletion
@@ -143,12 +149,13 @@ class SdnController(object):
     def list(self, filter=None):
         """Returns a list of SDN controllers
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
-        #print('RESP: {}'.format(resp))
+        resp = self._http.get_cmd('{}{}'.format(self._apiBase, filter_string))
+        # print('RESP: {}'.format(resp))
         if resp:
             return resp
         return list()
@@ -156,6 +163,7 @@ class SdnController(object):
     def get(self, name):
         """Returns an SDN controller based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         if utils.validate_uuid4(name):
             for sdnc in self.list():
@@ -166,5 +174,4 @@ class SdnController(object):
                 if name == sdnc['name']:
                     return sdnc
         raise NotFound("SDN controller {} not found".format(name))
-
 

@@ -24,12 +24,14 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import yaml
 import json
+import logging
 
 
 class Wim(object):
     def __init__(self, http=None, client=None):
         self._http = http
         self._client = client
+        self._logger = logging.getLogger('osmclient')
         self._apiName = '/admin'
         self._apiVersion = '/v1'
         self._apiResource = '/wim_accounts'
@@ -38,6 +40,7 @@ class Wim(object):
 
     # WIM '--wait' option
     def _wait(self, id, deleteFlag=False):
+        self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/wim_accounts')
@@ -51,7 +54,9 @@ class Wim(object):
             deleteFlag=deleteFlag)
 
     def _get_id_for_wait(self, name):
-        # Returns id of name, or the id itself if given as argument
+        """Returns id of name, or the id itself if given as argument
+        """
+        self._logger.debug("")
         for wim in self.list():
             if name == wim['uuid']:
                 return wim['uuid']
@@ -61,6 +66,7 @@ class Wim(object):
         return ''
 
     def create(self, name, wim_input, wim_port_mapping=None, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         if 'wim_type' not in wim_input:
             raise Exception("wim type not provided")
@@ -102,6 +108,7 @@ class Wim(object):
             raise ClientException("failed to create wim {} - {}".format(name, msg))
 
     def update(self, wim_name, wim_account, wim_port_mapping=None, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         wim = self.get(wim_name)
         wim_id_for_wait = self._get_id_for_wait(wim_name)
@@ -141,7 +148,8 @@ class Wim(object):
             raise ClientException("failed to update wim {} - {}".format(wim_name, msg))
 
     def update_wim_account_dict(self, wim_account, wim_input):
-        print(wim_input)
+        self._logger.debug("")
+        self._logger.debug(str(wim_input))
         wim_account['wim_type'] = wim_input['wim_type']
         wim_account['description'] = wim_input['description']
         wim_account['wim_url'] = wim_input['url']
@@ -152,12 +160,14 @@ class Wim(object):
     def get_id(self, name):
         """Returns a WIM id from a WIM name
         """
+        self._logger.debug("")
         for wim in self.list():
             if name == wim['name']:
                 return wim['uuid']
         raise NotFound("wim {} not found".format(name))
 
     def delete(self, wim_name, force=False, wait=False):
+        self._logger.debug("")
         self._client.get_token()
         wim_id = wim_name
         wim_id_for_wait = self._get_id_for_wait(wim_name)
@@ -197,6 +207,7 @@ class Wim(object):
     def list(self, filter=None):
         """Returns a list of VIM accounts
         """
+        self._logger.debug("")
         self._client.get_token()
         filter_string = ''
         if filter:
@@ -213,6 +224,7 @@ class Wim(object):
     def get(self, name):
         """Returns a VIM account based on name or id
         """
+        self._logger.debug("")
         self._client.get_token()
         wim_id = name
         if not utils.validate_uuid4(name):
@@ -224,3 +236,4 @@ class Wim(object):
         else:
             return resp
         raise NotFound("wim {} not found".format(name))
+

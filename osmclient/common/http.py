@@ -50,9 +50,13 @@ class Http(object):
         curl_cmd = self._get_curl_cmd(endpoint)
         curl_cmd.setopt(pycurl.HTTPGET, 1)
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._logger.info("Request METHOD: {} URL: {}".format("GET",self._url + endpoint))
         curl_cmd.perform()
+        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+        self._logger.info("Response HTTPCODE: {}".format(http_code))
         curl_cmd.close()
         if data.getvalue():
+            self._logger.debug("Response DATA: {}".format(json.loads(data.getvalue().decode())))
             return json.loads(data.getvalue().decode())
         return None
 
@@ -61,9 +65,13 @@ class Http(object):
         curl_cmd = self._get_curl_cmd(endpoint)
         curl_cmd.setopt(pycurl.CUSTOMREQUEST, "DELETE")
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._logger.info("Request METHOD: {} URL: {}".format("DELETE",self._url + endpoint))
         curl_cmd.perform()
+        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+        self._logger.info("Response HTTPCODE: {}".format(http_code))
         curl_cmd.close()
         if data.getvalue():
+            self._logger.debug("Response DATA: {}".format(json.loads(data.getvalue().decode())))
             return json.loads(data.getvalue().decode())
         return None
 
@@ -84,8 +92,12 @@ class Http(object):
                            (pycurl.FORM_FILE,
                             formfile[1])))])
 
+        self._logger.info("Request METHOD: {} URL: {}".format("POST",self._url + endpoint))
         curl_cmd.perform()
+        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+        self._logger.info("Response HTTPCODE: {}".format(http_code))
         curl_cmd.close()
         if data.getvalue():
+            self._logger.debug("Response DATA: {}".format(json.loads(data.getvalue().decode())))
             return json.loads(data.getvalue().decode())
         return None

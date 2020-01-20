@@ -21,9 +21,32 @@ OSM client entry point
 
 from osmclient.v1 import client as client
 from osmclient.sol005 import client as sol005client
+import logging
+import verboselogs
+verboselogs.install()
 
 
 def Client(version=1, host=None, sol005=True, *args, **kwargs):
+    log_format_simple = "%(levelname)s %(message)s"
+    log_format_complete = "%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)s %(funcName)s(): %(message)s"
+    log_formatter_simple = logging.Formatter(log_format_simple, datefmt='%Y-%m-%dT%H:%M:%S')
+    handler = logging.StreamHandler()
+    handler.setFormatter(log_formatter_simple)
+    logger = logging.getLogger('osmclient')
+    logger.setLevel(level=logging.WARNING)
+    logger.addHandler(handler)
+    verbose = kwargs.get('verbose',0)
+    if verbose>0:
+        log_formatter = logging.Formatter(log_format_complete, datefmt='%Y-%m-%dT%H:%M:%S')
+        #handler = logging.StreamHandler()
+        handler.setFormatter(log_formatter)
+        #logger.addHandler(handler)
+        if verbose==1:
+            logger.setLevel(level=logging.INFO)
+        elif verbose==2:
+            logger.setLevel(level=logging.VERBOSE)
+        elif verbose>2:
+            logger.setLevel(level=logging.DEBUG)
     if not sol005:
         if version == 1:
             return client.Client(host, *args, **kwargs)
