@@ -152,8 +152,10 @@ def cli_osm(ctx, hostname, user, password, project, verbose):
 @cli_osm.command(name='ns-list', short_help='list all NS instances')
 @click.option('--filter', default=None,
               help='restricts the list to the NS instances matching the filter.')
+@click.option('--details', is_flag=True,
+              help='get more details of current operation in the NS.')
 @click.pass_context
-def ns_list(ctx, filter):
+def ns_list(ctx, filter,details):
     """list all NS instances
 
     \b
@@ -201,45 +203,152 @@ def ns_list(ctx, filter):
        --filter  nsd.vendor=<VENDOR>&nsd-ref=<NSD_NAME>
        --filter  nsd.constituent-vnfd.vnfd-id-ref=<VNFD_NAME>
     """
+    def summarize_deployment_status(status_dict):
+        #Nets
+        summary = ""
+        n_nets = 0
+        status_nets = {}
+        net_list = status_dict['nets']
+        for net in net_list:
+            n_nets += 1
+            if net['status'] not in status_nets:
+                status_nets[net['status']] = 1
+            else:
+                status_nets[net['status']] +=1
+        message = "Nets: "
+        for k,v in status_nets.items():
+            message += "{}:{},".format(k,v)
+        message += "TOTAL:{}".format(n_nets)
+        summary += "{}".format(message)
+        #VMs and VNFs
+        n_vms = 0
+        status_vms = {}
+        status_vnfs = {}
+        vnf_list = status_dict['vnfs']
+        for vnf in vnf_list:
+            member_vnf_index = vnf['member_vnf_index']
+            if member_vnf_index not in status_vnfs:
+                status_vnfs[member_vnf_index] = {}
+            for vm in vnf['vms']:
+                n_vms += 1
+                if vm['status'] not in status_vms:
+                    status_vms[vm['status']] = 1
+                else:
+                    status_vms[vm['status']] +=1
+                if vm['status'] not in status_vnfs[member_vnf_index]:
+                    status_vnfs[member_vnf_index][vm['status']] = 1
+                else:
+                    status_vnfs[member_vnf_index][vm['status']] += 1
+        message = "VMs: "
+        for k,v in status_vms.items():
+            message += "{}:{},".format(k,v)
+        message += "TOTAL:{}".format(n_vms)
+        summary += "\n{}".format(message)
+        summary += "\nNFs:"
+        for k,v in status_vnfs.items():
+            total = 0
+            message = "\n  {} VMs: ".format(k)
+            for k2,v2 in v.items():
+                message += "{}:{},".format(k2,v2)
+                total += v2
+            message += "TOTAL:{}".format(total)
+        summary += message
+        return summary
+        
+    def summarize_config_status(ee_list):
+        n_ee = 0
+        status_ee = {}
+        for ee in ee_list:
+            n_ee += 1
+            if ee['elementType'] not in status_ee:
+                status_ee[ee['elementType']] = {}
+                status_ee[ee['elementType']][ee['status']] = 1
+                continue;
+            if ee['status'] in status_ee[ee['elementType']]:
+                status_ee[ee['elementType']][ee['status']] += 1
+            else:
+                status_ee[ee['elementType']][ee['status']] = 1
+        summary = ""
+        for elementType in ["KDU", "VDU", "PDU", "VNF", "NS"]:
+            if elementType in status_ee:
+                message = ""
+                total = 0
+                for k,v in status_ee[elementType].items():
+                    message += "{}:{},".format(k,v)
+                    total += v
+                message += "TOTAL:{}\n".format(total)
+                summary += "{}: {}".format(elementType, message)
+        summary += "TOTAL Exec. Env.: {}".format(n_ee)
+        return summary
     logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
         resp = ctx.obj.ns.list(filter)
     else:
         resp = ctx.obj.ns.list()
-    table = PrettyTable(
+    if details:
+        table = PrettyTable(
         ['ns instance name',
          'id',
-         'operational status',
-         'config status',
-         'detailed status'])
+         'ns state',
+         'current operation',
+         'error details',
+         'deployment status',
+         'configuration status'])
+    else:
+        table = PrettyTable(
+        ['ns instance name',
+         'id',
+         'ns state',
+         'current operation',
+         'error details'])
     for ns in resp:
         fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
         if fullclassname == 'osmclient.sol005.client.Client':
             nsr = ns
             nsr_name = nsr['name']
             nsr_id = nsr['_id']
+            ns_state = nsr['nsState']
+            if details:
+                deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
+                config_status = summarize_config_status(nsr['configurationStatus'])
+            current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
+            error_details = "N/A"
+            if ns_state == "BROKEN" or ns_state == "DEGRADED":
+                error_details = "{}\nDetail: {}".format(nsr['errorDescription'],nsr['errorDetail'])
         else:
             nsopdata = ctx.obj.ns.get_opdata(ns['id'])
             nsr = nsopdata['nsr:nsr']
             nsr_name = nsr['name-ref']
             nsr_id = nsr['ns-instance-config-ref']
-        opstatus = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
-        configstatus = nsr['config-status'] if 'config-status' in nsr else 'Not found'
-        detailed_status = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
-        detailed_status = wrap_text(text=detailed_status,width=50)
-        if configstatus == "config_not_needed":
-            configstatus = "configured (no charms)"
+            deployment_status = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
+            ns_state = deployment_status
+            config_status = nsr['config-status'] if 'config-status' in nsr else 'Not found'
+            current_operation = "Unknown"
+            error_details = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
+            if config_status == "config_not_needed":
+                config_status = "configured (no charms)"
 
-        table.add_row(
-            [nsr_name,
-             nsr_id,
-             opstatus,
-             configstatus,
-             detailed_status])
+        if details:
+            table.add_row(
+                 [nsr_name,
+                 nsr_id,
+                 ns_state,
+                 current_operation,
+                 wrap_text(text=error_details,width=40),
+                 deployment_status,
+                 config_status])
+        else:
+            table.add_row(
+                 [nsr_name,
+                 nsr_id,
+                 ns_state,
+                 current_operation,
+                 wrap_text(text=error_details,width=40)])
     table.align = 'l'
     print(table)
-
+    print('To get the history of all operations over a NS, run "osm ns-op-list NS_ID"')
+    print('For more details on the current operation, run "osm ns-op-show OPERATION_ID"')
 
 def nsd_list(ctx, filter):
     logger.debug("")
@@ -485,6 +594,18 @@ def ns_op_list(ctx, name):
 
     NAME: name or ID of the NS instance
     """
+    def formatParams(params):
+        if params['lcmOperationType']=='instantiate':
+            params.pop('nsDescription')
+            params.pop('nsName')
+            params.pop('nsdId')
+            params.pop('nsr_id')
+        elif params['lcmOperationType']=='action':
+            params.pop('primitive')
+        params.pop('lcmOperationType')
+        params.pop('nsInstanceId')
+        return params
+
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
@@ -493,14 +614,27 @@ def ns_op_list(ctx, name):
     #     print(str(e))
     #     exit(1)
 
-    table = PrettyTable(['id', 'operation', 'action_name', 'status'])
+    table = PrettyTable(['id', 'operation', 'action_name', 'operation_params', 'status', 'detail'])
     #print(yaml.safe_dump(resp))
     for op in resp:
         action_name = "N/A"
         if op['lcmOperationType']=='action':
             action_name = op['operationParams']['primitive']
-        table.add_row([op['id'], op['lcmOperationType'], action_name,
-                       op['operationState']])
+        detail = "-"
+        if op['operationState']=='PROCESSING':
+            if op['lcmOperationType']=='instantiate':
+                if op['stage']:
+                    detail = op['stage']
+            else:
+                detail = "In queue. Current position: {}".format(op['queuePosition'])
+        elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
+            detail = op['errorMessage']
+        table.add_row([op['id'],
+                      op['lcmOperationType'],
+                      action_name,
+                      wrap_text(text=json.dumps(formatParams(op['operationParams']),indent=2),width=70),
+                      op['operationState'],
+                      wrap_text(text=detail,width=50)])
     table.align = 'l'
     print(table)
 
