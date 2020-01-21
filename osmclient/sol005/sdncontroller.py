@@ -67,26 +67,28 @@ class SdnController(object):
     def create(self, name, sdn_controller, wait=False):
         self._logger.debug("")
         self._client.get_token()
-        http_code, resp = self._http.post_cmd(endpoint=self._apiBase, postfields_dict=sdn_controller)
-        # print('HTTP CODE: {}'.format(http_code))
-        # print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(resp))
-            if wait:
-                # Wait for status for SDNC instance creation
-                self._wait(resp.get('id'))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to create SDN controller {} - {}".format(name, msg))
+        http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
+                                       postfields_dict=sdn_controller)
+        #print('HTTP CODE: {}'.format(http_code))
+        #print('RESP: {}'.format(resp))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise ClientException('unexpected response from server - {}'.format(
+                                  resp))
+        if wait:
+            # Wait for status for SDNC instance creation
+            self._wait(resp.get('id'))
+        print(resp['id'])
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to create SDN controller {} - {}".format(name, msg))
 
     def update(self, name, sdn_controller, wait=False):
         self._logger.debug("")
@@ -97,23 +99,23 @@ class SdnController(object):
                                                postfields_dict=sdn_controller)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if wait:
-                # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
-                # Use the previously obtained id instead.
-                wait_id = sdnc_id_for_wait
-                # Wait for status for VI instance update
-                self._wait(wait_id)
-            else:
-                pass
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to update SDN controller {} - {}".format(name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if wait:
+            # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
+            # Use the previously obtained id instead.
+            wait_id = sdnc_id_for_wait
+            # Wait for status for VI instance update
+            self._wait(wait_id)
+        # else:
+        #     pass
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to update SDN controller {} - {}".format(name, msg))
 
     def delete(self, name, force=False, wait=False):
         self._logger.debug("")
@@ -138,12 +140,12 @@ class SdnController(object):
         elif resp and 'result' in resp:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
             raise ClientException("failed to delete SDN controller {} - {}".format(name, msg))
 
     def list(self, filter=None):
@@ -154,10 +156,10 @@ class SdnController(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase, filter_string))
-        # print('RESP: {}'.format(resp))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
+        #print('RESP: {}'.format(resp))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):

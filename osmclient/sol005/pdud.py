@@ -43,9 +43,9 @@ class Pdu(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):
@@ -66,11 +66,14 @@ class Pdu(object):
         pdud = self.get(name)
         # It is redundant, since the previous one already gets the whole pdudInfo
         # The only difference is that a different primitive is exercised
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase, pdud['_id']))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, pdud['_id']))
+        except NotFound:
+            raise NotFound("pdu '{}' not found".format(name))
         #print(yaml.safe_dump(resp))
         if resp:
-            return resp
-        raise NotFound("pdu {} not found".format(name))
+            return json.loads(resp)
+        raise NotFound("pdu '{}' not found".format(name))
 
     def delete(self, name, force=False):
         self._logger.debug("")
@@ -87,12 +90,12 @@ class Pdu(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
             raise ClientException("failed to delete pdu {} - {}".format(name, msg))
 
     def create(self, pdu, update_endpoint=None):
@@ -111,21 +114,21 @@ class Pdu(object):
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=pdu)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server: '.format(
-                                      resp))
-            print(resp['id'])
-        else:
-            msg = "Error {}".format(http_code)
-            if resp:
-                try:
-                    msg = "{} - {}".format(msg, json.loads(resp))
-                except ValueError:
-                    msg = "{} - {}".format(msg, resp)
-            raise ClientException("failed to create/update pdu - {}".format(msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise ClientException('unexpected response from server: '.format(
+                                  resp))
+        print(resp['id'])
+        #else:
+        #    msg = "Error {}".format(http_code)
+        #    if resp:
+        #        try:
+        #            msg = "{} - {}".format(msg, json.loads(resp))
+        #        except ValueError:
+        #            msg = "{} - {}".format(msg, resp)
+        #    raise ClientException("failed to create/update pdu - {}".format(msg))
 
     def update(self, name, filename):
         self._logger.debug("")

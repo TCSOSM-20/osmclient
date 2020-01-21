@@ -61,9 +61,9 @@ class Ns(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         if resp:
-            return resp
+            return json.loads(resp)
         return list()
 
     def get(self, name):
@@ -79,7 +79,7 @@ class Ns(object):
             for ns in self.list():
                 if name == ns['name']:
                     return ns
-        raise NotFound("ns {} not found".format(name))
+        raise NotFound("ns '{}' not found".format(name))
 
     def get_individual(self, name):
         self._logger.debug("")
@@ -90,12 +90,15 @@ class Ns(object):
                 if name == ns['name']:
                     ns_id = ns['_id']
                     break
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase, ns_id))
-        #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, ns_id))
-        #print(yaml.safe_dump(resp))
-        if resp:
-            return resp
-        raise NotFound("ns {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, ns_id))
+            #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, ns_id))
+            #print(yaml.safe_dump(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("ns '{}' not found".format(name))
+        raise NotFound("ns '{}' not found".format(name))
 
     def delete(self, name, force=False, wait=False):
         self._logger.debug("")
@@ -117,12 +120,12 @@ class Ns(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
             raise ClientException("failed to delete ns {} - {}".format(name, msg))
 
     def create(self, nsd_name, nsr_name, account, config=None,
@@ -139,7 +142,6 @@ class Ns(object):
             self._logger.debug("")
             if vim_account_id.get(vim_account):
                 return vim_account_id[vim_account]
-
             vim = self._client.vim.get(vim_account)
             if vim is None:
                 raise NotFound("cannot find vim account '{}'".format(vim_account))
@@ -148,11 +150,11 @@ class Ns(object):
 
         def get_wim_account_id(wim_account):
             self._logger.debug("")
+            # wim_account can be False (boolean) to indicate not use wim account
             if not isinstance(wim_account, str):
                 return wim_account
             if wim_account_id.get(wim_account):
                 return wim_account_id[wim_account]
-
             wim = self._client.wim.get(wim_account)
             if wim is None:
                 raise NotFound("cannot find wim account '{}'".format(wim_account))
@@ -226,27 +228,28 @@ class Ns(object):
                           for (key,val) in list(headers.items())]
             self._http.set_http_header(http_header)
             http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                       postfields_dict=ns)
+                                   postfields_dict=ns)
             # print('HTTP CODE: {}'.format(http_code))
             # print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                if resp:
-                    resp = json.loads(resp)
-                if not resp or 'id' not in resp:
-                    raise ClientException('unexpected response from server - {} '.format(
+            #if http_code in (200, 201, 202, 204):
+            if resp:
+                resp = json.loads(resp)
+            if not resp or 'id' not in resp:
+                raise ClientException('unexpected response from server - {} '.format(
                                       resp))
-                if wait:
-                    # Wait for status for NS instance creation
-                    self._wait(resp.get('nslcmop_id'))
-                return resp['id']
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException(msg)
+            if wait:
+                # Wait for status for NS instance creation
+                self._wait(resp.get('nslcmop_id'))
+            print(resp['id'])
+            return resp['id']
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException(msg)
         except ClientException as exc:
             message="failed to create ns: {} nsd: {}\nerror:\n{}".format(
                     nsr_name,
@@ -265,7 +268,7 @@ class Ns(object):
                                       self._apiVersion, self._apiResource)
             filter_string = ''
             if filter:
-                filter_string = '&{}'.format(filter)
+                 filter_string = '&{}'.format(filter)
             http_code, resp = self._http.get2_cmd('{}?nsInstanceId={}'.format(
                                                        self._apiBase, ns['_id'],
                                                        filter_string) )
@@ -278,13 +281,13 @@ class Ns(object):
                 else:
                     raise ClientException('unexpected response from server')
             else:
-                msg = ""
-                if resp:
-                    try:
-                        resp = json.loads(resp)
-                        msg = resp['detail']
-                    except ValueError:
-                        msg = resp
+                msg = resp or ""
+            #    if resp:
+            #        try:
+            #            resp = json.loads(resp)
+            #            msg = resp['detail']
+            #        except ValueError:
+            #            msg = resp
                 raise ClientException(msg)
         except ClientException as exc:
             message="failed to get operation list of NS {}:\nerror:\n{}".format(
@@ -311,13 +314,13 @@ class Ns(object):
                 else:
                     raise ClientException('unexpected response from server')
             else:
-                msg = ""
-                if resp:
-                    try:
-                        resp = json.loads(resp)
-                        msg = resp['detail']
-                    except ValueError:
-                        msg = resp
+                msg = resp or ""
+            #    if resp:
+            #        try:
+            #            resp = json.loads(resp)
+            #            msg = resp['detail']
+            #        except ValueError:
+            #            msg = resp
                 raise ClientException(msg)
         except ClientException as exc:
             message="failed to get status of operation {}:\nerror:\n{}".format(
@@ -341,25 +344,25 @@ class Ns(object):
             http_code, resp = self._http.post_cmd(endpoint=endpoint, postfields_dict=op_data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                if resp:
-                    resp = json.loads(resp)
-                if not resp or 'id' not in resp:
-                    raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-                if wait:
-                    # Wait for status for NS instance action
-                    # For the 'action' operation, 'id' is used
-                    self._wait(resp.get('id'))
-                return resp['id']
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException(msg)
+            #if http_code in (200, 201, 202, 204):
+            if resp:
+                resp = json.loads(resp)
+            if not resp or 'id' not in resp:
+                raise ClientException('unexpected response from server - {}'.format(
+                                  resp))
+            if wait:
+                # Wait for status for NS instance action
+                # For the 'action' operation, 'id' is used
+                self._wait(resp.get('id'))
+            return resp['id']
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException(msg)
         except ClientException as exc:
             message="failed to exec operation {}:\nerror:\n{}".format(
                     name,
@@ -401,18 +404,18 @@ class Ns(object):
                                        postfields_dict=data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                #resp = json.loads(resp)
-                print('Alarm created')
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException('error: code: {}, resp: {}'.format(
-                                      http_code, msg))
+            # if http_code in (200, 201, 202, 204):
+            #     resp = json.loads(resp)
+            print('Alarm created')
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException('error: code: {}, resp: {}'.format(
+            #                          http_code, msg))
         except ClientException as exc:
             message="failed to create alarm: alarm {}\n{}".format(
                     alarm,
@@ -431,18 +434,18 @@ class Ns(object):
                                        postfields_dict=data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                #resp = json.loads(resp)
-                print('Alarm deleted')
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException('error: code: {}, resp: {}'.format(
-                                      http_code, msg))
+            # if http_code in (200, 201, 202, 204):
+            #    resp = json.loads(resp)
+            print('Alarm deleted')
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException('error: code: {}, resp: {}'.format(
+            #                          http_code, msg))
         except ClientException as exc:
             message="failed to delete alarm: alarm {}\n{}".format(
                     name,
@@ -459,18 +462,18 @@ class Ns(object):
                                        postfields_dict=data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            if http_code in (200, 201, 202, 204):
-                #resp = json.loads(resp)
-                return 'Metric exported'
-            else:
-                msg = ""
-                if resp:
-                    try:
-                        msg = json.loads(resp)
-                    except ValueError:
-                        msg = resp
-                raise ClientException('error: code: {}, resp: {}'.format(
-                                      http_code, msg))
+            # if http_code in (200, 201, 202, 204):
+            #    resp = json.loads(resp)
+            return 'Metric exported'
+            #else:
+            #    msg = ""
+            #    if resp:
+            #        try:
+            #            msg = json.loads(resp)
+            #        except ValueError:
+            #            msg = resp
+            #    raise ClientException('error: code: {}, resp: {}'.format(
+            #                          http_code, msg))
         except ClientException as exc:
             message="failed to export metric: metric {}\n{}".format(
                     metric,

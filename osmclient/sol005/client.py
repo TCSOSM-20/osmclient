@@ -36,7 +36,6 @@ from osmclient.sol005 import role
 from osmclient.sol005 import pdud
 from osmclient.sol005 import k8scluster
 from osmclient.sol005 import repo
-from osmclient.common.exceptions import ClientException
 from osmclient.common import package_tool
 import json
 import logging
@@ -107,9 +106,9 @@ class Client(object):
                                'project_id': self._project}
             http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
                                                          postfields_dict=postfields_dict)
-            if http_code not in (200, 201, 202, 204):
-                message ='Authentication error: not possible to get auth token\nresp:\n{}'.format(resp)
-                raise ClientException(message)
+#            if http_code not in (200, 201, 202, 204):
+#                message ='Authentication error: not possible to get auth token\nresp:\n{}'.format(resp)
+#                raise ClientException(message)
 
             token = json.loads(resp) if resp else None
             self._token = token['id']
@@ -121,6 +120,6 @@ class Client(object):
                 self._http_client.set_http_header(http_header)
 
     def get_version(self):
-        resp = self._http_client.get_cmd(endpoint="/version")
+        _, resp = self._http_client.get2_cmd(endpoint="/version")
+        resp = json.loads(resp)
         return "{} {}".format(resp.get("version"), resp.get("date"))
-

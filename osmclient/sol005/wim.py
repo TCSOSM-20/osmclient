@@ -88,24 +88,24 @@ class Wim(object):
                                        postfields_dict=wim_account)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-            if wait:
-                # Wait for status for WIM instance creation
-                self._wait(resp.get('id'))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to create wim {} - {}".format(name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise ClientException('unexpected response from server - {}'.format(
+                                  resp))
+        if wait:
+            # Wait for status for WIM instance creation
+            self._wait(resp.get('id'))
+        print(resp['id'])
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to create wim {} - {}".format(name, msg))
 
     def update(self, wim_name, wim_account, wim_port_mapping=None, wait=False):
         self._logger.debug("")
@@ -129,23 +129,23 @@ class Wim(object):
                                        postfields_dict=wim_account)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if wait:
-                # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
-                # Use the previously obtained id instead.
-                wait_id = wim_id_for_wait
-                # Wait for status for WIM instance update
-                self._wait(wait_id)
-            else:
-                pass
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to update wim {} - {}".format(wim_name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if wait:
+            # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
+            # Use the previously obtained id instead.
+            wait_id = wim_id_for_wait
+            # Wait for status for WIM instance update
+            self._wait(wait_id)
+        # else:
+        #     pass
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to update wim {} - {}".format(wim_name, msg))
 
     def update_wim_account_dict(self, wim_account, wim_input):
         self._logger.debug("")
@@ -196,12 +196,12 @@ class Wim(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
+            msg = resp or  ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
             raise ClientException("failed to delete wim {} - {}".format(wim_name, msg))
 
     def list(self, filter=None):
@@ -212,11 +212,11 @@ class Wim(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         if not resp:
             return list()
         wim_accounts = []
-        for datacenter in resp:
+        for datacenter in json.loads(resp):
             wim_accounts.append({"name": datacenter['name'], "uuid": datacenter['_id']
                         if '_id' in datacenter else None})
         return wim_accounts
@@ -229,11 +229,13 @@ class Wim(object):
         wim_id = name
         if not utils.validate_uuid4(name):
             wim_id = self.get_id(name)
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase,wim_id))
-        if not resp or '_id' not in resp:
-            raise ClientException('failed to get wim info: '.format(
-                                  resp))
-        else:
-            return resp
-        raise NotFound("wim {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,wim_id))
+            if resp:
+                resp =  json.loads(resp)
+            if not resp or '_id' not in resp:
+                raise ClientException('failed to get wim info: '.format(resp))
+            return json.loads(resp)
+        except NotFound:
+            raise NotFound("wim '{}' not found".format(name))
 

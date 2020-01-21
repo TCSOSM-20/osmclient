@@ -94,24 +94,24 @@ class Vim(object):
                                        postfields_dict=vim_account)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server - {}'.format(
-                                      resp))
-            if wait:
-                # Wait for status for VIM instance creation
-                self._wait(resp.get('id'))
-            print(resp['id'])
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to create vim {} - {}".format(name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if resp:
+            resp = json.loads(resp)
+        if not resp or 'id' not in resp:
+            raise ClientException('unexpected response from server - {}'.format(
+                                  resp))
+        if wait:
+            # Wait for status for VIM instance creation
+            self._wait(resp.get('id'))
+        print(resp['id'])
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to create vim {} - {}".format(name, msg))
 
     def update(self, vim_name, vim_account, sdn_controller, sdn_port_mapping, wait=False):
         self._logger.debug("")
@@ -138,23 +138,23 @@ class Vim(object):
                                        postfields_dict=vim_account)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202, 204):
-            if wait:
-                # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
-                # Use the previously obtained id instead.
-                wait_id = vim_id_for_wait
-                # Wait for status for VI instance update
-                self._wait(wait_id)
-            else:
-                pass
-        else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise ClientException("failed to update vim {} - {}".format(vim_name, msg))
+        #if http_code in (200, 201, 202, 204):
+        if wait:
+            # In this case, 'resp' always returns None, so 'resp['id']' cannot be used.
+            # Use the previously obtained id instead.
+            wait_id = vim_id_for_wait
+            # Wait for status for VI instance update
+            self._wait(wait_id)
+        # else:
+        #     pass
+        #else:
+        #    msg = ""
+        #    if resp:
+        #        try:
+        #            msg = json.loads(resp)
+        #        except ValueError:
+        #            msg = resp
+        #    raise ClientException("failed to update vim {} - {}".format(vim_name, msg))
 
     def update_vim_account_dict(self, vim_account, vim_access):
         self._logger.debug("")
@@ -203,12 +203,12 @@ class Vim(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
             raise ClientException("failed to delete vim {} - {}".format(vim_name, msg))
 
     def list(self, filter=None):
@@ -219,11 +219,11 @@ class Vim(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        resp = self._http.get_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
         if not resp:
             return list()
         vim_accounts = []
-        for datacenter in resp:
+        for datacenter in json.loads(resp):
             vim_accounts.append({"name": datacenter['name'], "uuid": datacenter['_id']
                         if '_id' in datacenter else None})
         return vim_accounts
@@ -236,11 +236,13 @@ class Vim(object):
         vim_id = name
         if not utils.validate_uuid4(name):
             vim_id = self.get_id(name)
-        resp = self._http.get_cmd('{}/{}'.format(self._apiBase,vim_id))
-        if not resp or '_id' not in resp:
-            raise ClientException('failed to get vim info: '.format(
-                                  resp))
-        else:
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,vim_id))
+            if resp:
+                resp = json.loads(resp)
+            if not resp or '_id' not in resp:
+                raise ClientException('failed to get vim info: {}'.format(resp))
             return resp
-        raise NotFound("vim {} not found".format(name))
+        except NotFound:
+            raise NotFound("vim '{}' not found".format(name))
 
