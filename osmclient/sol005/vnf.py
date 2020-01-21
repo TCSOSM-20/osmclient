@@ -66,7 +66,7 @@ class Vnf(object):
                     return vnf
         else:
             for vnf in self.list():
-                if name == vnf['name']:
+                if name == vnf.get('name'):
                     return vnf
         raise NotFound("vnf {} not found".format(name))
 
