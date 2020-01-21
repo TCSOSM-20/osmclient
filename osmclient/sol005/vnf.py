@@ -79,9 +79,11 @@ class Vnf(object):
                 if name == vnf['name']:
                     vnf_id = vnf['_id']
                     break
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, vnf_id))
-        #print('RESP: {}'.format(resp))
-        if resp:
-            return json.loads(resp)
-        raise NotFound("vnf {} not found".format(name))
-
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, vnf_id))
+            #print('RESP: {}'.format(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("vnf '{}' not found".format(name))
+        raise NotFound("vnf '{}' not found".format(name))

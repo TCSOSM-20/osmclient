@@ -22,7 +22,6 @@ from osmclient.common import utils
 from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
 import yaml
 import json
 import logging
@@ -92,11 +91,14 @@ class Nsi(object):
                 if name == nsi['name']:
                     nsi_id = nsi['_id']
                     break
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nsi_id))
-        #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, nsi_id))
-        #print(yaml.safe_dump(resp))
-        if resp:
-            return json.loads(resp)
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nsi_id))
+            #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, nsi_id))
+            #print(yaml.safe_dump(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("nsi '{}' not found".format(name))
         raise NotFound("nsi {} not found".format(name))
 
     def delete(self, name, force=False, wait=False):
@@ -120,13 +122,13 @@ class Nsi(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete nsi {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete nsi {} - {}".format(name, msg))
 
     def create(self, nst_name, nsi_name, account, config=None,
                ssh_keys=None, description='default description',
@@ -253,7 +255,7 @@ class Nsi(object):
                     nsi_name,
                     nst_name,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def list_op(self, name, filter=None):
         """Returns the list of operations of a NSI
@@ -291,7 +293,7 @@ class Nsi(object):
             message="failed to get operation list of NSI {}:\nerror:\n{}".format(
                     name,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def get_op(self, operationId):
         """Returns the status of an operation
@@ -324,7 +326,7 @@ class Nsi(object):
             message="failed to get status of operation {}:\nerror:\n{}".format(
                     operationId,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def exec_op(self, name, op_name, op_data=None):
         """Executes an operation on a NSI
@@ -360,5 +362,5 @@ class Nsi(object):
             message="failed to exec operation {}:\nerror:\n{}".format(
                     name,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 

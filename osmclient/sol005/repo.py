@@ -17,7 +17,6 @@ OSM Repo API handling
 """
 
 from osmclient.common import utils
-from osmclient.common.exceptions import OsmHttpException
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
@@ -42,8 +41,8 @@ class Repo(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
-                                  resp))
+            raise ClientException('unexpected response from server - {}'.format(
+                resp))
         print(resp['id'])
         #else:
         #    msg = ""
@@ -98,12 +97,12 @@ class Repo(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
             raise ClientException("failed to delete repo {} - {}".format(name, msg))
 
     def list(self, filter=None):
@@ -125,11 +124,13 @@ class Repo(object):
         repo_id = name
         if not utils.validate_uuid4(name):
             repo_id = self.get_id(name)
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,repo_id))
-#        if not resp or '_id' not in resp:
-#            raise ClientException('failed to get repo info: '.format(resp))
-#        else:
-        if resp:
-            return json.loads(resp)
-        raise NotFound("Repo {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,repo_id))
+            if resp:
+                resp = json.loads(resp)
+            if not resp or '_id' not in resp:
+                raise ClientException('failed to get repo info: '.format(resp))
+            return resp
+        except NotFound:
+            raise NotFound("Repo {} not found".format(name))
 

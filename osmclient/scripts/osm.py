@@ -3805,13 +3805,17 @@ def package_build(ctx,
 def cli():
     try:
         cli_osm()
+        exit(0)
     except pycurl.error as exc:
         print(exc)
         print('Maybe "--hostname" option or OSM_HOSTNAME environment variable needs to be specified')
-        exit(1)
     except ClientException as exc:
         print("ERROR: {}".format(exc))
-        exit(1)
+    except (FileNotFoundError, PermissionError) as exc:
+        print("Cannot open file: {}".format(exc))
+    except yaml.YAMLError as exc:
+        print("Invalid YAML format: {}".format(exc))
+    exit(1)
     # TODO capture other controlled exceptions here
     # TODO remove the ClientException captures from all places, unless they do something different
 

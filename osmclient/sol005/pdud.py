@@ -19,7 +19,7 @@ OSM pdud API handling
 """
 
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
+from osmclient.common.exceptions import ClientException
 from osmclient.common import utils
 import json
 import logging
@@ -66,11 +66,14 @@ class Pdu(object):
         pdud = self.get(name)
         # It is redundant, since the previous one already gets the whole pdudInfo
         # The only difference is that a different primitive is exercised
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, pdud['_id']))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, pdud['_id']))
+        except NotFound:
+            raise NotFound("pdu '{}' not found".format(name))
         #print(yaml.safe_dump(resp))
         if resp:
             return json.loads(resp)
-        raise NotFound("pdu {} not found".format(name))
+        raise NotFound("pdu '{}' not found".format(name))
 
     def delete(self, name, force=False):
         self._logger.debug("")
@@ -87,13 +90,13 @@ class Pdu(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete pdu {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete pdu {} - {}".format(name, msg))
 
     def create(self, pdu, update_endpoint=None):
         self._logger.debug("")
@@ -115,7 +118,7 @@ class Pdu(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server: '.format(
+            raise ClientException('unexpected response from server: '.format(
                                   resp))
         print(resp['id'])
         #else:

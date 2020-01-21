@@ -20,7 +20,6 @@ OSM NST (Network Slice Template) API handling
 
 from osmclient.common.exceptions import NotFound
 from osmclient.common.exceptions import ClientException
-from osmclient.common.exceptions import OsmHttpException
 from osmclient.common import utils
 import json
 import magic
@@ -70,18 +69,24 @@ class Nst(object):
         nst = self.get(name)
         # It is redundant, since the previous one already gets the whole nstinfo
         # The only difference is that a different primitive is exercised
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nst['_id']))
-        #print(yaml.safe_dump(resp))
-        if resp:
-            return json.loads(resp)
-        raise NotFound("nst {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nst['_id']))
+            #print(yaml.safe_dump(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("nst '{}' not found".format(name))
+        raise NotFound("nst '{}' not found".format(name))
 
     def get_thing(self, name, thing, filename):
         self._logger.debug("")
         nst = self.get(name)
         headers = self._client._headers
         headers['Accept'] = 'application/binary'
-        http_code, resp = self._http.get2_cmd('{}/{}/{}'.format(self._apiBase, nst['_id'], thing))
+        try:
+            http_code, resp = self._http.get2_cmd('{}/{}/{}'.format(self._apiBase, nst['_id'], thing))
+        except NotFound:
+            raise NotFound("nst '{} 'not found".format(name))
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         #if http_code in (200, 201, 202, 204):
@@ -124,13 +129,13 @@ class Nst(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    resp = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete nst {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         resp = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete nst {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
         self._logger.debug("")
@@ -175,7 +180,7 @@ class Nst(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(resp))
+            raise ClientException('unexpected response from server - {}'.format(resp))
         print(resp['id'])
         # else:
         #     msg = "Error {}".format(http_code)

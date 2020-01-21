@@ -20,7 +20,7 @@ import json
 import logging
 import copy
 from osmclient.common import http
-from osmclient.common.exceptions import OsmHttpException
+from osmclient.common.exceptions import OsmHttpException, NotFound
 
 
 class Http(http.Http):
@@ -58,8 +58,9 @@ class Http(http.Http):
         self.check_http_response(http_code, data)
         # TODO 202 accepted should be returned somehow
         if data.getvalue():
-            self._logger.verbose("Response DATA: {}".format(json.loads(data.getvalue().decode())))
-            return http_code, data.getvalue().decode()
+            data_text = data.getvalue().decode()
+            self._logger.verbose("Response DATA: {}".format(data_text))
+            return http_code, data_text
         else:
             return http_code, None
 
@@ -110,8 +111,9 @@ class Http(http.Http):
         curl_cmd.close()
         self.check_http_response(http_code, data)
         if data.getvalue():
-            self._logger.verbose("Response DATA: {}".format(json.loads(data.getvalue().decode())))
-            return http_code, data.getvalue().decode()
+            data_text = data.getvalue().decode()
+            self._logger.verbose("Response DATA: {}".format(data_text))
+            return http_code, data_text
         else:
             return http_code, None
 
@@ -155,13 +157,20 @@ class Http(http.Http):
         curl_cmd.close()
         self.check_http_response(http_code, data)
         if data.getvalue():
-            self._logger.debug("Response DATA: {}".format(json.loads(data.getvalue().decode())))
-            return http_code, data.getvalue().decode()
+            data_text = data.getvalue().decode()
+            self._logger.verbose("Response DATA: {}".format(data_text))
+            return http_code, data_text
         return http_code, None
 
     def check_http_response(self, http_code, data):
         if http_code >= 300:
             resp = ""
             if data.getvalue():
-                resp=": " + data.getvalue().decode()
+                data_text = data.getvalue().decode()
+                self._logger.verbose("Response {} DATA: {}".format(http_code, data_text))
+                resp = ": " + data_text
+            else:
+                self._logger.verbose("Response {}".format(http_code))
+            if http_code == 404:
+                raise NotFound("Error {}{}".format(http_code, resp))
             raise OsmHttpException("Error {}{}".format(http_code, resp))

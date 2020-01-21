@@ -20,7 +20,6 @@ OSM vnfd API handling
 
 from osmclient.common.exceptions import NotFound
 from osmclient.common.exceptions import ClientException
-from osmclient.common.exceptions import OsmHttpException
 from osmclient.common import utils
 import json
 import magic
@@ -71,11 +70,14 @@ class Vnfd(object):
         vnfd = self.get(name)
         # It is redundant, since the previous one already gets the whole vnfpkginfo
         # The only difference is that a different primitive is exercised
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, vnfd['_id']))
-        #print(yaml.safe_dump(resp))
-        if resp:
-            return json.loads(resp)
-        raise NotFound("vnfd {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, vnfd['_id']))
+            #print(yaml.safe_dump(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("vnfd '{}' not found".format(name))
+        raise NotFound("vnfd '{}' not found".format(name))
 
     def get_thing(self, name, thing, filename):
         self._logger.debug("")
@@ -126,13 +128,13 @@ class Vnfd(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete vnfd {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete vnfd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
         self._logger.debug("")
@@ -178,7 +180,7 @@ class Vnfd(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise OsmHttpException('unexpected response from server: '.format(resp))
+                raise ClientException('unexpected response from server: '.format(resp))
             print(resp['id'])
         elif http_code == 204:
             print('Updated')

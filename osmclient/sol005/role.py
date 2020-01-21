@@ -23,7 +23,6 @@ OSM role mgmt API
 from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
 import json
 import yaml
 import logging
@@ -73,8 +72,8 @@ class Role(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('Unexpected response from server - {}'.format(
-                                  resp))
+            raise ClientException('Unexpected response from server - {}'.format(
+                resp))
         print(resp['id'])
         #else:
         #    msg = ""
@@ -156,8 +155,8 @@ class Role(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise OsmHttpException('Unexpected response from server - {}'.format(
-                                      resp))
+                raise ClientException('Unexpected response from server - {}'.format(
+                    resp))
             print(resp['id'])
         elif http_code == 204:
             print("Updated")
@@ -195,13 +194,13 @@ class Role(object):
         elif resp and 'result' in resp:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("Failed to delete role {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("Failed to delete role {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """

@@ -22,7 +22,6 @@ from osmclient.common import utils
 from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
 import yaml
 import json
 import logging
@@ -80,7 +79,7 @@ class Ns(object):
             for ns in self.list():
                 if name == ns['name']:
                     return ns
-        raise NotFound("ns {} not found".format(name))
+        raise NotFound("ns '{}' not found".format(name))
 
     def get_individual(self, name):
         self._logger.debug("")
@@ -91,12 +90,15 @@ class Ns(object):
                 if name == ns['name']:
                     ns_id = ns['_id']
                     break
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, ns_id))
-        #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, ns_id))
-        #print(yaml.safe_dump(resp))
-        if resp:
-            return json.loads(resp)
-        raise NotFound("ns {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, ns_id))
+            #resp = self._http.get_cmd('{}/{}/nsd_content'.format(self._apiBase, ns_id))
+            #print(yaml.safe_dump(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("ns '{}' not found".format(name))
+        raise NotFound("ns '{}' not found".format(name))
 
     def delete(self, name, force=False, wait=False):
         self._logger.debug("")
@@ -118,13 +120,13 @@ class Ns(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete ns {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete ns {} - {}".format(name, msg))
 
     def create(self, nsd_name, nsr_name, account, config=None,
                ssh_keys=None, description='default description',
@@ -140,7 +142,6 @@ class Ns(object):
             self._logger.debug("")
             if vim_account_id.get(vim_account):
                 return vim_account_id[vim_account]
-
             vim = self._client.vim.get(vim_account)
             if vim is None:
                 raise NotFound("cannot find vim account '{}'".format(vim_account))
@@ -149,11 +150,11 @@ class Ns(object):
 
         def get_wim_account_id(wim_account):
             self._logger.debug("")
+            # wim_account can be False (boolean) to indicate not use wim account
             if not isinstance(wim_account, str):
                 return wim_account
             if wim_account_id.get(wim_account):
                 return wim_account_id[wim_account]
-
             wim = self._client.wim.get(wim_account)
             if wim is None:
                 raise NotFound("cannot find wim account '{}'".format(wim_account))
@@ -239,6 +240,7 @@ class Ns(object):
             if wait:
                 # Wait for status for NS instance creation
                 self._wait(resp.get('nslcmop_id'))
+            print(resp['id'])
             return resp['id']
             #else:
             #    msg = ""
@@ -253,7 +255,7 @@ class Ns(object):
                     nsr_name,
                     nsd_name,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def list_op(self, name, filter=None):
         """Returns the list of operations of a NS
@@ -272,26 +274,26 @@ class Ns(object):
                                                        filter_string) )
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            #if http_code == 200:
-            if resp:
-                resp = json.loads(resp)
-                return resp
+            if http_code == 200:
+                if resp:
+                    resp = json.loads(resp)
+                    return resp
+                else:
+                    raise ClientException('unexpected response from server')
             else:
-                raise ClientException('unexpected response from server')
-            #else:
-            #    msg = ""
+                msg = resp or ""
             #    if resp:
             #        try:
             #            resp = json.loads(resp)
             #            msg = resp['detail']
             #        except ValueError:
             #            msg = resp
-            #    raise ClientException(msg)
+                raise ClientException(msg)
         except ClientException as exc:
             message="failed to get operation list of NS {}:\nerror:\n{}".format(
                     name,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def get_op(self, operationId):
         """Returns the status of an operation
@@ -305,26 +307,26 @@ class Ns(object):
             http_code, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, operationId))
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            #if http_code == 200:
-            if resp:
-                resp = json.loads(resp)
-                return resp
+            if http_code == 200:
+                if resp:
+                    resp = json.loads(resp)
+                    return resp
+                else:
+                    raise ClientException('unexpected response from server')
             else:
-                raise ClientException('unexpected response from server')
-            #else:
-            #    msg = ""
+                msg = resp or ""
             #    if resp:
             #        try:
             #            resp = json.loads(resp)
             #            msg = resp['detail']
             #        except ValueError:
             #            msg = resp
-            #    raise ClientException(msg)
+                raise ClientException(msg)
         except ClientException as exc:
             message="failed to get status of operation {}:\nerror:\n{}".format(
                     operationId,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def exec_op(self, name, op_name, op_data=None, wait=False, ):
         """Executes an operation on a NS
@@ -365,7 +367,7 @@ class Ns(object):
             message="failed to exec operation {}:\nerror:\n{}".format(
                     name,
                     str(exc))
-            raise OsmHttpException(message)
+            raise ClientException(message)
 
     def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
         """Scales a VNF by adding/removing VDUs
@@ -397,14 +399,14 @@ class Ns(object):
         data = {}
         data["create_alarm_request"] = {}
         data["create_alarm_request"]["alarm_create_request"] = alarm
-        #try:
-        http_code, resp = self._http.post_cmd(endpoint='/test/message/alarm_request',
-                                   postfields_dict=data)
+        try:
+            http_code, resp = self._http.post_cmd(endpoint='/test/message/alarm_request',
+                                       postfields_dict=data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            #if http_code in (200, 201, 202, 204):
-            #resp = json.loads(resp)
-        print('Alarm created')
+            # if http_code in (200, 201, 202, 204):
+            #     resp = json.loads(resp)
+            print('Alarm created')
             #else:
             #    msg = ""
             #    if resp:
@@ -414,11 +416,11 @@ class Ns(object):
             #            msg = resp
             #    raise ClientException('error: code: {}, resp: {}'.format(
             #                          http_code, msg))
-        #except ClientException as exc:
-        #    message="failed to create alarm: alarm {}\n{}".format(
-        #            alarm,
-        #            str(exc))
-        #    raise ClientException(message)
+        except ClientException as exc:
+            message="failed to create alarm: alarm {}\n{}".format(
+                    alarm,
+                    str(exc))
+            raise ClientException(message)
 
     def delete_alarm(self, name):
         self._logger.debug("")
@@ -427,14 +429,14 @@ class Ns(object):
         data["delete_alarm_request"] = {}
         data["delete_alarm_request"]["alarm_delete_request"] = {}
         data["delete_alarm_request"]["alarm_delete_request"]["alarm_uuid"] = name
-        #try:
-        http_code, resp = self._http.post_cmd(endpoint='/test/message/alarm_request',
-                                   postfields_dict=data)
+        try:
+            http_code, resp = self._http.post_cmd(endpoint='/test/message/alarm_request',
+                                       postfields_dict=data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            #if http_code in (200, 201, 202, 204):
-            #resp = json.loads(resp)
-        print('Alarm deleted')
+            # if http_code in (200, 201, 202, 204):
+            #    resp = json.loads(resp)
+            print('Alarm deleted')
             #else:
             #    msg = ""
             #    if resp:
@@ -444,25 +446,25 @@ class Ns(object):
             #            msg = resp
             #    raise ClientException('error: code: {}, resp: {}'.format(
             #                          http_code, msg))
-        #except ClientException as exc:
-        #    message="failed to delete alarm: alarm {}\n{}".format(
-        #            name,
-        #            str(exc))
-        #    raise ClientException(message)
+        except ClientException as exc:
+            message="failed to delete alarm: alarm {}\n{}".format(
+                    name,
+                    str(exc))
+            raise ClientException(message)
 
     def export_metric(self, metric):
         self._logger.debug("")
         self._client.get_token()
         data = {}
         data["read_metric_data_request"] = metric
-        #try:
-        http_code, resp = self._http.post_cmd(endpoint='/test/message/metric_request',
-                                   postfields_dict=data)
+        try:
+            http_code, resp = self._http.post_cmd(endpoint='/test/message/metric_request',
+                                       postfields_dict=data)
             #print('HTTP CODE: {}'.format(http_code))
             #print('RESP: {}'.format(resp))
-            #if http_code in (200, 201, 202, 204):
-            #resp = json.loads(resp)
-        return 'Metric exported'
+            # if http_code in (200, 201, 202, 204):
+            #    resp = json.loads(resp)
+            return 'Metric exported'
             #else:
             #    msg = ""
             #    if resp:
@@ -472,11 +474,11 @@ class Ns(object):
             #            msg = resp
             #    raise ClientException('error: code: {}, resp: {}'.format(
             #                          http_code, msg))
-        #except ClientException as exc:
-        #    message="failed to export metric: metric {}\n{}".format(
-        #            metric,
-        #            str(exc))
-        #    raise ClientException(message)
+        except ClientException as exc:
+            message="failed to export metric: metric {}\n{}".format(
+                    metric,
+                    str(exc))
+            raise ClientException(message)
 
     def get_field(self, ns_name, field):
         self._logger.debug("")

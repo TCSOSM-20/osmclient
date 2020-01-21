@@ -21,7 +21,6 @@ OSM wim API handling
 from osmclient.common import utils
 from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
-from osmclient.common.exceptions import OsmHttpException
 from osmclient.common.exceptions import NotFound
 import yaml
 import json
@@ -93,7 +92,7 @@ class Wim(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
+            raise ClientException('unexpected response from server - {}'.format(
                                   resp))
         if wait:
             # Wait for status for WIM instance creation
@@ -137,8 +136,8 @@ class Wim(object):
             wait_id = wim_id_for_wait
             # Wait for status for WIM instance update
             self._wait(wait_id)
-        else:
-            pass
+        # else:
+        #     pass
         #else:
         #    msg = ""
         #    if resp:
@@ -197,13 +196,13 @@ class Wim(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete wim {} - {}".format(wim_name, msg))
+            msg = resp or  ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete wim {} - {}".format(wim_name, msg))
 
     def list(self, filter=None):
         """Returns a list of VIM accounts
@@ -230,12 +229,13 @@ class Wim(object):
         wim_id = name
         if not utils.validate_uuid4(name):
             wim_id = self.get_id(name)
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,wim_id))
-#        if not resp or '_id' not in resp:
-#            raise ClientException('failed to get wim info: '.format(
-#                                  resp))
-#        else:
-        if resp:
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,wim_id))
+            if resp:
+                resp =  json.loads(resp)
+            if not resp or '_id' not in resp:
+                raise ClientException('failed to get wim info: '.format(resp))
             return json.loads(resp)
-        raise NotFound("wim {} not found".format(name))
+        except NotFound:
+            raise NotFound("wim '{}' not found".format(name))
 

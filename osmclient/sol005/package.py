@@ -20,7 +20,6 @@ OSM package API handling
 
 #from os import stat
 #from os.path import basename
-from osmclient.common.exceptions import OsmHttpException
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 from osmclient.common import utils
@@ -105,7 +104,7 @@ class Package(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
+            raise ClientException('unexpected response from server - {}'.format(
                                    resp))
         print(resp['id'])
         # else:

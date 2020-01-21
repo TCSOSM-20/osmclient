@@ -18,7 +18,7 @@ OSM K8s cluster API handling
 
 from osmclient.common import utils
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
+from osmclient.common.exceptions import ClientException
 import json
 
 class K8scluster(object):
@@ -48,10 +48,8 @@ class K8scluster(object):
         #if http_code in (200, 201, 202, 204):
         if resp:
             resp = json.loads(resp)
-            print(resp['id'])
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
-                                      resp))
+            raise ClientException('unexpected response from server - {}'.format(resp))
         print(resp['id'])
         #else:
         #    msg = ""
@@ -70,7 +68,7 @@ class K8scluster(object):
         # print 'HTTP CODE: {}'.format(http_code)
         # print 'RESP: {}'.format(resp)
         #if http_code in (200, 201, 202, 204):
-        #pass
+        #    pass
         #else:
         #    msg = ""
         #    if resp:
@@ -105,13 +103,13 @@ class K8scluster(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete K8s cluster {} - {}".format(name, msg))
+            msg = resp or ""
+        #     if resp:
+        #         try:
+        #             msg = json.loads(resp)
+        #         except ValueError:
+        #             msg = resp
+            raise ClientException("failed to delete K8s cluster {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """Returns a list of K8s clusters
@@ -132,11 +130,13 @@ class K8scluster(object):
         cluster_id = name
         if not utils.validate_uuid4(name):
             cluster_id = self.get_id(name)
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,cluster_id))
-#        if not resp or '_id' not in resp:
-#            raise ClientException('failed to get K8s cluster info: '.format(resp))
-#        else:
-        if resp:
-            return json.loads(resp) 
-        raise NotFound("K8s cluster {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,cluster_id))
+            if resp:
+                resp = json.loads(resp)
+            if not resp or '_id' not in resp:
+                raise ClientException('failed to get K8s cluster info: '.format(resp))
+            return resp
+        except NotFound:
+            raise NotFound("K8s cluster {} not found".format(name))
 

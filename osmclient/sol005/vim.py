@@ -22,7 +22,6 @@ from osmclient.common import utils
 from osmclient.common import wait as WaitForStatus
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
 import yaml
 import json
 import logging
@@ -99,7 +98,7 @@ class Vim(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
+            raise ClientException('unexpected response from server - {}'.format(
                                   resp))
         if wait:
             # Wait for status for VIM instance creation
@@ -146,8 +145,8 @@ class Vim(object):
             wait_id = vim_id_for_wait
             # Wait for status for VI instance update
             self._wait(wait_id)
-        else:
-            pass
+        # else:
+        #     pass
         #else:
         #    msg = ""
         #    if resp:
@@ -204,13 +203,13 @@ class Vim(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete vim {} - {}".format(vim_name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete vim {} - {}".format(vim_name, msg))
 
     def list(self, filter=None):
         """Returns a list of VIM accounts
@@ -237,12 +236,13 @@ class Vim(object):
         vim_id = name
         if not utils.validate_uuid4(name):
             vim_id = self.get_id(name)
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,vim_id))
-#        if not resp or '_id' not in resp:
-#            raise ClientException('failed to get vim info: '.format(
-#                                  resp))
-#        else:
-        if resp:
-            return json.loads(resp)
-        raise NotFound("vim {} not found".format(name))
+        try:
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase,vim_id))
+            if resp:
+                resp = json.loads(resp)
+            if not resp or '_id' not in resp:
+                raise ClientException('failed to get vim info: {}'.format(resp))
+            return resp
+        except NotFound:
+            raise NotFound("vim '{}' not found".format(name))
 

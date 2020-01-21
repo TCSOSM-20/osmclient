@@ -123,4 +123,3 @@ class Client(object):
         _, resp = self._http_client.get2_cmd(endpoint="/version")
         resp = json.loads(resp)
         return "{} {}".format(resp.get("version"), resp.get("date"))
-

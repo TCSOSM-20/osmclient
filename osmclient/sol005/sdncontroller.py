@@ -20,8 +20,8 @@ OSM SDN controller API handling
 
 from osmclient.common import utils
 from osmclient.common import wait as WaitForStatus
+from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
 import json
 import logging
 
@@ -75,7 +75,7 @@ class SdnController(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
+            raise ClientException('unexpected response from server - {}'.format(
                                   resp))
         if wait:
             # Wait for status for SDNC instance creation
@@ -106,8 +106,8 @@ class SdnController(object):
             wait_id = sdnc_id_for_wait
             # Wait for status for VI instance update
             self._wait(wait_id)
-        else:
-            pass
+        # else:
+        #     pass
         #else:
         #    msg = ""
         #    if resp:
@@ -140,13 +140,13 @@ class SdnController(object):
         elif resp and 'result' in resp:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete SDN controller {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete SDN controller {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """Returns a list of SDN controllers

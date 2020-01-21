@@ -22,7 +22,6 @@ OSM user mgmt API
 from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
-from osmclient.common.exceptions import OsmHttpException
 import json
 import logging
 
@@ -73,8 +72,8 @@ class User(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise OsmHttpException('unexpected response from server - {}'.format(
-                                  resp))
+            raise ClientException('unexpected response from server - {}'.format(
+                resp))
         print(resp['id'])
         #else:
         #    msg = ""
@@ -153,7 +152,7 @@ class User(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise OsmHttpException('unexpected response from server - {}'.format(
+                raise ClientException('unexpected response from server - {}'.format(
                                       resp))
             print(resp['id'])
         elif http_code == 204:
@@ -187,13 +186,13 @@ class User(object):
         elif resp and 'result' in resp:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete user {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete user {} - {}".format(name, msg))
 
     def list(self, filter=None):
         """Returns the list of OSM users

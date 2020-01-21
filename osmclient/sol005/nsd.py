@@ -20,7 +20,6 @@ OSM nsd API handling
 
 from osmclient.common.exceptions import NotFound
 from osmclient.common.exceptions import ClientException
-from osmclient.common.exceptions import OsmHttpException
 from osmclient.common import utils
 import json
 import magic
@@ -70,14 +69,17 @@ class Nsd(object):
     def get_individual(self, name):
         self._logger.debug("")
         # Call to get_token not required, because will be implicitly called by get.
-        nsd = self.get(name)
-        # It is redundant, since the previous one already gets the whole nsdinfo
-        # The only difference is that a different primitive is exercised
-        _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nsd['_id']))
-        #print(yaml.safe_dump(resp))
-        if resp:
-            return json.loads(resp)
-        raise NotFound("nsd {} not found".format(name))
+        try:
+            nsd = self.get(name)
+            # It is redundant, since the previous one already gets the whole nsdinfo
+            # The only difference is that a different primitive is exercised
+            _, resp = self._http.get2_cmd('{}/{}'.format(self._apiBase, nsd['_id']))
+            #print(yaml.safe_dump(resp))
+            if resp:
+                return json.loads(resp)
+        except NotFound:
+            raise NotFound("nsd '{}' not found".format(name))
+        raise NotFound("nsd '{}' not found".format(name))
 
     def get_thing(self, name, thing, filename):
         self._logger.debug("")
@@ -92,14 +94,14 @@ class Nsd(object):
         if resp:
             #store in a file
             return json.loads(resp)
-        #else:
-        #    msg = ""
+        else:
+            msg = resp or ""
         #    if resp:
         #        try:
         #            msg = json.loads(resp)
         #        except ValueError:
         #            msg = resp
-        #    raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
+            raise ClientException("failed to get {} from {} - {}".format(thing, name, msg))
 
     def get_descriptor(self, name, filename):
         self._logger.debug("")
@@ -128,13 +130,13 @@ class Nsd(object):
         elif http_code == 204:
             print('Deleted')
         else:
-            msg = ""
-            if resp:
-                try:
-                    msg = json.loads(resp)
-                except ValueError:
-                    msg = resp
-            raise OsmHttpException("failed to delete nsd {} - {}".format(name, msg))
+            msg = resp or ""
+            # if resp:
+            #     try:
+            #         msg = json.loads(resp)
+            #     except ValueError:
+            #         msg = resp
+            raise ClientException("failed to delete nsd {} - {}".format(name, msg))
 
     def create(self, filename, overwrite=None, update_endpoint=None):
         self._logger.debug("")
@@ -180,7 +182,7 @@ class Nsd(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or 'id' not in resp:
-                raise OsmHttpException('unexpected response from server - {}'.format(resp))
+                raise ClientException('unexpected response from server - {}'.format(resp))
             print(resp['id'])
         elif http_code == 204:
             print('Updated')

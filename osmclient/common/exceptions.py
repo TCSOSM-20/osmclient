@@ -19,8 +19,9 @@ class ClientException(Exception):
     pass
 
 
-class NotFound(ClientException):
+class OsmHttpException(ClientException):
     pass
 
-class OsmHttpException(ClientException):
+
+class NotFound(OsmHttpException):
     pass
