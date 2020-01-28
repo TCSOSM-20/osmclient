@@ -2581,7 +2581,7 @@ def sdnc_show(ctx, name):
 # K8s cluster operations
 ###########################
 
-@cli_osm.command(name='k8scluster-add')
+@cli_osm.command(name='k8scluster-add', short_help='adds a K8s cluster to OSM')
 @click.argument('name')
 @click.option('--creds',
               prompt=True,
@@ -2686,7 +2686,7 @@ def k8scluster_update(ctx,
     #     exit(1)
 
 
-@cli_osm.command(name='k8scluster-delete')
+@cli_osm.command(name='k8scluster-delete', short_help='deletes a K8s cluster')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
@@ -2732,7 +2732,7 @@ def k8scluster_list(ctx, filter, literal):
     #     exit(1)
 
 
-@cli_osm.command(name='k8scluster-show')
+@cli_osm.command(name='k8scluster-show', short_help='shows the details of a K8s cluster')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -2762,7 +2762,7 @@ def k8scluster_show(ctx, name, literal):
 # Repo operations
 ###########################
 
-@cli_osm.command(name='repo-add')
+@cli_osm.command(name='repo-add', short_help='adds a repo to OSM')
 @click.argument('name')
 @click.argument('uri')
 @click.option('--type',
@@ -2799,7 +2799,7 @@ def repo_add(ctx,
     #     exit(1)
 
 
-@cli_osm.command(name='repo-update')
+@cli_osm.command(name='repo-update', short_help='updates a repo in OSM')
 @click.argument('name')
 @click.option('--newname', help='New name for the repo')
 @click.option('--uri', help='URI of the repo')
@@ -2833,7 +2833,7 @@ def repo_update(ctx,
     #     exit(1)
 
 
-@cli_osm.command(name='repo-delete')
+@cli_osm.command(name='repo-delete', short_help='deletes a repo')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
@@ -2878,7 +2878,7 @@ def repo_list(ctx, filter, literal):
     #     exit(1)
 
 
-@cli_osm.command(name='repo-show')
+@cli_osm.command(name='repo-show', short_help='shows the details of a repo')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -3291,9 +3291,10 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
 # Other operations
 ####################
 
-@cli_osm.command(name='version')
+@cli_osm.command(name='version', short_help='shows client and server versions')
 @click.pass_context
 def get_version(ctx):
+    """shows client and server versions"""
     # try:
     check_client_version(ctx.obj, "version")
     print ("Server version: {}".format(ctx.obj.get_version()))
