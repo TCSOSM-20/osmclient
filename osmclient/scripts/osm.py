@@ -152,10 +152,10 @@ def cli_osm(ctx, hostname, user, password, project, verbose):
 @cli_osm.command(name='ns-list', short_help='list all NS instances')
 @click.option('--filter', default=None,
               help='restricts the list to the NS instances matching the filter.')
-@click.option('--details', is_flag=True,
+@click.option('--long', is_flag=True,
               help='get more details of current operation in the NS.')
 @click.pass_context
-def ns_list(ctx, filter,details):
+def ns_list(ctx, filter, long):
     """list all NS instances
 
     \b
@@ -286,19 +286,25 @@ def ns_list(ctx, filter,details):
         resp = ctx.obj.ns.list(filter)
     else:
         resp = ctx.obj.ns.list()
-    if details:
+    if long:
         table = PrettyTable(
         ['ns instance name',
          'id',
+         'date',
          'ns state',
          'current operation',
          'error details',
+         'project',
+         'vim (inst param)',
          'deployment status',
          'configuration status'])
+        project_list = ctx.obj.project.list()
+        vim_list = ctx.obj.vim.list()
     else:
         table = PrettyTable(
         ['ns instance name',
          'id',
+         'date',
          'ns state',
          'current operation',
          'error details'])
@@ -308,10 +314,27 @@ def ns_list(ctx, filter,details):
             nsr = ns
             nsr_name = nsr['name']
             nsr_id = nsr['_id']
+            date = datetime.fromtimestamp(nsr['create-time']).strftime("%Y-%m-%dT%H:%M:%S")
             ns_state = nsr['nsState']
-            if details:
+            if long:
                 deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
                 config_status = summarize_config_status(nsr['configurationStatus'])
+                project_id = nsr.get('_admin').get('projects_read')[0]
+                project_name = '-'
+                for p in project_list:
+                    if p['_id'] == project_id:
+                        project_name = p['name']
+                        break
+                #project = '{} ({})'.format(project_name, project_id)
+                project = project_name
+                vim_id = nsr.get('datacenter')
+                vim_name = '-'
+                for v in vim_list:
+                    if v['uuid'] == vim_id:
+                        vim_name = v['name']
+                        break
+                #vim = '{} ({})'.format(vim_name, vim_id)
+                vim = vim_name
             current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
             error_details = "N/A"
             if ns_state == "BROKEN" or ns_state == "DEGRADED":
@@ -321,6 +344,8 @@ def ns_list(ctx, filter,details):
             nsr = nsopdata['nsr:nsr']
             nsr_name = nsr['name-ref']
             nsr_id = nsr['ns-instance-config-ref']
+            date = '-'
+            project = '-'
             deployment_status = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
             ns_state = deployment_status
             config_status = nsr['config-status'] if 'config-status' in nsr else 'Not found'
@@ -329,19 +354,23 @@ def ns_list(ctx, filter,details):
             if config_status == "config_not_needed":
                 config_status = "configured (no charms)"
 
-        if details:
+        if long:
             table.add_row(
                  [nsr_name,
                  nsr_id,
+                 date,
                  ns_state,
                  current_operation,
                  wrap_text(text=error_details,width=40),
+                 project,
+                 vim,
                  deployment_status,
                  config_status])
         else:
             table.add_row(
                  [nsr_name,
                  nsr_id,
+                 date,
                  ns_state,
                  current_operation,
                  wrap_text(text=error_details,width=40)])
