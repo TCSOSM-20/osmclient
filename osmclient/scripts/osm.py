@@ -153,7 +153,7 @@ def cli_osm(ctx, hostname, user, password, project, verbose):
 @click.option('--filter', default=None,
               help='restricts the list to the NS instances matching the filter.')
 @click.option('--long', is_flag=True,
-              help='get more details of current operation in the NS.')
+              help='get more details of the NS (project, vim, deployment status, configuration status.')
 @click.pass_context
 def ns_list(ctx, filter, long):
     """list all NS instances
@@ -617,8 +617,10 @@ def nf_list(ctx, ns, filter):
 
 @cli_osm.command(name='ns-op-list', short_help='shows the history of operations over a NS instance')
 @click.argument('name')
+@click.option('--long', is_flag=True,
+              help='get more details of the NS operation (date, ).')
 @click.pass_context
-def ns_op_list(ctx, name):
+def ns_op_list(ctx, name, long):
     """shows the history of operations over a NS instance
 
     NAME: name or ID of the NS instance
@@ -643,7 +645,11 @@ def ns_op_list(ctx, name):
     #     print(str(e))
     #     exit(1)
 
-    table = PrettyTable(['id', 'operation', 'action_name', 'operation_params', 'status', 'detail'])
+    if long:
+        table = PrettyTable(['id', 'operation', 'action_name', 'operation_params', 'status', 'date', 'last update', 'detail'])
+    else:
+        table = PrettyTable(['id', 'operation', 'action_name', 'status', 'date', 'detail'])
+
     #print(yaml.safe_dump(resp))
     for op in resp:
         action_name = "N/A"
@@ -658,12 +664,20 @@ def ns_op_list(ctx, name):
                 detail = "In queue. Current position: {}".format(op['queuePosition'])
         elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
             detail = op['errorMessage']
-        table.add_row([op['id'],
-                      op['lcmOperationType'],
-                      action_name,
-                      wrap_text(text=json.dumps(formatParams(op['operationParams']),indent=2),width=70),
-                      op['operationState'],
-                      wrap_text(text=detail,width=50)])
+        date = datetime.fromtimestamp(op['startTime']).strftime("%Y-%m-%dT%H:%M:%S")
+        last_update = datetime.fromtimestamp(op['statusEnteredTime']).strftime("%Y-%m-%dT%H:%M:%S")
+        if long:
+            table.add_row([op['id'],
+                           op['lcmOperationType'],
+                           action_name,
+                           wrap_text(text=json.dumps(formatParams(op['operationParams']),indent=2),width=50),
+                           op['operationState'],
+                           date,
+                           last_update,
+                           wrap_text(text=detail,width=50)])
+        else:
+            table.add_row([op['id'], op['lcmOperationType'], action_name,
+                           op['operationState'], date, wrap_text(text=detail,width=50)])
     table.align = 'l'
     print(table)
 
