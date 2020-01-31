@@ -14,4 +14,4 @@
 # limitations under the License.
 
 rm -rf deb_dist osmclient-*.tar.gz
-tox -e build,build3
+tox -e build3
