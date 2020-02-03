@@ -59,7 +59,6 @@ class Client(object):
         self._auth_endpoint = '/admin/v1/tokens'
         self._headers = {}
         self._token = None
-
         if len(host.split(':')) > 1:
             # backwards compatible, port provided as part of host
             self._host = host.split(':')[0]
@@ -69,7 +68,7 @@ class Client(object):
             self._so_port = so_port
 
         self._http_client = http.Http(
-            'https://{}:{}/osm'.format(self._host,self._so_port))
+            'https://{}:{}/osm'.format(self._host,self._so_port), **kwargs)
         self._headers['Accept'] = 'application/json'
         self._headers['Content-Type'] = 'application/yaml'
         http_header = ['{}: {}'.format(key, val)
@@ -105,7 +104,8 @@ class Client(object):
                                'password': self._password,
                                'project_id': self._project}
             http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
-                                                         postfields_dict=postfields_dict)
+                                                         postfields_dict=postfields_dict,
+                                                         skip_query_admin=True)
 #            if http_code not in (200, 201, 202, 204):
 #                message ='Authentication error: not possible to get auth token\nresp:\n{}'.format(resp)
 #                raise ClientException(message)
@@ -120,6 +120,15 @@ class Client(object):
                 self._http_client.set_http_header(http_header)
 
     def get_version(self):
-        _, resp = self._http_client.get2_cmd(endpoint="/version")
+        _, resp = self._http_client.get2_cmd(endpoint="/version", skip_query_admin=True)
         resp = json.loads(resp)
         return "{} {}".format(resp.get("version"), resp.get("date"))
+
+    def set_default_params(self, **kwargs):
+        host = kwargs.pop('host', None)
+        if host != None:
+            self._host=host
+        port  = kwargs.pop('port', None)
+        if port != None:
+            self._so_port=port
+        self._http_client.set_query_admin(**kwargs)

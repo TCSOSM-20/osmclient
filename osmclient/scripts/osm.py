@@ -97,6 +97,12 @@ def check_client_version(obj, what, version='sol005'):
                    'Also can set OSM_PROJECT in environment')
 @click.option('-v', '--verbose', count=True,
               help='increase verbosity (-v INFO, -vv VERBOSE, -vvv DEBUG)')
+@click.option('--all-projects',
+              default=False,
+              is_flag=True,
+              help='include all projects')
+@click.option('--public/--no-public', default=None,
+              help='flag for public items (packages, instances, VIM accounts, etc.)')
 #@click.option('--so-port',
 #              default=None,
 #              envvar='OSM_SO_PORT',
@@ -118,7 +124,7 @@ def check_client_version(obj, what, version='sol005'):
 #              help='hostname of RO server.  ' +
 #                   'Also can set OSM_RO_PORT in environment')
 @click.pass_context
-def cli_osm(ctx, hostname, user, password, project, verbose):
+def cli_osm(ctx, hostname, user, password, project, verbose, all_projects, public):
     global logger
     if hostname is None:
         print((
@@ -141,6 +147,10 @@ def cli_osm(ctx, hostname, user, password, project, verbose):
         kwargs['password']=password
     if project is not None:
         kwargs['project']=project
+    if all_projects:
+        kwargs['all_projects']=all_projects
+    if public is not None:
+        kwargs['public']=public
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
     logger = logging.getLogger('osmclient')
 

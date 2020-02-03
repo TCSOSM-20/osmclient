@@ -25,18 +25,44 @@ from osmclient.common.exceptions import OsmHttpException, NotFound
 
 class Http(http.Http):
 
-    def __init__(self, url, user='admin', password='admin'):
+    def __init__(self, url, user='admin', password='admin', **kwargs):
         self._url = url
         self._user = user
         self._password = password
         self._http_header = None
         self._logger = logging.getLogger('osmclient')
+        self._default_query_admin = None
+        self._all_projects = None;
+        self._public = None;
+        if 'all_projects' in kwargs:
+            self._all_projects=kwargs['all_projects']
+        if 'public' in kwargs:
+            self._public=kwargs['public']
+        self._default_query_admin = self._complete_default_query_admin()
 
-    def _get_curl_cmd(self, endpoint):
+    def _complete_default_query_admin(self):
+        query_string_list=[]
+        if self._all_projects:
+            query_string_list.append("ADMIN")
+        if self._public is not None:
+            query_string_list.append("PUBLIC={}".format(self._public))
+        return "&".join(query_string_list)
+
+    def _complete_endpoint(self, endpoint):
+        if self._default_query_admin:
+            if '?' in endpoint:
+                endpoint = '&'.join([endpoint, self._default_query_admin])
+            else:
+                endpoint = '?'.join([endpoint, self._default_query_admin])
+        return endpoint
+
+    def _get_curl_cmd(self, endpoint, skip_query_admin=False):
         self._logger.debug("")
         curl_cmd = pycurl.Curl()
         if self._logger.getEffectiveLevel() == logging.DEBUG:
             curl_cmd.setopt(pycurl.VERBOSE, True)
+        if not skip_query_admin:
+            endpoint = self._complete_endpoint(endpoint)
         curl_cmd.setopt(pycurl.URL, self._url + endpoint)
         curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
         curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
@@ -44,10 +70,10 @@ class Http(http.Http):
             curl_cmd.setopt(pycurl.HTTPHEADER, self._http_header)
         return curl_cmd
 
-    def delete_cmd(self, endpoint):
+    def delete_cmd(self, endpoint, skip_query_admin=False):
         self._logger.debug("")
         data = BytesIO()
-        curl_cmd = self._get_curl_cmd(endpoint)
+        curl_cmd = self._get_curl_cmd(endpoint, skip_query_admin)
         curl_cmd.setopt(pycurl.CUSTOMREQUEST, "DELETE")
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
         self._logger.info("Request METHOD: {} URL: {}".format("DELETE",self._url + endpoint))
@@ -66,10 +92,11 @@ class Http(http.Http):
 
     def send_cmd(self, endpoint='', postfields_dict=None,
                  formfile=None, filename=None,
-                 put_method=False, patch_method=False):
+                 put_method=False, patch_method=False,
+                 skip_query_admin=False):
         self._logger.debug("")
         data = BytesIO()
-        curl_cmd = self._get_curl_cmd(endpoint)
+        curl_cmd = self._get_curl_cmd(endpoint, skip_query_admin)
         if put_method:
             curl_cmd.setopt(pycurl.CUSTOMREQUEST, "PUT")
         elif patch_method:
@@ -118,36 +145,39 @@ class Http(http.Http):
             return http_code, None
 
     def post_cmd(self, endpoint='', postfields_dict=None,
-                 formfile=None, filename=None):
+                 formfile=None, filename=None,
+                 skip_query_admin=False):
         self._logger.debug("")
         return self.send_cmd(endpoint=endpoint,
                              postfields_dict=postfields_dict,
-                             formfile=formfile,
-                             filename=filename,
-                             put_method=False, patch_method=False)
+                             formfile=formfile, filename=filename,
+                             put_method=False, patch_method=False,
+                             skip_query_admin=skip_query_admin)
 
     def put_cmd(self, endpoint='', postfields_dict=None,
-                formfile=None, filename=None):
+                formfile=None, filename=None,
+                skip_query_admin=False):
         self._logger.debug("")
         return self.send_cmd(endpoint=endpoint,
                              postfields_dict=postfields_dict,
-                             formfile=formfile,
-                             filename=filename,
-                             put_method=True, patch_method=False)
+                             formfile=formfile, filename=filename,
+                             put_method=True, patch_method=False,
+                             skip_query_admin=skip_query_admin)
 
     def patch_cmd(self, endpoint='', postfields_dict=None,
-                formfile=None, filename=None):
+                formfile=None, filename=None,
+                skip_query_admin=False):
         self._logger.debug("")
         return self.send_cmd(endpoint=endpoint,
                              postfields_dict=postfields_dict,
-                             formfile=formfile,
-                             filename=filename,
-                             put_method=False, patch_method=True)
+                             formfile=formfile, filename=filename,
+                             put_method=False, patch_method=True,
+                             skip_query_admin=skip_query_admin)
 
-    def get2_cmd(self, endpoint):
+    def get2_cmd(self, endpoint, skip_query_admin=False):
         self._logger.debug("")
         data = BytesIO()
-        curl_cmd = self._get_curl_cmd(endpoint)
+        curl_cmd = self._get_curl_cmd(endpoint, skip_query_admin)
         curl_cmd.setopt(pycurl.HTTPGET, 1)
         curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
         self._logger.info("Request METHOD: {} URL: {}".format("GET",self._url + endpoint))
@@ -174,3 +204,10 @@ class Http(http.Http):
             if http_code == 404:
                 raise NotFound("Error {}{}".format(http_code, resp))
             raise OsmHttpException("Error {}{}".format(http_code, resp))
+
+    def set_query_admin(self, **kwargs):
+        if 'all_projects' in kwargs:
+            self._all_projects=kwargs['all_projects']
+        if 'public' in kwargs:
+            self._public=kwargs['public']
+        self._default_query_admin = self._complete_default_query_admin()

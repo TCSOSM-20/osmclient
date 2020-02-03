@@ -65,7 +65,8 @@ class Role(object):
             role["permissions"] = role_permissions
 
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                              postfields_dict=role)
+                                              postfields_dict=role,
+                                              skip_query_admin=True)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         #if http_code in (200, 201, 202, 204):
@@ -148,7 +149,8 @@ class Role(object):
             del new_role_obj["permissions"]
 
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, role_obj['_id']),
-                                             postfields_dict=new_role_obj)
+                                               postfields_dict=new_role_obj,
+                                               skip_query_admin=True)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202):
@@ -184,7 +186,8 @@ class Role(object):
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                                                 role['_id'], querystring))
+                                                                 role['_id'], querystring),
+                                                                 skip_query_admin=True)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code == 202:
@@ -214,7 +217,7 @@ class Role(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase, filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase, filter_string),skip_query_admin=True)
         # print('RESP: {}'.format(resp))
         if resp:
             return json.loads(resp)
