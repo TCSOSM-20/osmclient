@@ -152,10 +152,10 @@ def cli_osm(ctx, hostname, user, password, project, verbose):
 @cli_osm.command(name='ns-list', short_help='list all NS instances')
 @click.option('--filter', default=None,
               help='restricts the list to the NS instances matching the filter.')
-@click.option('--details', is_flag=True,
-              help='get more details of current operation in the NS.')
+@click.option('--long', is_flag=True,
+              help='get more details of the NS (project, vim, deployment status, configuration status.')
 @click.pass_context
-def ns_list(ctx, filter,details):
+def ns_list(ctx, filter, long):
     """list all NS instances
 
     \b
@@ -286,19 +286,25 @@ def ns_list(ctx, filter,details):
         resp = ctx.obj.ns.list(filter)
     else:
         resp = ctx.obj.ns.list()
-    if details:
+    if long:
         table = PrettyTable(
         ['ns instance name',
          'id',
+         'date',
          'ns state',
          'current operation',
          'error details',
+         'project',
+         'vim (inst param)',
          'deployment status',
          'configuration status'])
+        project_list = ctx.obj.project.list()
+        vim_list = ctx.obj.vim.list()
     else:
         table = PrettyTable(
         ['ns instance name',
          'id',
+         'date',
          'ns state',
          'current operation',
          'error details'])
@@ -308,10 +314,27 @@ def ns_list(ctx, filter,details):
             nsr = ns
             nsr_name = nsr['name']
             nsr_id = nsr['_id']
+            date = datetime.fromtimestamp(nsr['create-time']).strftime("%Y-%m-%dT%H:%M:%S")
             ns_state = nsr['nsState']
-            if details:
+            if long:
                 deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
                 config_status = summarize_config_status(nsr['configurationStatus'])
+                project_id = nsr.get('_admin').get('projects_read')[0]
+                project_name = '-'
+                for p in project_list:
+                    if p['_id'] == project_id:
+                        project_name = p['name']
+                        break
+                #project = '{} ({})'.format(project_name, project_id)
+                project = project_name
+                vim_id = nsr.get('datacenter')
+                vim_name = '-'
+                for v in vim_list:
+                    if v['uuid'] == vim_id:
+                        vim_name = v['name']
+                        break
+                #vim = '{} ({})'.format(vim_name, vim_id)
+                vim = vim_name
             current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
             error_details = "N/A"
             if ns_state == "BROKEN" or ns_state == "DEGRADED":
@@ -321,6 +344,8 @@ def ns_list(ctx, filter,details):
             nsr = nsopdata['nsr:nsr']
             nsr_name = nsr['name-ref']
             nsr_id = nsr['ns-instance-config-ref']
+            date = '-'
+            project = '-'
             deployment_status = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
             ns_state = deployment_status
             config_status = nsr['config-status'] if 'config-status' in nsr else 'Not found'
@@ -329,19 +354,23 @@ def ns_list(ctx, filter,details):
             if config_status == "config_not_needed":
                 config_status = "configured (no charms)"
 
-        if details:
+        if long:
             table.add_row(
                  [nsr_name,
                  nsr_id,
+                 date,
                  ns_state,
                  current_operation,
                  wrap_text(text=error_details,width=40),
+                 project,
+                 vim,
                  deployment_status,
                  config_status])
         else:
             table.add_row(
                  [nsr_name,
                  nsr_id,
+                 date,
                  ns_state,
                  current_operation,
                  wrap_text(text=error_details,width=40)])
@@ -588,8 +617,10 @@ def nf_list(ctx, ns, filter):
 
 @cli_osm.command(name='ns-op-list', short_help='shows the history of operations over a NS instance')
 @click.argument('name')
+@click.option('--long', is_flag=True,
+              help='get more details of the NS operation (date, ).')
 @click.pass_context
-def ns_op_list(ctx, name):
+def ns_op_list(ctx, name, long):
     """shows the history of operations over a NS instance
 
     NAME: name or ID of the NS instance
@@ -614,7 +645,11 @@ def ns_op_list(ctx, name):
     #     print(str(e))
     #     exit(1)
 
-    table = PrettyTable(['id', 'operation', 'action_name', 'operation_params', 'status', 'detail'])
+    if long:
+        table = PrettyTable(['id', 'operation', 'action_name', 'operation_params', 'status', 'date', 'last update', 'detail'])
+    else:
+        table = PrettyTable(['id', 'operation', 'action_name', 'status', 'date', 'detail'])
+
     #print(yaml.safe_dump(resp))
     for op in resp:
         action_name = "N/A"
@@ -629,12 +664,20 @@ def ns_op_list(ctx, name):
                 detail = "In queue. Current position: {}".format(op['queuePosition'])
         elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
             detail = op['errorMessage']
-        table.add_row([op['id'],
-                      op['lcmOperationType'],
-                      action_name,
-                      wrap_text(text=json.dumps(formatParams(op['operationParams']),indent=2),width=70),
-                      op['operationState'],
-                      wrap_text(text=detail,width=50)])
+        date = datetime.fromtimestamp(op['startTime']).strftime("%Y-%m-%dT%H:%M:%S")
+        last_update = datetime.fromtimestamp(op['statusEnteredTime']).strftime("%Y-%m-%dT%H:%M:%S")
+        if long:
+            table.add_row([op['id'],
+                           op['lcmOperationType'],
+                           action_name,
+                           wrap_text(text=json.dumps(formatParams(op['operationParams']),indent=2),width=50),
+                           op['operationState'],
+                           date,
+                           last_update,
+                           wrap_text(text=detail,width=50)])
+        else:
+            table.add_row([op['id'], op['lcmOperationType'], action_name,
+                           op['operationState'], date, wrap_text(text=detail,width=50)])
     table.align = 'l'
     print(table)
 
@@ -2552,7 +2595,7 @@ def sdnc_show(ctx, name):
 # K8s cluster operations
 ###########################
 
-@cli_osm.command(name='k8scluster-add')
+@cli_osm.command(name='k8scluster-add', short_help='adds a K8s cluster to OSM')
 @click.argument('name')
 @click.option('--creds',
               prompt=True,
@@ -2657,7 +2700,7 @@ def k8scluster_update(ctx,
     #     exit(1)
 
 
-@cli_osm.command(name='k8scluster-delete')
+@cli_osm.command(name='k8scluster-delete', short_help='deletes a K8s cluster')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
@@ -2703,7 +2746,7 @@ def k8scluster_list(ctx, filter, literal):
     #     exit(1)
 
 
-@cli_osm.command(name='k8scluster-show')
+@cli_osm.command(name='k8scluster-show', short_help='shows the details of a K8s cluster')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -2733,7 +2776,7 @@ def k8scluster_show(ctx, name, literal):
 # Repo operations
 ###########################
 
-@cli_osm.command(name='repo-add')
+@cli_osm.command(name='repo-add', short_help='adds a repo to OSM')
 @click.argument('name')
 @click.argument('uri')
 @click.option('--type',
@@ -2770,7 +2813,7 @@ def repo_add(ctx,
     #     exit(1)
 
 
-@cli_osm.command(name='repo-update')
+@cli_osm.command(name='repo-update', short_help='updates a repo in OSM')
 @click.argument('name')
 @click.option('--newname', help='New name for the repo')
 @click.option('--uri', help='URI of the repo')
@@ -2804,7 +2847,7 @@ def repo_update(ctx,
     #     exit(1)
 
 
-@cli_osm.command(name='repo-delete')
+@cli_osm.command(name='repo-delete', short_help='deletes a repo')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion from the DB (not recommended)')
 #@click.option('--wait',
@@ -2849,7 +2892,7 @@ def repo_list(ctx, filter, literal):
     #     exit(1)
 
 
-@cli_osm.command(name='repo-show')
+@cli_osm.command(name='repo-show', short_help='shows the details of a repo')
 @click.argument('name')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -3262,9 +3305,10 @@ def ns_metric_export(ctx, ns, vnf, vdu, metric, interval):
 # Other operations
 ####################
 
-@cli_osm.command(name='version')
+@cli_osm.command(name='version', short_help='shows client and server versions')
 @click.pass_context
 def get_version(ctx):
+    """shows client and server versions"""
     # try:
     check_client_version(ctx.obj, "version")
     print ("Server version: {}".format(ctx.obj.get_version()))
