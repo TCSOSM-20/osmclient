@@ -2065,7 +2065,7 @@ def pdu_delete(ctx, name, force):
               default='openstack',
               help='VIM type')
 @click.option('--description',
-              default='no description',
+              default=None,
               help='human readable description')
 @click.option('--sdn_controller', default=None, help='Name or id of the SDN controller associated to this VIM account')
 @click.option('--sdn_port_mapping', default=None, help="File describing the port mapping between compute nodes' ports and switch ports")
@@ -2266,7 +2266,7 @@ def vim_show(ctx, name):
 @click.option('--wim_type',
               help='WIM type')
 @click.option('--description',
-              default='no description',
+              default=None,
               help='human readable description')
 @click.option('--wim_port_mapping', default=None,
               help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge "
@@ -2620,7 +2620,7 @@ def sdnc_show(ctx, name):
               prompt=True,
               help='list of VIM networks, in JSON inline format, where the cluster is accessible via L3 routing, e.g. "{(k8s_net1:vim_network1) [,(k8s_net2:vim_network2) ...]}"')
 @click.option('--description',
-              default='',
+              default=None,
               help='human readable description')
 @click.option('--namespace',
               default='kube-system',
@@ -2794,7 +2794,7 @@ def k8scluster_show(ctx, name, literal):
               prompt=True,
               help='type of repo (helm-chart for Helm Charts, juju-bundle for Juju Bundles)')
 @click.option('--description',
-              default='',
+              default=None,
               help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
