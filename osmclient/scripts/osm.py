@@ -379,7 +379,7 @@ def ns_list(ctx, filter, long):
     print('To get the history of all operations over a NS, run "osm ns-op-list NS_ID"')
     print('For more details on the current operation, run "osm ns-op-show OPERATION_ID"')
 
-def nsd_list(ctx, filter):
+def nsd_list(ctx, filter, long):
     logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
@@ -387,15 +387,28 @@ def nsd_list(ctx, filter):
     else:
         resp = ctx.obj.nsd.list()
     # print(yaml.safe_dump(resp))
-    table = PrettyTable(['nsd name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
-        for ns in resp:
-            name = ns['name'] if 'name' in ns else '-'
-            table.add_row([name, ns['_id']])
+        if long:
+            table = PrettyTable(['nsd name', 'id', 'onboarding state', 'operational state',
+                                 'usage state', 'date', 'last update'])
+        else:
+            table = PrettyTable(['nsd name', 'id'])
+        for nsd in resp:
+            name = nsd.get('name','-')
+            if long:
+                onb_state = nsd['_admin'].get('onboardingState','-')
+                op_state = nsd['_admin'].get('operationalState','-')
+                usage_state = nsd['_admin'].get('usageState','-')
+                date = datetime.fromtimestamp(nsd['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
+                last_update = datetime.fromtimestamp(nsd['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
+                table.add_row([name, nsd['_id'], onb_state, op_state, usage_state, date, last_update])
+            else:
+                table.add_row([name, nsd['_id']])
     else:
-        for ns in resp:
-            table.add_row([ns['name'], ns['id']])
+        table = PrettyTable(['nsd name', 'id'])
+        for nsd in resp:
+            table.add_row([nsd['name'], nsd['id']])
     table.align = 'l'
     print(table)
 
@@ -403,24 +416,26 @@ def nsd_list(ctx, filter):
 @cli_osm.command(name='nsd-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nsd_list1(ctx, filter):
+def nsd_list1(ctx, filter, long):
     """list all NSD/NS pkg in the system"""
     logger.debug("")
-    nsd_list(ctx, filter)
+    nsd_list(ctx, filter, long)
 
 
 @cli_osm.command(name='nspkg-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nsd_list2(ctx, filter):
+def nsd_list2(ctx, filter, long):
     """list all NS packages"""
     logger.debug("")
-    nsd_list(ctx, filter)
+    nsd_list(ctx, filter, long)
 
 
-def vnfd_list(ctx, nf_type, filter):
+def vnfd_list(ctx, nf_type, filter, long):
     logger.debug("")
     if nf_type:
         check_client_version(ctx.obj, '--nf_type')
@@ -444,13 +459,26 @@ def vnfd_list(ctx, nf_type, filter):
     else:
         resp = ctx.obj.vnfd.list()
     # print(yaml.safe_dump(resp))
-    table = PrettyTable(['nfpkg name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
+        if long:
+            table = PrettyTable(['nfpkg name', 'id', 'onboarding state', 'operational state',
+                                  'usage state', 'date', 'last update'])
+        else:
+            table = PrettyTable(['nfpkg name', 'id'])
         for vnfd in resp:
             name = vnfd['name'] if 'name' in vnfd else '-'
-            table.add_row([name, vnfd['_id']])
+            if long:
+                onb_state = vnfd['_admin'].get('onboardingState','-')
+                op_state = vnfd['_admin'].get('operationalState','-')
+                usage_state = vnfd['_admin'].get('usageState','-')
+                date = datetime.fromtimestamp(vnfd['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
+                last_update = datetime.fromtimestamp(vnfd['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
+                table.add_row([name, vnfd['_id'], onb_state, op_state, usage_state, date, last_update])
+            else:
+                table.add_row([name, vnfd['_id']])
     else:
+        table = PrettyTable(['nfpkg name', 'id'])
         for vnfd in resp:
             table.add_row([vnfd['name'], vnfd['id']])
     table.align = 'l'
@@ -461,35 +489,38 @@ def vnfd_list(ctx, nf_type, filter):
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NF pkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnfd_list1(ctx, nf_type, filter):
+def vnfd_list1(ctx, nf_type, filter, long):
     """list all xNF packages (VNF, HNF, PNF)"""
     logger.debug("")
-    vnfd_list(ctx, nf_type, filter)
+    vnfd_list(ctx, nf_type, filter, long)
 
 
 @cli_osm.command(name='vnfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnfd_list2(ctx, nf_type, filter):
+def vnfd_list2(ctx, nf_type, filter, long):
     """list all xNF packages (VNF, HNF, PNF)"""
     logger.debug("")
-    vnfd_list(ctx, nf_type, filter)
+    vnfd_list(ctx, nf_type, filter, long)
 
 
 @cli_osm.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nfpkg_list(ctx, nf_type, filter):
+def nfpkg_list(ctx, nf_type, filter, long):
     """list all xNF packages (VNF, HNF, PNF)"""
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    vnfd_list(ctx, nf_type, filter)
+    vnfd_list(ctx, nf_type, filter, long)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -867,7 +898,7 @@ def nsd_show(ctx, name, literal):
 
     table = PrettyTable(['field', 'value'])
     for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
     table.align = 'l'
     print(table)
 
@@ -915,7 +946,7 @@ def vnfd_show(ctx, name, literal):
 
     table = PrettyTable(['field', 'value'])
     for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
     table.align = 'l'
     print(table)
 
