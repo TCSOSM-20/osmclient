@@ -526,7 +526,7 @@ def nfpkg_list(ctx, nf_type, filter, long):
     #     exit(1)
 
 
-def vnf_list(ctx, ns, filter):
+def vnf_list(ctx, ns, filter, long):
     # try:
     if ns or filter:
         if ns:
@@ -541,24 +541,23 @@ def vnf_list(ctx, ns, filter):
     #     exit(1)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
-        table = PrettyTable(
-            ['vnf id',
-             'name',
-             'ns id',
-             'vnf member index',
-             'vnfd name',
-             'vim account id',
-             'ip address'])
+        field_names = ['vnf id', 'name', 'ns id', 'vnf member index',
+                       'vnfd name', 'vim account id', 'ip address']
+        if long:
+            field_names = ['vnf id', 'name', 'ns id', 'vnf member index',
+                           'vnfd name', 'vim account id', 'ip address',
+                           'date', 'last update']
+        table = PrettyTable(field_names)
         for vnfr in resp:
             name = vnfr['name'] if 'name' in vnfr else '-'
-            table.add_row(
-                [vnfr['_id'],
-                 name,
-                 vnfr['nsr-id-ref'],
-                 vnfr['member-vnf-index-ref'],
-                 vnfr['vnfd-ref'],
-                 vnfr['vim-account-id'],
-                 vnfr['ip-address']])
+            new_row = [vnfr['_id'], name, vnfr['nsr-id-ref'],
+                       vnfr['member-vnf-index-ref'], vnfr['vnfd-ref'],
+                       vnfr['vim-account-id'], vnfr['ip-address']]
+            if long:
+                date = datetime.fromtimestamp(vnfr['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
+                last_update = datetime.fromtimestamp(vnfr['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
+                new_row.extend([date, last_update])
+            table.add_row(new_row)
     else:
         table = PrettyTable(
             ['vnf name',
@@ -582,19 +581,21 @@ def vnf_list(ctx, ns, filter):
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnf_list1(ctx, ns, filter):
+def vnf_list1(ctx, ns, filter, long):
     """list all NF instances"""
     logger.debug("")
-    vnf_list(ctx, ns, filter)
+    vnf_list(ctx, ns, filter, long)
 
 
 @cli_osm.command(name='nf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nf_list(ctx, ns, filter):
+def nf_list(ctx, ns, filter, long):
     """list all NF instances
 
     \b
