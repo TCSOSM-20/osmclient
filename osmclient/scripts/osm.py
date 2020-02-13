@@ -98,11 +98,21 @@ def check_client_version(obj, what, version='sol005'):
 @click.option('-v', '--verbose', count=True,
               help='increase verbosity (-v INFO, -vv VERBOSE, -vvv DEBUG)')
 @click.option('--all-projects',
-              default=False,
+              default=None,
               is_flag=True,
               help='include all projects')
 @click.option('--public/--no-public', default=None,
               help='flag for public items (packages, instances, VIM accounts, etc.)')
+@click.option('--project-domain-name', 'project_domain_name',
+              default=None,
+              envvar='OSM_PROJECT_DOMAIN_NAME',
+              help='project domain name for keystone authentication (default to None). ' +
+                   'Also can set OSM_PROJECT_DOMAIN_NAME in environment')
+@click.option('--user-domain-name', 'user_domain_name',
+              default=None,
+              envvar='OSM_USER_DOMAIN_NAME',
+              help='user domain name for keystone authentication (default to None). ' +
+                   'Also can set OSM_USER_DOMAIN_NAME in environment')
 #@click.option('--so-port',
 #              default=None,
 #              envvar='OSM_SO_PORT',
@@ -124,14 +134,16 @@ def check_client_version(obj, what, version='sol005'):
 #              help='hostname of RO server.  ' +
 #                   'Also can set OSM_RO_PORT in environment')
 @click.pass_context
-def cli_osm(ctx, hostname, user, password, project, verbose, all_projects, public):
+def cli_osm(ctx, **kwargs):
     global logger
+    hostname = kwargs.pop("hostname", None)
     if hostname is None:
         print((
             "either hostname option or OSM_HOSTNAME " +
             "environment variable needs to be specified"))
         exit(1)
-    kwargs = {'verbose': verbose}
+    # Remove None values
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
 #    if so_port is not None:
 #        kwargs['so_port']=so_port
 #    if so_project is not None:
@@ -141,16 +153,16 @@ def cli_osm(ctx, hostname, user, password, project, verbose, all_projects, publi
 #    if ro_port is not None:
 #        kwargs['ro_port']=ro_port
     sol005 = os.getenv('OSM_SOL005', True)
-    if user is not None:
-        kwargs['user']=user
-    if password is not None:
-        kwargs['password']=password
-    if project is not None:
-        kwargs['project']=project
-    if all_projects:
-        kwargs['all_projects']=all_projects
-    if public is not None:
-        kwargs['public']=public
+#    if user is not None:
+#        kwargs['user']=user
+#    if password is not None:
+#        kwargs['password']=password
+#    if project is not None:
+#        kwargs['project']=project
+#    if all_projects:
+#        kwargs['all_projects']=all_projects
+#    if public is not None:
+#        kwargs['public']=public
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
     logger = logging.getLogger('osmclient')
 
@@ -2979,15 +2991,21 @@ def repo_show(ctx, name, literal):
 #@click.option('--description',
 #              default='no description',
 #              help='human readable description')
+@click.option('--domain-name', 'domain_name',
+              default=None,
+              help='assign to a domain')
 @click.pass_context
-def project_create(ctx, name):
+def project_create(ctx, name, domain_name):
     """Creates a new project
 
     NAME: name of the project
+    DOMAIN_NAME: optional domain name for the project when keystone authentication is used
     """
     logger.debug("")
     project = {}
     project['name'] = name
+    if domain_name:
+        project['domain_name'] = domain_name
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.project.create(name, project)
@@ -3103,8 +3121,11 @@ def project_update(ctx, project, name):
 @click.option('--project-role-mappings', 'project_role_mappings',
               default=None, multiple=True,
               help='creating user project/role(s) mapping')
+@click.option('--domain-name', 'domain_name',
+              default=None,
+              help='assign to a domain')
 @click.pass_context
-def user_create(ctx, username, password, projects, project_role_mappings):
+def user_create(ctx, username, password, projects, project_role_mappings, domain_name):
     """Creates a new user
 
     \b
@@ -3112,6 +3133,7 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     PASSWORD: password of the user
     PROJECTS: projects assigned to user (internal only)
     PROJECT_ROLE_MAPPING: roles in projects assigned to user (keystone)
+    DOMAIN_NAME: optional domain name for the user when keystone authentication is used
     """
     logger.debug("")
     user = {}
@@ -3119,7 +3141,9 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     user['password'] = password
     user['projects'] = projects
     user['project_role_mappings'] = project_role_mappings
-    
+    if domain_name:
+        user['domain_name'] = domain_name
+
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.user.create(username, user)

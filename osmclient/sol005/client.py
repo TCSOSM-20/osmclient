@@ -55,6 +55,8 @@ class Client(object):
         self._user = user
         self._password = password
         self._project = project
+        self._project_domain_name = kwargs.get("project_domain_name")
+        self._user_domain_name = kwargs.get("user_domain_name")
         self._logger = logging.getLogger('osmclient')
         self._auth_endpoint = '/admin/v1/tokens'
         self._headers = {}
@@ -103,6 +105,10 @@ class Client(object):
             postfields_dict = {'username': self._user,
                                'password': self._password,
                                'project_id': self._project}
+            if self._project_domain_name:
+                postfields_dict["project_domain_name"] = self._project_domain_name
+            if self._user_domain_name:
+                postfields_dict["user_domain_name"] = self._user_domain_name
             http_code, resp = self._http_client.post_cmd(endpoint=self._auth_endpoint,
                                                          postfields_dict=postfields_dict,
                                                          skip_query_admin=True)

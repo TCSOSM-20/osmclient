@@ -19,7 +19,6 @@
 OSM user mgmt API
 """
 
-from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
@@ -213,13 +212,12 @@ class User(object):
         """
         self._logger.debug("")
         self._client.get_token()
-        if utils.validate_uuid4(name):
-            for user in self.list():
-                if name == user['_id']:
-                    return user
-        else:
-            for user in self.list():
-                if name == user['username']:
-                    return user
+        # keystone with external LDAP contains large ids, not uuid format
+        # utils.validate_uuid4(name) cannot be used
+        for user in self.list():
+            if name == user['_id']:
+                return user
+            if name == user['username']:
+                return user
         raise NotFound("User {} not found".format(name))
 
