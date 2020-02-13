@@ -1414,13 +1414,13 @@ def nsd_create1(ctx, filename, overwrite, skip_charm_build):
 @click.option('--skip-charm-build', default=False, is_flag=True,
               help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def nsd_create2(ctx, charm_folder, overwrite, skip_charm_build):
+def nsd_create2(ctx, filename, overwrite, skip_charm_build):
     """creates a new NSD/NSpkg
 
     FILENAME: NSD folder, NSD yaml file or NSpkg tar.gz file
     """
     logger.debug("")
-    nsd_create(ctx, charm_folder, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
 def vnfd_create(ctx, filename, overwrite, skip_charm_build):
