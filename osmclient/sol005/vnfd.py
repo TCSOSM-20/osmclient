@@ -142,6 +142,7 @@ class Vnfd(object):
         if os.path.isdir(filename):
             filename = filename.rstrip('/')
             filename = self._client.package_tool.build(filename, skip_validation=False, skip_charm_build=skip_charm_build)
+            print('Uploading package {}'.format(filename))
             self.create(filename, overwrite=overwrite, update_endpoint=update_endpoint)
         else:
             self._client.get_token()

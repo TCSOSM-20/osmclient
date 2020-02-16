@@ -126,14 +126,16 @@ class PackageTool(object):
         self._logger.debug("")
         package_folder = package_folder.rstrip('/')
         if not os.path.exists("{}".format(package_folder)):
-            return "Fail, package is not in the specified route"
+            return "Fail, package is not in the specified path"
         if not skip_validation:
+            print('Validating package {}'.format(package_folder))
             results = self.validate(package_folder, recursive=False)
             if results:
                 for result in results:
                     if result["valid"] != "OK":
-                        raise ClientException("There was an error validating the file: {} with error: {}"
+                        raise ClientException("There was an error validating the file {} with error: {}"
                                               .format(result["path"], result["error"]))
+                print('Validation OK')
             else:
                 raise ClientException("No descriptor file found in: {}".format(package_folder))
         charm_list = self.build_all_charms(package_folder, skip_charm_build)
@@ -269,8 +271,8 @@ class PackageTool(object):
                 - packet_folder: is the location of the package
             :return: Files and Folders not found. In case of override, it will return all file list
         """
-        listCharms = []
         self._logger.debug("")
+        listCharms = []
         descriptor_file = False
         descriptors_paths = [f for f in glob.glob(package_folder + "/*.yaml")]
         for file in descriptors_paths:
@@ -280,17 +282,21 @@ class PackageTool(object):
             if 'nsd.yaml' in file:
                 descriptor_file = True
                 listCharms = self.charms_search(file, 'ns')
+        print("List of charms in the descriptor: {}".format(listCharms))
         if not descriptor_file:
             raise ClientException ('descriptor name is not correct in: {}'.format(package_folder))
         if listCharms and not skip_charm_build:
             for charmName in listCharms:
                 if os.path.isdir('{}/charms/layers/{}'.format(package_folder,charmName)):
+                    print('Building charm {}/charms/layers/{}'.format(package_folder, charmName))
                     self.charm_build(package_folder, charmName)
+                    print('Charm built'.format(charmName))
                 else:
                     if not os.path.isdir('{}/charms/{}'.format(package_folder,charmName)):
                         raise ClientException ('The charm: {} referenced in the descriptor file '
                                                'is not present either in {}/charms or in {}/charms/layers'.
                                                format(charmName, package_folder,package_folder))
+        self._logger.debug("Return list of charms: {}".format(listCharms))
         return listCharms
 
     def discover_folder_structure(self, base_directory, name, override):
@@ -341,11 +347,13 @@ class PackageTool(object):
         os.environ['CHARM_LAYERS_DIR'] = "{}/layers".format(os.environ['JUJU_REPOSITORY'])
         os.environ['CHARM_INTERFACES_DIR'] = "{}/interfaces".format(os.environ['JUJU_REPOSITORY'])
         os.environ['CHARM_BUILD_DIR'] = "{}/charms/builds".format(charms_folder)
+        if not os.path.exists(os.environ['CHARM_BUILD_DIR']):
+            os.makedirs(os.environ['CHARM_BUILD_DIR'])
         src_folder = '{}/{}'.format(os.environ['CHARM_LAYERS_DIR'], build_name)
         result = subprocess.run(["charm", "build", "{}".format(src_folder)])
         if result.returncode == 1:
             raise ClientException("failed to build the charm: {}".format(src_folder))
-        self._logger.verbose("charm: {} compiled".format(src_folder))
+        self._logger.verbose("charm {} built".format(src_folder))
 
     def build_tarfile(self, package_folder, charm_list=None):
         """
@@ -354,9 +362,8 @@ class PackageTool(object):
         returns: .tar.gz name
         """
         self._logger.debug("")
-        ignore_patterns = "'*layers*', '*interfaces*'"
         try:
-            directory_name = self.create_temp_dir(package_folder, ignore_patterns, charm_list)
+            directory_name = self.create_temp_dir(package_folder, charm_list)
             cwd = os.getcwd()
             os.chdir(directory_name)
             self.calculate_checksum(package_folder)
@@ -366,49 +373,60 @@ class PackageTool(object):
             #return "Created {}.tar.gz".format(package_folder)
             #self.build("{}".format(os.path.basename(package_folder)))
             os.chdir(cwd)
-        except:
+        except Exception as exc:
             shutil.rmtree(os.path.join(package_folder, "tmp"))
-            raise ClientException('failure to manipulate the result of the compilation')
+            raise ClientException('failure during build of targz file (create temp dir, calculate checksum, tar.gz file): {}'.format(exc))
         os.rename("{}/{}.tar.gz".format(directory_name, os.path.basename(package_folder)),
                   "{}.tar.gz".format(os.path.basename(package_folder)))
         os.rename("{}/{}/checksums.txt".format(directory_name, os.path.basename(package_folder)),
                   "{}/checksums.txt".format(package_folder))
         shutil.rmtree(os.path.join(package_folder, "tmp"))
-        self._logger.verbose("package created: {}.tar.gz".format(os.path.basename(package_folder)))
+        print("Package created: {}.tar.gz".format(os.path.basename(package_folder)))
         return "{}.tar.gz".format(package_folder)
 
-    def create_temp_dir(self, package_folder, ignore_patterns=None, charm_list=None):
+    def create_temp_dir(self, package_folder, charm_list=None):
         """
-        Method to create a temporary folder where we can move the files in package_folder, which do not 
-        meet the pattern defined in ignore_patterns
+        Method to create a temporary folder where we can move the files in package_folder
         """
         self._logger.debug("")
+        ignore_patterns = ('.gitignore')
         ignore = shutil.ignore_patterns(ignore_patterns)
-        os.makedirs("{}/tmp".format(package_folder), exist_ok=True)
         directory_name = os.path.abspath("{}/tmp".format(package_folder))
         os.makedirs("{}/{}".format(directory_name, os.path.basename(package_folder),exist_ok=True))
+        self._logger.debug("Makedirs DONE: {}/{}".format(directory_name, os.path.basename(package_folder)))
         for item in os.listdir(package_folder):
+            self._logger.debug("Item: {}".format(item))
             if item != "tmp":
                 s = os.path.join(package_folder, item)
                 d = os.path.join(os.path.join(directory_name, os.path.basename(package_folder)), item)
                 if os.path.isdir(s):
                     if item == "charms":
-                        s = os.path.join(s, "builds")
-                        if not os.path.exists(s):
-                            os.makedirs(s)
-                        for i in os.listdir(s):
-                            if i in charm_list:
-                                s_charm = os.path.join(s, i)
-                                # d_charm = os.path.join(package_folder, item, i)
-                                d_temp = os.path.join(d, i)
-                                # if os.path.exists(d_charm):
-                                #     shutil.rmtree(d_charm)
-                                shutil.copytree(s_charm, d_temp, symlinks = True, ignore = ignore)
-                                # shutil.copytree(s_charm, d_charm, symlinks = True, ignore = ignore)
+                        os.makedirs(d, exist_ok=True)
+                        s_builds = os.path.join(s, "builds")
+                        for charm in charm_list:
+                            self._logger.debug("Copying charm {}".format(charm))
+                            if charm in os.listdir(s):
+                                s_charm = os.path.join(s, charm)
+                            elif charm in os.listdir(s_builds):
+                                s_charm = os.path.join(s_builds, charm)
+                            else:
+                                raise ClientException('The charm {} referenced in the descriptor file '
+                                                      'could not be found in {}/charms or in {}/charms/builds'.
+                                                      format(charm, package_folder, package_folder))
+                            d_temp = os.path.join(d, charm)
+                            self._logger.debug("Copying tree: {} -> {}".format(s_charm, d_temp))
+                            shutil.copytree(s_charm, d_temp, symlinks = True, ignore = ignore)
+                            self._logger.debug("DONE")
                     else:
+                        self._logger.debug("Copying tree: {} -> {}".format(s,d))
                         shutil.copytree(s, d, symlinks = True, ignore = ignore)
+                        self._logger.debug("DONE")
                 else:
+                    if item in ignore_patterns:
+                        continue
+                    self._logger.debug("Copying file: {} -> {}".format(s,d))
                     shutil.copy2(s, d)
+                    self._logger.debug("DONE")
         return directory_name
 
     def charms_search(self, descriptor_file, desc_type):
