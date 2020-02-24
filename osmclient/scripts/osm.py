@@ -1075,7 +1075,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
             if "namespace" in op_status and "info" in op_status and \
             "last_deployed" in op_status["info"] and "status" in op_status["info"] and \
             "code" in op_status["info"]["status"] and "resources" in op_status["info"]["status"] and \
-            "notes" in op_status["info"]["status"] and "seconds" in op_status["info"]["last_deployed"]:
+            "seconds" in op_status["info"]["last_deployed"]:
                 last_deployed_time = datetime.fromtimestamp(op_status["info"]["last_deployed"]["seconds"]).strftime("%a %b %d %I:%M:%S %Y")
                 print("LAST DEPLOYED: {}".format(last_deployed_time))
                 print("NAMESPACE: {}".format(op_status["namespace"]))
@@ -1086,8 +1086,9 @@ def vnf_show(ctx, name, literal, filter, kdu):
                 print()
                 print("RESOURCES:")
                 print(op_status["info"]["status"]["resources"])
-                print("NOTES:")
-                print(op_status["info"]["status"]["notes"])
+                if "notes" in op_status["info"]["status"]:
+                    print("NOTES:")
+                    print(op_status["info"]["status"]["notes"])
             else:
                 print(op_info_status)
         except Exception:
