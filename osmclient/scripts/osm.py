@@ -717,7 +717,7 @@ def ns_op_list(ctx, name, long):
             else:
                 detail = "In queue. Current position: {}".format(op['queuePosition'])
         elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
-            detail = op['errorMessage']
+            detail = op.get('errorMessage','-')
         date = datetime.fromtimestamp(op['startTime']).strftime("%Y-%m-%dT%H:%M:%S")
         last_update = datetime.fromtimestamp(op['statusEnteredTime']).strftime("%Y-%m-%dT%H:%M:%S")
         if long:
