@@ -18,7 +18,7 @@
 OSM API handling for the '--wait' option
 """
 
-from osmclient.common.exceptions import ClientException
+from osmclient.common.exceptions import ClientException, NotFound
 import json
 from time import sleep
 import sys
@@ -192,7 +192,9 @@ def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, de
                 # There was a timeout, so raise an exception
                 raise ClientException('operation timeout, waited for {} seconds'.format(timeout))
     except ClientException as exc:
-        message="Operation failed for {}:\nerror:\n{}".format(
+        if deleteFlag and isinstance(exc, NotFound):
+            return
+        message = "Operation failed for {}:\nerror:\n{}".format(
             entity_label,
             str(exc))
         raise ClientException(message)

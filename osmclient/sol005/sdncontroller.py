@@ -24,6 +24,7 @@ from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
 import logging
+import yaml
 
 
 class SdnController(object):
@@ -66,6 +67,8 @@ class SdnController(object):
 
     def create(self, name, sdn_controller, wait=False):
         self._logger.debug("")
+        if 'config' in sdn_controller and isinstance(sdn_controller["config"], str):
+            sdn_controller["config"] = yaml.safe_load(sdn_controller["config"])
         self._client.get_token()
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
                                        postfields_dict=sdn_controller)
@@ -92,6 +95,8 @@ class SdnController(object):
 
     def update(self, name, sdn_controller, wait=False):
         self._logger.debug("")
+        if 'config' in sdn_controller and isinstance(sdn_controller["config"], str):
+            sdn_controller["config"] = yaml.safe_load(sdn_controller["config"])
         self._client.get_token()
         sdnc = self.get(name)
         sdnc_id_for_wait = self._get_id_for_wait(name)
