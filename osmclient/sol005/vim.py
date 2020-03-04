@@ -126,12 +126,16 @@ class Vim(object):
                 vim_config = None
             else:
                 vim_config = yaml.safe_load(vim_account['config'])
-        if sdn_controller:
-            sdnc = self._client.sdnc.get(sdn_controller)
-            vim_config['sdn-controller'] = sdnc['_id']
-        if sdn_port_mapping:
-            with open(sdn_port_mapping, 'r') as f:
-                vim_config['sdn-port-mapping'] = yaml.safe_load(f.read())
+        if sdn_controller == "":
+            vim_config['sdn-controller'] = None
+            vim_config['sdn-port-mapping'] = None
+        else:
+            if sdn_controller:
+                sdnc = self._client.sdnc.get(sdn_controller)
+                vim_config['sdn-controller'] = sdnc['_id']
+            if sdn_port_mapping:
+                with open(sdn_port_mapping, 'r') as f:
+                    vim_config['sdn-port-mapping'] = yaml.safe_load(f.read())
         vim_account['config'] = vim_config
         #vim_account['config'] = json.dumps(vim_config)
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,vim['_id']),

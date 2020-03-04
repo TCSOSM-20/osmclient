@@ -2177,7 +2177,8 @@ def vim_create(ctx,
 @click.option('--config', help='VIM specific config parameters')
 @click.option('--account_type', help='VIM type')
 @click.option('--description', help='human readable description')
-@click.option('--sdn_controller', default=None, help='Name or id of the SDN controller associated to this VIM account')
+@click.option('--sdn_controller', default=None, help='Name or id of the SDN controller to be associated with this VIM'
+                                                     'account. Use empty string to disassociate')
 @click.option('--sdn_port_mapping', default=None, help="File describing the port mapping between compute nodes' ports and switch ports")
 @click.option('--wait',
               required=False,
@@ -2505,9 +2506,10 @@ def wim_show(ctx, name):
 @click.option('--port',  # hidden=True,
               help='Deprecated. Use --url')
 @click.option('--switch_dpid',  # hidden=True,
-              help='Deprecated. Use --config {dpid: DPID}')
+              help='Deprecated. Use --config {switch_id: DPID}')
 @click.option('--config',
-              help='Extra information for SDN in yaml format, as {dpid: (Openflow Datapath ID), version: version}')
+              help='Extra information for SDN in yaml format, as {switch_id: identity used for the plugin (e.g. DPID: '
+             'Openflow Datapath ID), version: version}')
 @click.option('--user',
               help='SDN controller username')
 @click.option('--password',
@@ -2527,16 +2529,16 @@ def sdnc_create(ctx, **kwargs):
     sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
                      x not in ("wait", "ip_address", "port", "switch_dpid")}
     if kwargs.get("port"):
-        print("option '--port' is deprecated, use '-url' instead")
+        print("option '--port' is deprecated, use '--url' instead")
         sdncontroller["port"] = int(kwargs["port"])
     if kwargs.get("ip_address"):
-        print("option '--ip_address' is deprecated, use '-url' instead")
+        print("option '--ip_address' is deprecated, use '--url' instead")
         sdncontroller["ip"] = kwargs["ip_address"]
     if kwargs.get("switch_dpid"):
-        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        print("option '--switch_dpid' is deprecated, use '--config={switch_id: id|DPID}' instead")
         sdncontroller["dpid"] = kwargs["switch_dpid"]
     if kwargs.get("sdn_controller_version"):
-        print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
+        print("option '--sdn_controller_version' is deprecated, use '--config={version: SDN_CONTROLLER_VERSION}'"
               " instead")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
@@ -2552,7 +2554,8 @@ def sdnc_create(ctx, **kwargs):
 @click.option('--type', help='SDN controller type')
 @click.option('--url', help='URL in format http[s]://HOST:IP/')
 @click.option('--config', help='Extra information for SDN in yaml format, as '
-                               '{dpid: (Openflow Datapath ID), version: version}')
+                               '{switch_id: identity used for the plugin (e.g. DPID: '
+                               'Openflow Datapath ID), version: version}')
 @click.option('--user', help='SDN controller username')
 @click.option('--password', help='SDN controller password')
 @click.option('--ip_address', help='Deprecated. Use --url')  # hidden=True
@@ -2573,13 +2576,13 @@ def sdnc_update(ctx, **kwargs):
     if kwargs.get("newname"):
         sdncontroller["name"] = kwargs["newname"]
     if kwargs.get("port"):
-        print("option '--port' is deprecated, use '-url' instead")
+        print("option '--port' is deprecated, use '--url' instead")
         sdncontroller["port"] = int(kwargs["port"])
     if kwargs.get("ip_address"):
-        print("option '--ip_address' is deprecated, use '-url' instead")
+        print("option '--ip_address' is deprecated, use '--url' instead")
         sdncontroller["ip"] = kwargs["ip_address"]
     if kwargs.get("switch_dpid"):
-        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        print("option '--switch_dpid' is deprecated, use '--config={switch_id: id|DPID}' instead")
         sdncontroller["dpid"] = kwargs["switch_dpid"]
     if kwargs.get("sdn_controller_version"):
         print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
