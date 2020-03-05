@@ -214,9 +214,11 @@ class User(object):
         self._client.get_token()
         # keystone with external LDAP contains large ids, not uuid format
         # utils.validate_uuid4(name) cannot be used
-        for user in self.list():
+        user_list = self.list()
+        for user in user_list:
             if name == user['_id']:
                 return user
+        for user in user_list:
             if name == user['username']:
                 return user
         raise NotFound("User {} not found".format(name))
