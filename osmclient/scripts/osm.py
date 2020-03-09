@@ -731,7 +731,7 @@ def ns_op_list(ctx, name, long):
                            wrap_text(text=detail,width=50)])
         else:
             table.add_row([op['id'], op['lcmOperationType'], action_name,
-                           op['operationState'], date, wrap_text(text=detail,width=50)])
+                           op['operationState'], date, wrap_text(text=detail or "",width=50)])
     table.align = 'l'
     print(table)
 
