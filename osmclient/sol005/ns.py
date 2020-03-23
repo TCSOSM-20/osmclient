@@ -100,14 +100,23 @@ class Ns(object):
             raise NotFound("ns '{}' not found".format(name))
         raise NotFound("ns '{}' not found".format(name))
 
-    def delete(self, name, force=False, wait=False):
+    def delete(self, name, force=False, config=None, wait=False):
         self._logger.debug("")
         ns = self.get(name)
+        querystring_list = []
         querystring = ''
+        if config:
+            ns_config = yaml.safe_load(config)
+            querystring_list += ["{}={}".format(k, v) for k, v in ns_config.items()]
         if force:
-            querystring = '?FORCE=True'
+            querystring_list.append('FORCE=True')
+        if querystring_list:
+            querystring = "?" + "&".join(querystring_list)
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                                  ns['_id'], querystring))
+        # TODO change to use a POST self._http.post_cmd('{}/{}/terminate{}'.format(_apiBase, ns['_id'], querystring),
+        #                                               postfields_dict=ns_config)
+        # seting autoremove as True by default
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code == 202:

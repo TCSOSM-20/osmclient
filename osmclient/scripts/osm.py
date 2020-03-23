@@ -711,12 +711,12 @@ def ns_op_list(ctx, name, long):
             action_name = op['operationParams']['primitive']
         detail = "-"
         if op['operationState']=='PROCESSING':
-            if op['lcmOperationType']=='instantiate':
+            if op['lcmOperationType'] in ('instantiate', 'terminate'):
                 if op['stage']:
                     detail = op['stage']
             else:
                 detail = "In queue. Current position: {}".format(op['queuePosition'])
-        elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
+        elif op['operationState'] in ('FAILED', 'FAILED_TEMP'):
             detail = op.get('errorMessage','-')
         date = datetime.fromtimestamp(op['startTime']).strftime("%Y-%m-%dT%H:%M:%S")
         last_update = datetime.fromtimestamp(op['statusEnteredTime']).strftime("%Y-%m-%dT%H:%M:%S")
@@ -1971,6 +1971,9 @@ def nfpkg_delete(ctx, name, force):
 @cli_osm.command(name='ns-delete', short_help='deletes a NS instance')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--config', default=None,
+              help="specific yaml configuration for the termination, e.g. '{autoremove: False, timeout_ns_terminate: "
+                   "600, skip_terminate_primitives: True}'")
 @click.option('--wait',
               required=False,
               default=False,
@@ -1978,7 +1981,7 @@ def nfpkg_delete(ctx, name, force):
               help='do not return the control immediately, but keep it '
                    'until the operation is completed, or timeout')
 @click.pass_context
-def ns_delete(ctx, name, force, wait):
+def ns_delete(ctx, name, force, config, wait):
     """deletes a NS instance
 
     NAME: name or ID of the NS instance to be deleted
@@ -1986,10 +1989,10 @@ def ns_delete(ctx, name, force, wait):
     logger.debug("")
     # try:
     if not force:
-        ctx.obj.ns.delete(name, wait=wait)
+        ctx.obj.ns.delete(name, config=config, wait=wait)
     else:
         check_client_version(ctx.obj, '--force')
-        ctx.obj.ns.delete(name, force, wait=wait)
+        ctx.obj.ns.delete(name, force, config=config, wait=wait)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
