@@ -359,8 +359,8 @@ def ns_list(ctx, filter, long):
                 vim = vim_name
             current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
             error_details = "N/A"
-            if ns_state == "BROKEN" or ns_state == "DEGRADED":
-                error_details = "{}\nDetail: {}".format(nsr['errorDescription'],nsr['errorDetail'])
+            if ns_state == "BROKEN" or ns_state == "DEGRADED" or nsr['errorDescription']:
+                error_details = "{}\nDetail: {}".format(nsr['errorDescription'], nsr['errorDetail'])
         else:
             nsopdata = ctx.obj.ns.get_opdata(ns['id'])
             nsr = nsopdata['nsr:nsr']
