@@ -180,31 +180,31 @@ class Ns(object):
             if "vim-network-name" in ns_config:
                 ns_config["vld"] = ns_config.pop("vim-network-name")
             if "vld" in ns_config:
+                if not isinstance(ns_config["vld"], list):
+                    raise ValueError("Error at --config 'vld' must be a list of dictionaries")
                 for vld in ns_config["vld"]:
+                    if not isinstance(vld, dict):
+                        raise ValueError("Error at --config 'vld' must be a list of dictionaries")
                     if vld.get("vim-network-name"):
                         if isinstance(vld["vim-network-name"], dict):
                             vim_network_name_dict = {}
-                            for vim_account, vim_net in list(vld["vim-network-name"].items()):
+                            for vim_account, vim_net in vld["vim-network-name"].items():
                                 vim_network_name_dict[get_vim_account_id(vim_account)] = vim_net
                             vld["vim-network-name"] = vim_network_name_dict
                     if "wim_account" in vld and vld["wim_account"] is not None:
                         vld["wimAccountId"] = get_wim_account_id(vld.pop("wim_account"))
-                ns["vld"] = ns_config["vld"]
             if "vnf" in ns_config:
                 for vnf in ns_config["vnf"]:
                     if vnf.get("vim_account"):
                         vnf["vimAccountId"] = get_vim_account_id(vnf.pop("vim_account"))
-                ns["vnf"] = ns_config["vnf"]
 
             if "additionalParamsForNs" in ns_config:
-                ns["additionalParamsForNs"] = ns_config.pop("additionalParamsForNs")
-                if not isinstance(ns["additionalParamsForNs"], dict):
+                if not isinstance(ns_config["additionalParamsForNs"], dict):
                     raise ValueError("Error at --config 'additionalParamsForNs' must be a dictionary")
             if "additionalParamsForVnf" in ns_config:
-                ns["additionalParamsForVnf"] = ns_config.pop("additionalParamsForVnf")
-                if not isinstance(ns["additionalParamsForVnf"], list):
+                if not isinstance(ns_config["additionalParamsForVnf"], list):
                     raise ValueError("Error at --config 'additionalParamsForVnf' must be a list")
-                for additional_param_vnf in ns["additionalParamsForVnf"]:
+                for additional_param_vnf in ns_config["additionalParamsForVnf"]:
                     if not isinstance(additional_param_vnf, dict):
                         raise ValueError("Error at --config 'additionalParamsForVnf' items must be dictionaries")
                     if not additional_param_vnf.get("member-vnf-index"):
@@ -214,8 +214,10 @@ class Ns(object):
                 wim_account = ns_config.pop("wim_account")
                 if wim_account is not None:
                     ns['wimAccountId'] = get_wim_account_id(wim_account)
-            if "timeout_ns_deploy" in ns_config:
-                ns["timeout_ns_deploy"] = ns_config.pop("timeout_ns_deploy")
+            # rest of parameters without any transformation or checking
+            # "timeout_ns_deploy"
+            # "placement-engine"
+            ns.update(ns_config)
 
         # print(yaml.safe_dump(ns))
         try:
