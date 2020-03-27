@@ -3124,7 +3124,7 @@ def project_update(ctx, project, name):
               help='list of project ids that the user belongs to')
 @click.option('--project-role-mappings', 'project_role_mappings',
               default=None, multiple=True,
-              help='creating user project/role(s) mapping')
+              help="assign role(s) in a project. Can be used several times: 'project,role1[,role2,...]'")
 @click.option('--domain-name', 'domain_name',
               default=None,
               help='assign to a domain')
@@ -3168,16 +3168,16 @@ def user_create(ctx, username, password, projects, project_role_mappings, domain
               help='change username')
 @click.option('--set-project', 'set_project',
               default=None, multiple=True,
-              help='create/replace the project,role(s) mapping for this project: \'project,role1,role2,...\'')
+              help="create/replace the roles for this project: 'project,role1[,role2,...]'")
 @click.option('--remove-project', 'remove_project',
               default=None, multiple=True,
-              help='removes project from user: \'project\'')
+              help="removes project from user: 'project'")
 @click.option('--add-project-role', 'add_project_role',
               default=None, multiple=True,
-              help='adds project,role(s) mapping: \'project,role1,role2,...\'')
+              help="assign role(s) in a project. Can be used several times: 'project,role1[,role2,...]'")
 @click.option('--remove-project-role', 'remove_project_role',
               default=None, multiple=True,
-              help='removes project,role(s) mapping: \'project,role1,role2,...\'')
+              help="remove role(s) in a project. Can be used several times: 'project,role1[,role2,...]'")
 @click.pass_context
 def user_update(ctx, username, password, set_username, set_project, remove_project,
                 add_project_role, remove_project_role):
