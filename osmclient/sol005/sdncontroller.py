@@ -39,16 +39,18 @@ class SdnController(object):
                                         self._apiVersion, self._apiResource)
 
     # SDNC '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/sdns')
         # Wait for status for SDN instance creation/update/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_SDNC_OPERATION
         WaitForStatus.wait_for_status(
             'SDNC',
             str(id),
-            WaitForStatus.TIMEOUT_SDNC_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -82,7 +84,7 @@ class SdnController(object):
                                   resp))
         if wait:
             # Wait for status for SDNC instance creation
-            self._wait(resp.get('id'))
+            self._wait(resp.get('id'), wait)
         print(resp['id'])
         #else:
         #    msg = ""
@@ -110,7 +112,7 @@ class SdnController(object):
             # Use the previously obtained id instead.
             wait_id = sdnc_id_for_wait
             # Wait for status for VI instance update
-            self._wait(wait_id)
+            self._wait(wait_id, wait)
         # else:
         #     pass
         #else:
@@ -137,7 +139,7 @@ class SdnController(object):
         if http_code == 202:
             if wait:
                 # Wait for status for SDNC instance deletion
-                self._wait(sdnc_id_for_wait, deleteFlag=True)
+                self._wait(sdnc_id_for_wait, wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:

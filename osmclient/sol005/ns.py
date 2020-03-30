@@ -40,15 +40,17 @@ class Ns(object):
                                         self._apiVersion, self._apiResource)
 
     # NS '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/ns_lcm_op_occs')
         # Wait for status for NS instance creation/update/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_NS_OPERATION
         WaitForStatus.wait_for_status(
             'NS',
             str(id),
-            WaitForStatus.TIMEOUT_NS_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -101,6 +103,18 @@ class Ns(object):
         raise NotFound("ns '{}' not found".format(name))
 
     def delete(self, name, force=False, config=None, wait=False):
+        """
+        Deletes a Network Service (NS)
+        :param name: name of network service
+        :param force: set force. Direct deletion without cleaning at VIM
+        :param config: parameters of deletion, as:
+             autoremove: Bool (default True)
+             timeout_ns_terminate: int
+             skip_terminate_primitives: Bool (default False) to not exec the terminate primitives
+        :param wait: Make synchronous. Wait until deletion is completed:
+            False to not wait (by default), True to wait a standard time, or int (time to wait)
+        :return: None. Exception if fail
+        """
         self._logger.debug("")
         ns = self.get(name)
         querystring_list = []
@@ -123,7 +137,7 @@ class Ns(object):
             if wait and resp:
                 resp = json.loads(resp)
                 # For the 'delete' operation, '_id' is used
-                self._wait(resp.get('_id'), deleteFlag=True)
+                self._wait(resp.get('_id'), wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:
@@ -250,7 +264,7 @@ class Ns(object):
                                       resp))
             if wait:
                 # Wait for status for NS instance creation
-                self._wait(resp.get('nslcmop_id'))
+                self._wait(resp.get('nslcmop_id'), wait)
             print(resp['id'])
             return resp['id']
             #else:
@@ -364,7 +378,7 @@ class Ns(object):
             if wait:
                 # Wait for status for NS instance action
                 # For the 'action' operation, 'id' is used
-                self._wait(resp.get('id'))
+                self._wait(resp.get('id'), wait)
             return resp['id']
             #else:
             #    msg = ""
@@ -389,10 +403,12 @@ class Ns(object):
             op_data={}
             op_data["scaleType"] = "SCALE_VNF"
             op_data["scaleVnfData"] = {}
-            if scale_in:
+            if scale_in and not scale_out:
                 op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_IN"
-            else:
+            elif not scale_in and scale_out:
                 op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_OUT"
+            else:
+                raise ClientException("you must set either 'scale_in' or 'scale_out'")
             op_data["scaleVnfData"]["scaleByStepData"] = {
                 "member-vnf-index": vnf_name,
                 "scaling-group-descriptor": scaling_group,

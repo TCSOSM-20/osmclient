@@ -39,16 +39,18 @@ class Wim(object):
                                         self._apiVersion, self._apiResource)
 
     # WIM '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/wim_accounts')
         # Wait for status for WIM instance creation/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_WIM_OPERATION
         WaitForStatus.wait_for_status(
             'WIM',
             str(id),
-            WaitForStatus.TIMEOUT_WIM_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -96,7 +98,7 @@ class Wim(object):
                                   resp))
         if wait:
             # Wait for status for WIM instance creation
-            self._wait(resp.get('id'))
+            self._wait(resp.get('id'), wait)
         print(resp['id'])
         #else:
         #    msg = ""
@@ -135,7 +137,7 @@ class Wim(object):
             # Use the previously obtained id instead.
             wait_id = wim_id_for_wait
             # Wait for status for WIM instance update
-            self._wait(wait_id)
+            self._wait(wait_id, wait)
         # else:
         #     pass
         #else:
@@ -190,7 +192,7 @@ class Wim(object):
                     resp = json.loads(resp)
                     wait_id = resp.get('id')
                 # Wait for status for WIM account deletion
-                self._wait(wait_id, deleteFlag=True)
+                self._wait(wait_id, wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:

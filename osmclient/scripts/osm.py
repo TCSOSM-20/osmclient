@@ -3633,13 +3633,16 @@ def ns_action(ctx,
 @click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
 @click.option('--scale-in', default=False, is_flag=True, help="performs a scale in operation")
 @click.option('--scale-out', default=False, is_flag=True, help="performs a scale out operation (by default)")
+@click.option('--wait', required=False, default=False, is_flag=True,
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def vnf_scale(ctx,
               ns_name,
               vnf_name,
               scaling_group,
               scale_in,
-              scale_out):
+              scale_out,
+              wait):
     """
     Executes a VNF scale (adding/removing VDUs)
 
@@ -3652,7 +3655,7 @@ def vnf_scale(ctx,
     check_client_version(ctx.obj, ctx.command.name)
     if not scale_in and not scale_out:
         scale_out = True
-    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out)
+    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out, wait)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)

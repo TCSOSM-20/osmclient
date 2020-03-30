@@ -40,16 +40,18 @@ class Nsi(object):
                                         self._apiVersion, self._apiResource)
 
     # NSI '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/nsi_lcm_op_occs')
         # Wait for status for NSI instance creation/update/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_NSI_OPERATION
         WaitForStatus.wait_for_status(
             'NSI',
             str(id),
-            WaitForStatus.TIMEOUT_NSI_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -116,7 +118,7 @@ class Nsi(object):
                 resp = json.loads(resp)
                 # Wait for status for NSI instance deletion
                 # For the 'delete' operation, '_id' is used
-                self._wait(resp.get('_id'), deleteFlag=True)
+                self._wait(resp.get('_id'), wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:
@@ -240,7 +242,7 @@ class Nsi(object):
                                   resp))
             if wait:
                 # Wait for status for NSI instance creation
-                self._wait(resp.get('nsilcmop_id'))
+                self._wait(resp.get('nsilcmop_id'), wait)
             print(resp['id'])
             #else:
             #    msg = ""

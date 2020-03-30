@@ -39,16 +39,18 @@ class Vim(object):
                                         self._apiVersion, self._apiResource)
 
     # VIM '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/vim_accounts')
         # Wait for status for VIM instance creation/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_VIM_OPERATION
         WaitForStatus.wait_for_status(
             'VIM',
             str(id),
-            WaitForStatus.TIMEOUT_VIM_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -102,7 +104,7 @@ class Vim(object):
                                   resp))
         if wait:
             # Wait for status for VIM instance creation
-            self._wait(resp.get('id'))
+            self._wait(resp.get('id'), wait)
         print(resp['id'])
         #else:
         #    msg = ""
@@ -148,7 +150,7 @@ class Vim(object):
             # Use the previously obtained id instead.
             wait_id = vim_id_for_wait
             # Wait for status for VI instance update
-            self._wait(wait_id)
+            self._wait(wait_id, wait)
         # else:
         #     pass
         #else:
@@ -201,7 +203,7 @@ class Vim(object):
                     resp = json.loads(resp)
                     wait_id = resp.get('id')
                 # Wait for status for VIM account deletion
-                self._wait(wait_id, deleteFlag=True)
+                self._wait(wait_id, wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:
