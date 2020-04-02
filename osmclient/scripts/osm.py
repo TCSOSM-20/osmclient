@@ -3580,6 +3580,7 @@ def upload_package(ctx, filename, skip_charm_build):
 @click.option('--action_name', prompt=True, help='action name')
 @click.option('--params', default=None, help='action params in YAML/JSON inline string')
 @click.option('--params_file', default=None, help='YAML/JSON file with action params')
+@click.option('--timeout', required=False, default=None, type=int, help='timeout in seconds')
 @click.option('--wait',
               required=False,
               default=False,
@@ -3595,6 +3596,7 @@ def ns_action(ctx,
               action_name,
               params,
               params_file,
+              timeout,
               wait):
     """executes an action/primitive over a NS instance
 
@@ -3612,6 +3614,8 @@ def ns_action(ctx,
         op_data['vdu_id'] = vdu_id
     if vdu_count:
         op_data['vdu_count_index'] = vdu_count
+    if timeout:
+        op_data['timeout_ns_action'] = timeout
     op_data['primitive'] = action_name
     if params_file:
         with open(params_file, 'r') as pf:
@@ -3633,6 +3637,7 @@ def ns_action(ctx,
 @click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
 @click.option('--scale-in', default=False, is_flag=True, help="performs a scale in operation")
 @click.option('--scale-out', default=False, is_flag=True, help="performs a scale out operation (by default)")
+@click.option('--timeout', required=False, default=None, type=int, help='timeout in seconds')
 @click.option('--wait', required=False, default=False, is_flag=True,
               help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
@@ -3642,6 +3647,7 @@ def vnf_scale(ctx,
               scaling_group,
               scale_in,
               scale_out,
+              timeout,
               wait):
     """
     Executes a VNF scale (adding/removing VDUs)
@@ -3655,7 +3661,7 @@ def vnf_scale(ctx,
     check_client_version(ctx.obj, ctx.command.name)
     if not scale_in and not scale_out:
         scale_out = True
-    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out, wait)
+    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out, wait, timeout)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)

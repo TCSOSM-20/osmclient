@@ -394,7 +394,7 @@ class Ns(object):
                     str(exc))
             raise ClientException(message)
 
-    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
+    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False, timeout=None):
         """Scales a VNF by adding/removing VDUs
         """
         self._logger.debug("")
@@ -413,6 +413,8 @@ class Ns(object):
                 "member-vnf-index": vnf_name,
                 "scaling-group-descriptor": scaling_group,
             }
+            if timeout:
+                op_data["timeout_ns_scale"] = timeout
             op_id = self.exec_op(ns_name, op_name='scale', op_data=op_data, wait=wait)
             print(str(op_id))
         except ClientException as exc:
