@@ -230,7 +230,7 @@ def ns_list(ctx, filter, long):
         summary = ""
         n_nets = 0
         status_nets = {}
-        net_list = status_dict['nets']
+        net_list = status_dict.get('nets',[])
         for net in net_list:
             n_nets += 1
             if net['status'] not in status_nets:
