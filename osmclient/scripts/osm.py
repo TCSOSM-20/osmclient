@@ -1446,11 +1446,13 @@ def nsd_create2(ctx, filename, overwrite, skip_charm_build):
     nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
-def vnfd_create(ctx, filename, overwrite, skip_charm_build):
+def vnfd_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    ctx.obj.vnfd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    ctx.obj.vnfd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                        override_epa=override_epa, override_nonepa=override_nonepa,
+                        override_paravirt=override_paravirt)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -1465,14 +1467,21 @@ def vnfd_create(ctx, filename, overwrite, skip_charm_build):
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.option('--skip-charm-build', default=False, is_flag=True,
               help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--override-epa', required=False, default=False, is_flag=True,
+              help='adds guest-epa parameters to all VDU')
+@click.option('--override-nonepa', required=False, default=False, is_flag=True,
+              help='removes all guest-epa parameters from all VDU')
+@click.option('--override-paravirt', required=False, default=False, is_flag=True,
+              help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
-def vnfd_create1(ctx, filename, overwrite, skip_charm_build):
+def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
     """creates a new VNFD/VNFpkg
 
     FILENAME: VNFD yaml file or VNFpkg tar.gz file
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
 
 
 @cli_osm.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
@@ -1484,14 +1493,21 @@ def vnfd_create1(ctx, filename, overwrite, skip_charm_build):
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.option('--skip-charm-build', default=False, is_flag=True,
               help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--override-epa', required=False, default=False, is_flag=True,
+              help='adds guest-epa parameters to all VDU')
+@click.option('--override-nonepa', required=False, default=False, is_flag=True,
+              help='removes all guest-epa parameters from all VDU')
+@click.option('--override-paravirt', required=False, default=False, is_flag=True,
+              help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
-def vnfd_create2(ctx, filename, overwrite, skip_charm_build):
+def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
     """creates a new VNFD/VNFpkg
 
     FILENAME: NF Package Folder, NF Descriptor yaml file or NFpkg tar.gz file
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
 
 
 @cli_osm.command(name='nfpkg-create', short_help='creates a new NFpkg')
@@ -1503,14 +1519,21 @@ def vnfd_create2(ctx, filename, overwrite, skip_charm_build):
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.option('--skip-charm-build', default=False, is_flag=True,
               help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--override-epa', required=False, default=False, is_flag=True,
+              help='adds guest-epa parameters to all VDU')
+@click.option('--override-nonepa', required=False, default=False, is_flag=True,
+              help='removes all guest-epa parameters from all VDU')
+@click.option('--override-paravirt', required=False, default=False, is_flag=True,
+              help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
-def nfpkg_create(ctx, filename, overwrite, skip_charm_build):
+def nfpkg_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
     """creates a new NFpkg
 
     FILENAME: NF Package Folder, NF Descriptor yaml file or NFpkg tar.gz filems to build
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
 
 
 @cli_osm.command(name='ns-create', short_help='creates a new Network Service instance')

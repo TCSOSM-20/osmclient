@@ -276,10 +276,10 @@ class PackageTool(object):
         descriptor_file = False
         descriptors_paths = [f for f in glob.glob(package_folder + "/*.yaml")]
         for file in descriptors_paths:
-            if 'nfd.yaml' in file:
+            if file.endswith('nfd.yaml'):
                 descriptor_file = True
                 listCharms = self.charms_search(file, 'vnf')
-            if 'nsd.yaml' in file:
+            if file.endswith('nsd.yaml'):
                 descriptor_file = True
                 listCharms = self.charms_search(file, 'ns')
         print("List of charms in the descriptor: {}".format(listCharms))
