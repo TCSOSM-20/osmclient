@@ -2718,7 +2718,8 @@ def k8scluster_add(ctx,
     cluster['k8s_version'] = version
     cluster['vim_account'] = vim
     cluster['nets'] = yaml.safe_load(k8s_nets)
-    cluster['description'] = description
+    if description:
+        cluster['description'] = description
     if namespace: cluster['namespace'] = namespace
     if cni: cluster['cni'] = yaml.safe_load(cni)
     ctx.obj.k8scluster.create(name, cluster)
@@ -2877,7 +2878,8 @@ def repo_add(ctx,
     repo['name'] = name
     repo['url'] = uri
     repo['type'] = type
-    repo['description'] = description
+    if description:
+        repo['description'] = description
     ctx.obj.repo.create(name, repo)
     # except ClientException as e:
     #     print(str(e))

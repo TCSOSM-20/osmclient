@@ -204,10 +204,10 @@ class Ns(object):
                 ns_config["vld"] = ns_config.pop("vim-network-name")
             if "vld" in ns_config:
                 if not isinstance(ns_config["vld"], list):
-                    raise ValueError("Error at --config 'vld' must be a list of dictionaries")
+                    raise ClientException("Error at --config 'vld' must be a list of dictionaries")
                 for vld in ns_config["vld"]:
                     if not isinstance(vld, dict):
-                        raise ValueError("Error at --config 'vld' must be a list of dictionaries")
+                        raise ClientException("Error at --config 'vld' must be a list of dictionaries")
                     if vld.get("vim-network-name"):
                         if isinstance(vld["vim-network-name"], dict):
                             vim_network_name_dict = {}
@@ -223,15 +223,15 @@ class Ns(object):
 
             if "additionalParamsForNs" in ns_config:
                 if not isinstance(ns_config["additionalParamsForNs"], dict):
-                    raise ValueError("Error at --config 'additionalParamsForNs' must be a dictionary")
+                    raise ClientException("Error at --config 'additionalParamsForNs' must be a dictionary")
             if "additionalParamsForVnf" in ns_config:
                 if not isinstance(ns_config["additionalParamsForVnf"], list):
-                    raise ValueError("Error at --config 'additionalParamsForVnf' must be a list")
+                    raise ClientException("Error at --config 'additionalParamsForVnf' must be a list")
                 for additional_param_vnf in ns_config["additionalParamsForVnf"]:
                     if not isinstance(additional_param_vnf, dict):
-                        raise ValueError("Error at --config 'additionalParamsForVnf' items must be dictionaries")
+                        raise ClientException("Error at --config 'additionalParamsForVnf' items must be dictionaries")
                     if not additional_param_vnf.get("member-vnf-index"):
-                        raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
+                        raise ClientException("Error at --config 'additionalParamsForVnf' items must contain "
                                          "'member-vnf-index'")
             if "wim_account" in ns_config:
                 wim_account = ns_config.pop("wim_account")
