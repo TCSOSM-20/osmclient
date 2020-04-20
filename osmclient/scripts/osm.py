@@ -3097,7 +3097,7 @@ def k8scluster_list(ctx, filter, literal):
     for cluster in resp:
         table.add_row([cluster['name'], cluster['_id'], cluster['k8s_version'], cluster['vim_account'],
                        json.dumps(cluster['nets']), cluster["_admin"]["operationalState"],
-                       trunc_text(cluster.get('description',''),40)])
+                       trunc_text(cluster.get('description') or '', 40)])
     table.align = 'l'
     print(table)
     # except ClientException as e:
@@ -3264,7 +3264,7 @@ def repo_list(ctx, filter, literal):
     table = PrettyTable(['Name', 'Id', 'Type', 'URI', 'Description'])
     for repo in resp:
         #cluster['k8s-nets'] = json.dumps(yaml.safe_load(cluster['k8s-nets']))
-        table.add_row([repo['name'], repo['_id'], repo['type'], repo['url'], trunc_text(repo.get('description',''),40)])
+        table.add_row([repo['name'], repo['_id'], repo['type'], repo['url'], trunc_text(repo.get('description') or '',40)])
     table.align = 'l'
     print(table)
 

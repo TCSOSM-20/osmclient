@@ -370,22 +370,24 @@ class PackageTool(object):
             with tarfile.open("{}.tar.gz".format(package_name), mode='w:gz') as archive:
                 print("Adding File: {}".format(package_name))
                 archive.add('{}'.format(package_name), recursive=True)
-            #return "Created {}.tar.gz".format(package_folder)
-            #self.build("{}".format(os.path.basename(package_folder)))
+            # return "Created {}.tar.gz".format(package_folder)
+            # self.build("{}".format(os.path.basename(package_folder)))
             os.chdir(cwd)
+            cwd = None
+            created_package = "{}/{}.tar.gz".format(os.path.dirname(package_folder) or '.', package_name)
+            os.rename("{}/{}.tar.gz".format(directory_name, package_name),
+                      created_package)
+            os.rename("{}/{}/checksums.txt".format(directory_name, package_name),
+                      "{}/checksums.txt".format(package_folder))
+            print("Package created: {}".format(created_package))
+            return created_package
         except Exception as exc:
+            raise ClientException('failure during build of targz file (create temp dir, calculate checksum, '
+                                  'tar.gz file): {}'.format(exc))
+        finally:
             if cwd:
                 os.chdir(cwd)
             shutil.rmtree(os.path.join(package_folder, "tmp"))
-            raise ClientException('failure during build of targz file (create temp dir, calculate checksum, tar.gz file): {}'.format(exc))
-        created_package = "{}/{}.tar.gz".format(package_folder, package_name)
-        os.rename("{}/{}.tar.gz".format(directory_name, package_name),
-                  created_package)
-        os.rename("{}/{}/checksums.txt".format(directory_name, package_name),
-                  "{}/checksums.txt".format(package_folder))
-        shutil.rmtree(os.path.join(package_folder, "tmp"))
-        print("Package created: {}".format(created_package))
-        return created_package
 
     def create_temp_dir(self, package_folder, charm_list=None):
         """
