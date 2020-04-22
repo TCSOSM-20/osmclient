@@ -370,9 +370,9 @@ def ns_list(ctx, filter, long):
             project = '-'
             deployment_status = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
             ns_state = deployment_status
-            config_status = nsr['config-status'] if 'config-status' in nsr else 'Not found'
+            config_status = nsr.get('config-status', 'Not found')
             current_operation = "Unknown"
-            error_details = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
+            error_details = nsr.get('detailed-status', 'Not found')
             if config_status == "config_not_needed":
                 config_status = "configured (no charms)"
 
@@ -2281,8 +2281,10 @@ def vim_delete(ctx, name, force, wait):
 #              help='update list from RO')
 @click.option('--filter', default=None,
               help='restricts the list to the VIM accounts matching the filter')
+@click.option('--long', is_flag=True,
+              help='get more details of the NS (project, vim, deployment status, configuration status.')
 @click.pass_context
-def vim_list(ctx, filter):
+def vim_list(ctx, filter, long):
     """list all VIM accounts"""
     logger.debug("")
     if filter:
@@ -2294,9 +2296,23 @@ def vim_list(ctx, filter):
         resp = ctx.obj.vim.list(filter)
 #    else:
 #        resp = ctx.obj.vim.list(ro_update)
-    table = PrettyTable(['vim name', 'uuid'])
+    if long:
+        table = PrettyTable(['vim name', 'uuid', 'operational state', 'error details'])
+    else:
+        table = PrettyTable(['vim name', 'uuid'])
     for vim in resp:
-        table.add_row([vim['name'], vim['uuid']])
+        if long:
+            vim_details = ctx.obj.vim.get(vim['uuid'])
+            if 'vim_password' in vim_details:
+                vim_details['vim_password']='********'
+            logger.debug('VIM details: {}'.format(yaml.safe_dump(vim_details)))
+            vim_state = vim_details['_admin'].get('operationalState', '-')
+            error_details = 'N/A'
+            if vim_state == 'ERROR':
+                error_details = vim_details['_admin'].get('detailed-status', 'Not found')
+            table.add_row([vim['name'], vim['uuid'], vim_state, wrap_text(text=error_details, width=80)])
+        else:
+            table.add_row([vim['name'], vim['uuid']])
     table.align = 'l'
     print(table)
 
