@@ -2297,7 +2297,7 @@ def vim_list(ctx, filter, long):
 #    else:
 #        resp = ctx.obj.vim.list(ro_update)
     if long:
-        table = PrettyTable(['vim name', 'uuid', 'operational state', 'error details'])
+        table = PrettyTable(['vim name', 'uuid', 'project', 'operational state', 'error details'])
     else:
         table = PrettyTable(['vim name', 'uuid'])
     for vim in resp:
@@ -2310,7 +2310,18 @@ def vim_list(ctx, filter, long):
             error_details = 'N/A'
             if vim_state == 'ERROR':
                 error_details = vim_details['_admin'].get('detailed-status', 'Not found')
-            table.add_row([vim['name'], vim['uuid'], vim_state, wrap_text(text=error_details, width=80)])
+            project_list = ctx.obj.project.list()
+            vim_project_list = vim_details.get('_admin').get('projects_read')
+            project_id = 'None'
+            project_name = 'None'
+            if vim_project_list:
+                project_id = vim_project_list[0]
+                for p in project_list:
+                    if p['_id'] == project_id:
+                        project_name = p['name']
+                        break
+            table.add_row([vim['name'], vim['uuid'], '{} ({})'.format(project_name, project_id),
+                          vim_state, wrap_text(text=error_details, width=80)])
         else:
             table.add_row([vim['name'], vim['uuid']])
     table.align = 'l'
