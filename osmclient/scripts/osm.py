@@ -302,6 +302,7 @@ def ns_list(ctx, filter, long):
                 summary += "{}: {}".format(elementType, message)
         summary += "TOTAL Exec. Env.: {}".format(n_ee)
         return summary
+
     logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
@@ -334,10 +335,11 @@ def ns_list(ctx, filter, long):
         fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
         if fullclassname == 'osmclient.sol005.client.Client':
             nsr = ns
+            logger.debug('NS info: {}'.format(nsr))
             nsr_name = nsr['name']
             nsr_id = nsr['_id']
             date = datetime.fromtimestamp(nsr['create-time']).strftime("%Y-%m-%dT%H:%M:%S")
-            ns_state = nsr['nsState']
+            ns_state = nsr.get('nsState', nsr['_admin']['nsState'])
             if long:
                 deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
                 config_status = summarize_config_status(nsr['configurationStatus'])
@@ -357,9 +359,12 @@ def ns_list(ctx, filter, long):
                         break
                 #vim = '{} ({})'.format(vim_name, vim_id)
                 vim = vim_name
-            current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
+            if 'currentOperation' in nsr:
+                current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
+            else:
+                current_operation = "{} ({})".format(nsr['_admin'].get('current-operation','-'), nsr['_admin']['nslcmop'])
             error_details = "N/A"
-            if ns_state == "BROKEN" or ns_state == "DEGRADED" or nsr['errorDescription']:
+            if ns_state == "BROKEN" or ns_state == "DEGRADED" or nsr.get('errorDescription'):
                 error_details = "{}\nDetail: {}".format(nsr['errorDescription'], nsr['errorDetail'])
         else:
             nsopdata = ctx.obj.ns.get_opdata(ns['id'])
