@@ -290,7 +290,7 @@ class PackageTool(object):
                 if os.path.isdir('{}/charms/layers/{}'.format(package_folder,charmName)):
                     print('Building charm {}/charms/layers/{}'.format(package_folder, charmName))
                     self.charm_build(package_folder, charmName)
-                    print('Charm built {}'.format(charmName))
+                    print('Charm built: {}'.format(charmName))
                 else:
                     if not os.path.isdir('{}/charms/{}'.format(package_folder,charmName)):
                         raise ClientException ('The charm: {} referenced in the descriptor file '

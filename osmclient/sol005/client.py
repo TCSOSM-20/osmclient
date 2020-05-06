@@ -36,6 +36,7 @@ from osmclient.sol005 import role
 from osmclient.sol005 import pdud
 from osmclient.sol005 import k8scluster
 from osmclient.sol005 import repo
+from osmclient.sol005 import osmrepo
 from osmclient.common import package_tool
 import json
 import logging
@@ -93,6 +94,7 @@ class Client(object):
         self.pdu = pdud.Pdu(self._http_client, client=self)
         self.k8scluster = k8scluster.K8scluster(self._http_client, client=self)
         self.repo = repo.Repo(self._http_client, client=self)
+        self.osmrepo = osmrepo.OSMRepo(self._http_client, client=self)
         self.package_tool = package_tool.PackageTool(client=self)
         '''
         self.vca = vca.Vca(http_client, client=self, **kwargs)
