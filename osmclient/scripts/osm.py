@@ -20,7 +20,7 @@ OSM shell/cli
 
 import click
 from osmclient import client
-from osmclient.common.exceptions import ClientException
+from osmclient.common.exceptions import ClientException, NotFound
 from prettytable import PrettyTable
 import yaml
 import json
@@ -466,6 +466,26 @@ def nsd_list2(ctx, filter, long):
     nsd_list(ctx, filter, long)
 
 
+def pkg_repo_list(ctx, pkgtype, filter, repo, long):
+    resp = ctx.obj.osmrepo.pkg_list(pkgtype, filter, repo)
+    if long:
+        table = PrettyTable(['nfpkg name', 'vendor', 'version', 'latest', 'description', 'repository'])
+    else:
+        table = PrettyTable(['nfpkg name', 'repository'])
+    for vnfd in resp:
+        name = vnfd.get('name', '-')
+        repository = vnfd.get('repository')
+        if long:
+            vendor = vnfd.get('vendor')
+            version = vnfd.get('version')
+            description = vnfd.get('description')
+            latest = vnfd.get('latest')
+            table.add_row([name, vendor, version, latest, description, repository])
+        else:
+            table.add_row([name, repository])
+        table.align = 'l'
+    print(table)
+
 def vnfd_list(ctx, nf_type, filter, long):
     logger.debug("")
     if nf_type:
@@ -493,7 +513,7 @@ def vnfd_list(ctx, nf_type, filter, long):
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
         if long:
-            table = PrettyTable(['nfpkg name', 'id', 'onboarding state', 'operational state',
+            table = PrettyTable(['nfpkg name', 'id', 'vendor', 'version', 'onboarding state', 'operational state',
                                   'usage state', 'date', 'last update'])
         else:
             table = PrettyTable(['nfpkg name', 'id'])
@@ -502,10 +522,12 @@ def vnfd_list(ctx, nf_type, filter, long):
             if long:
                 onb_state = vnfd['_admin'].get('onboardingState','-')
                 op_state = vnfd['_admin'].get('operationalState','-')
+                vendor = vnfd.get('vendor')
+                version = vnfd.get('version')
                 usage_state = vnfd['_admin'].get('usageState','-')
                 date = datetime.fromtimestamp(vnfd['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
                 last_update = datetime.fromtimestamp(vnfd['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
-                table.add_row([name, vnfd['_id'], onb_state, op_state, usage_state, date, last_update])
+                table.add_row([name, vnfd['_id'], vendor, version, onb_state, op_state, usage_state, date, last_update])
             else:
                 table.add_row([name, vnfd['_id']])
     else:
@@ -539,6 +561,17 @@ def vnfd_list2(ctx, nf_type, filter, long):
     logger.debug("")
     vnfd_list(ctx, nf_type, filter, long)
 
+@cli_osm.command(name='vnfpkg-repo-list', short_help='list all xNF from OSM repositories')
+@click.option('--filter', default=None,
+              help='restricts the list to the NFpkg matching the filter')
+@click.option('--repo', default=None,
+              help='restricts the list to a particular OSM repository')
+@click.option('--long', is_flag=True, help='get more details')
+@click.pass_context
+def vnfd_list3(ctx, filter, repo, long):
+    """list xNF packages from OSM repositories"""
+    pkgtype = 'vnf'
+    pkg_repo_list(ctx, pkgtype, filter, repo, long)
 
 @cli_osm.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
@@ -556,6 +589,17 @@ def nfpkg_list(ctx, nf_type, filter, long):
     #     print(str(e))
     #     exit(1)
 
+@cli_osm.command(name='nfpkg-repo-list', short_help='list all xNF from OSM repositories')
+@click.option('--filter', default=None,
+              help='restricts the list to the NFpkg matching the filter')
+@click.option('--repo', default=None,
+              help='restricts the list to a particular OSM repository')
+@click.option('--long', is_flag=True, help='get more details')
+@click.pass_context
+def vnfd_list4(ctx, filter, repo, long):
+    """list xNF packages from OSM repositories"""
+    pkgtype = 'vnf'
+    pkg_repo_list(ctx, pkgtype, filter, repo, long)
 
 def vnf_list(ctx, ns, filter, long):
     # try:
@@ -619,6 +663,29 @@ def vnf_list1(ctx, ns, filter, long):
     logger.debug("")
     vnf_list(ctx, ns, filter, long)
 
+@cli_osm.command(name='nsd-repo-list', short_help='list all NS from OSM repositories')
+@click.option('--filter', default=None,
+              help='restricts the list to the NS matching the filter')
+@click.option('--repo', default=None,
+              help='restricts the list to a particular OSM repository')
+@click.option('--long', is_flag=True, help='get more details')
+@click.pass_context
+def nsd_list3(ctx, filter, repo, long):
+    """list xNF packages from OSM repositories"""
+    pkgtype = 'ns'
+    pkg_repo_list(ctx, pkgtype, filter, repo, long)
+
+@cli_osm.command(name='nspkg-repo-list', short_help='list all NS from OSM repositories')
+@click.option('--filter', default=None,
+              help='restricts the list to the NS matching the filter')
+@click.option('--repo', default=None,
+              help='restricts the list to a particular OSM repository')
+@click.option('--long', is_flag=True, help='get more details')
+@click.pass_context
+def nspkg_list(ctx, filter, repo, long):
+    """list xNF packages from OSM repositories"""
+    pkgtype = 'ns'
+    pkg_repo_list(ctx, pkgtype, filter, repo, long)
 
 @cli_osm.command(name='nf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
@@ -675,7 +742,7 @@ def nf_list(ctx, ns, filter, long):
        --filter  vnfd-ref=<VNFD_NAME>,vdur.ip-address=<IP_ADDRESS>
     """
     logger.debug("")
-    vnf_list(ctx, ns, filter)
+    vnf_list(ctx, ns, filter, long)
 
 
 @cli_osm.command(name='ns-op-list', short_help='shows the history of operations over a NS instance')
@@ -983,6 +1050,28 @@ def vnfd_show(ctx, name, literal):
     print(table)
 
 
+def pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal):
+    logger.debug("")
+    # try:
+    resp = ctx.obj.osmrepo.pkg_get(pkgtype, name, repo, version, filter)
+
+    if literal:
+        print(yaml.safe_dump(resp))
+        return
+    pkgtype += 'd'
+    catalog = pkgtype + '-catalog'
+    full_catalog = pkgtype + ':' + catalog
+    if resp.get(catalog):
+        resp = resp.pop(catalog)[pkgtype][0]
+    elif resp.get(full_catalog):
+        resp = resp.pop(full_catalog)[pkgtype][0]
+
+    table = PrettyTable(['field', 'value'])
+    for k, v in list(resp.items()):
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2), width=100)])
+    table.align = 'l'
+    print(table)
+
 @cli_osm.command(name='vnfd-show', short_help='shows the content of a VNFD')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
@@ -1010,6 +1099,69 @@ def vnfd_show2(ctx, name, literal):
     logger.debug("")
     vnfd_show(ctx, name, literal)
 
+@cli_osm.command(name='vnfpkg-repo-show', short_help='shows the content of a VNFD')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--repo',
+              required=True,
+              help='Repository name')
+@click.argument('name')
+@click.option('--filter',
+              help='filter by fields')
+@click.option('--version',
+              default='latest',
+              help='package version')
+@click.pass_context
+def vnfd_show3(ctx, name, repo, version, literal=None, filter=None):
+    """shows the content of a VNFD in a repository
+
+    NAME: name or ID of the VNFD/VNFpkg
+    """
+    pkgtype = 'vnf'
+    pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
+
+
+@cli_osm.command(name='nsd-repo-show', short_help='shows the content of a NSD')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--repo',
+              required=True,
+              help='Repository name')
+@click.argument('name')
+@click.option('--filter',
+              help='filter by fields')
+@click.option('--version',
+              default='latest',
+              help='package version')
+@click.pass_context
+def nsd_repo_show(ctx, name, repo, version, literal=None, filter=None):
+    """shows the content of a VNFD in a repository
+
+    NAME: name or ID of the VNFD/VNFpkg
+    """
+    pkgtype = 'ns'
+    pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
+
+@cli_osm.command(name='nspkg-repo-show', short_help='shows the content of a NSD')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--repo',
+              required=True,
+              help='Repository name')
+@click.argument('name')
+@click.option('--filter',
+              help='filter by fields')
+@click.option('--version',
+              default='latest',
+              help='package version')
+@click.pass_context
+def nsd_repo_show2(ctx, name, repo, version, literal=None, filter=None):
+    """shows the content of a VNFD in a repository
+
+    NAME: name or ID of the VNFD/VNFpkg
+    """
+    pkgtype = 'ns'
+    pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
 
 @cli_osm.command(name='nfpkg-show', short_help='shows the content of a NF Descriptor')
 @click.option('--literal', is_flag=True,
@@ -1023,6 +1175,28 @@ def nfpkg_show(ctx, name, literal):
     """
     logger.debug("")
     vnfd_show(ctx, name, literal)
+
+
+@cli_osm.command(name='nfpkg-repo-show', short_help='shows the content of a VNFD')
+@click.option('--literal', is_flag=True,
+              help='print literally, no pretty table')
+@click.option('--repo',
+              required=True,
+              help='Repository name')
+@click.argument('name')
+@click.option('--filter',
+              help='filter by fields')
+@click.option('--version',
+              default='latest',
+              help='package version')
+@click.pass_context
+def vnfd_show4(ctx, name, repo, version, literal=None, filter=None):
+    """shows the content of a VNFD in a repository
+
+    NAME: name or ID of the VNFD/VNFpkg
+    """
+    pkgtype = 'vnf'
+    pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
 
 
 @cli_osm.command(name='ns-show', short_help='shows the info of a NS instance')
@@ -1407,10 +1581,12 @@ def pdu_show(ctx, name, literal, filter):
 # CREATE operations
 ####################
 
-def nsd_create(ctx, filename, overwrite, skip_charm_build):
+def nsd_create(ctx, filename, overwrite, skip_charm_build, repo, vendor, version):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
+    if repo:
+        filename = ctx.obj.osmrepo.get_pkg('ns', filename, repo, vendor, version)
     ctx.obj.nsd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
     # except ClientException as e:
     #     print(str(e))
@@ -1426,8 +1602,14 @@ def nsd_create(ctx, filename, overwrite, skip_charm_build):
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.option('--skip-charm-build', default=False, is_flag=True,
               help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--repo', default=None,
+              help='[repository]: Repository name')
+@click.option('--vendor', default=None,
+              help='[repository]: filter by vendor]')
+@click.option('--version', default='latest',
+              help='[repository]: filter by version. Default: latest')
 @click.pass_context
-def nsd_create1(ctx, filename, overwrite, skip_charm_build):
+def nsd_create1(ctx, filename, overwrite, skip_charm_build, repo, vendor, version):
     """onboards a new NSpkg (alias of nspkg-create) (TO BE DEPRECATED)
 
     \b
@@ -1436,7 +1618,8 @@ def nsd_create1(ctx, filename, overwrite, skip_charm_build):
               If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build, repo=repo, vendor=vendor,
+               version=version)
 
 
 @cli_osm.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
@@ -1448,23 +1631,32 @@ def nsd_create1(ctx, filename, overwrite, skip_charm_build):
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.option('--skip-charm-build', default=False, is_flag=True,
               help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--repo', default=None,
+              help='[repository]: Repository name')
+@click.option('--vendor', default=None,
+              help='[repository]: filter by vendor]')
+@click.option('--version', default='latest',
+              help='[repository]: filter by version. Default: latest')
 @click.pass_context
-def nsd_create2(ctx, filename, overwrite, skip_charm_build):
+def nsd_pkg_create(ctx, filename, overwrite, skip_charm_build, repo, vendor, version):
     """onboards a new NSpkg
-
     \b
     FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
               If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
               If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
+    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build, repo=repo, vendor=vendor,
+               version=version)
 
 
-def vnfd_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
+def vnfd_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt,
+                repo, vendor, version):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
+    if repo:
+        filename = ctx.obj.osmrepo.get_pkg('vnf', filename, repo, vendor, version)
     ctx.obj.vnfd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
                         override_epa=override_epa, override_nonepa=override_nonepa,
                         override_paravirt=override_paravirt)
@@ -1488,10 +1680,16 @@ def vnfd_create(ctx, filename, overwrite, skip_charm_build, override_epa, overri
               help='removes all guest-epa parameters from all VDU')
 @click.option('--override-paravirt', required=False, default=False, is_flag=True,
               help='overrides all VDU interfaces to PARAVIRT')
+@click.option('--repo', default=None,
+              help='[repository]: Repository name')
+@click.option('--vendor', default=None,
+              help='[repository]: filter by vendor]')
+@click.option('--version', default='latest',
+              help='[repository]: filter by version. Default: latest')
 @click.pass_context
-def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
-    """onboards a new NFpkg (alias of nfpkg-create) (TO BE DEPRECATED)
-
+def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt,
+                 repo,vendor, version):
+    """creates a new VNFD/VNFpkg
     \b
     FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
               If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
@@ -1499,7 +1697,8 @@ def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, overr
     """
     logger.debug("")
     vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
-                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt,
+                repo=repo, vendor=vendor, version=version)
 
 
 @cli_osm.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
@@ -1517,10 +1716,16 @@ def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, overr
               help='removes all guest-epa parameters from all VDU')
 @click.option('--override-paravirt', required=False, default=False, is_flag=True,
               help='overrides all VDU interfaces to PARAVIRT')
+@click.option('--repo', default=None,
+              help='[repository]: Repository name')
+@click.option('--vendor', default=None,
+              help='[repository]: filter by vendor]')
+@click.option('--version', default='latest',
+              help='[repository]: filter by version. Default: latest')
 @click.pass_context
-def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
-    """onboards a new NFpkg (alias of nfpkg-create)
-
+def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt,
+                 repo, vendor, version):
+    """creates a new VNFD/VNFpkg
     \b
     FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
               If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
@@ -1528,8 +1733,8 @@ def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, overr
     """
     logger.debug("")
     vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
-                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
-
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt,
+                repo=repo, vendor=vendor, version=version)
 
 @cli_osm.command(name='nfpkg-create', short_help='creates a new NFpkg')
 @click.argument('filename')
@@ -1546,9 +1751,16 @@ def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, overr
               help='removes all guest-epa parameters from all VDU')
 @click.option('--override-paravirt', required=False, default=False, is_flag=True,
               help='overrides all VDU interfaces to PARAVIRT')
+@click.option('--repo', default=None,
+              help='[repository]: Repository name')
+@click.option('--vendor', default=None,
+              help='[repository]: filter by vendor]')
+@click.option('--version', default='latest',
+              help='[repository]: filter by version. Default: latest')
 @click.pass_context
-def nfpkg_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
-    """onboards a new NFpkg (alias of nfpkg-create)
+def nfpkg_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt,
+                 repo, vendor, version):
+    """creates a new NFpkg
 
     \b
     FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
@@ -1557,7 +1769,8 @@ def nfpkg_create(ctx, filename, overwrite, skip_charm_build, override_epa, overr
     """
     logger.debug("")
     vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
-                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt,
+                repo=repo, vendor=vendor, version=version)
 
 
 @cli_osm.command(name='ns-create', short_help='creates a new Network Service instance')
@@ -2926,35 +3139,36 @@ def k8scluster_show(ctx, name, literal):
 @click.argument('name')
 @click.argument('uri')
 @click.option('--type',
-              type=click.Choice(['helm-chart', 'juju-bundle']),
-              prompt=True,
-              help='type of repo (helm-chart for Helm Charts, juju-bundle for Juju Bundles)')
+              type=click.Choice(['helm-chart', 'juju-bundle', 'osm']),
+              default='osm',
+              help='type of repo (helm-chart for Helm Charts, juju-bundle for Juju Bundles, osm for OSM Repositories)')
 @click.option('--description',
               default=None,
               help='human readable description')
+@click.option('--user',
+              default=None,
+              help='OSM repository: The username of the OSM repository')
+@click.option('--password',
+              default=None,
+              help='OSM repository: The password of the OSM repository')
 #@click.option('--wait',
 #              is_flag=True,
 #              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
-def repo_add(ctx,
-             name,
-             uri,
-             type,
-             description):
+def repo_add(ctx, **kwargs):
     """adds a repo to OSM
 
     NAME: name of the repo
     URI: URI of the repo
     """
     # try:
-    check_client_version(ctx.obj, ctx.command.name)
-    repo = {}
-    repo['name'] = name
-    repo['url'] = uri
-    repo['type'] = type
-    if description:
-        repo['description'] = description
-    ctx.obj.repo.create(name, repo)
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    repo = kwargs
+    repo["url"] = repo.pop("uri")
+    if repo["type"] in ['helm-chart', 'juju-bundle']:
+        ctx.obj.repo.create(repo['name'], repo)
+    else:
+        ctx.obj.osmrepo.create(repo['name'], repo)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -2964,8 +3178,6 @@ def repo_add(ctx,
 @click.argument('name')
 @click.option('--newname', help='New name for the repo')
 @click.option('--uri', help='URI of the repo')
-@click.option('--type', type=click.Choice(['helm-chart', 'juju-bundle']),
-              help='type of repo (helm-chart for Helm Charts, juju-bundle for Juju Bundles)')
 @click.option('--description', help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
@@ -2975,7 +3187,6 @@ def repo_update(ctx,
              name,
              newname,
              uri,
-             type,
              description):
     """updates a repo in OSM
 
@@ -2984,14 +3195,32 @@ def repo_update(ctx,
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     repo = {}
-    if newname: repo['name'] = newname
-    if uri: repo['uri'] = uri
-    if type: repo['type'] = type
+    if newname:
+        repo['name'] = newname
+    if uri:
+        repo['uri'] = uri
     if description: repo['description'] = description
-    ctx.obj.repo.update(name, repo)
+    try:
+        ctx.obj.repo.update(name, repo)
+    except NotFound:
+        ctx.obj.osmrepo.update(name, repo)
+
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
+
+
+@cli_osm.command(name='repo-index', short_help='Index a repository from a folder with artifacts')
+@click.option('--origin', default='.', help='origin path where the artifacts are located')
+@click.option('--destination', default='.', help='destination path where the index is deployed')
+@click.pass_context
+def repo_index(ctx, origin, destination):
+    """Index a repository
+
+    NAME: name or ID of the repo to be deleted
+    """
+    check_client_version(ctx.obj, ctx.command.name)
+    ctx.obj.osmrepo.repo_index(origin, destination)
 
 
 @cli_osm.command(name='repo-delete', short_help='deletes a repo')
@@ -3006,9 +3235,11 @@ def repo_delete(ctx, name, force):
 
     NAME: name or ID of the repo to be deleted
     """
-    # try:
-    check_client_version(ctx.obj, ctx.command.name)
-    ctx.obj.repo.delete(name, force=force)
+    logger.debug("")
+    try:
+        ctx.obj.repo.delete(name, force=force)
+    except NotFound:
+        ctx.obj.osmrepo.delete(name, force=force)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -3023,8 +3254,10 @@ def repo_delete(ctx, name, force):
 def repo_list(ctx, filter, literal):
     """list all repos"""
     # try:
+    # K8s Repositories
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.repo.list(filter)
+    resp += ctx.obj.osmrepo.list(filter)
     if literal:
         print(yaml.safe_dump(resp))
         return
@@ -3034,6 +3267,7 @@ def repo_list(ctx, filter, literal):
         table.add_row([repo['name'], repo['_id'], repo['type'], repo['url'], trunc_text(repo.get('description',''),40)])
     table.align = 'l'
     print(table)
+
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -3049,14 +3283,20 @@ def repo_show(ctx, name, literal):
 
     NAME: name or ID of the repo
     """
-    # try:
-    resp = ctx.obj.repo.get(name)
+    try:
+        resp = ctx.obj.repo.get(name)
+    except NotFound:
+        resp = ctx.obj.osmrepo.get(name)
+
     if literal:
-        print(yaml.safe_dump(resp))
+        if resp:
+            print(yaml.safe_dump(resp))
         return
     table = PrettyTable(['key', 'attribute'])
-    for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+    if resp:
+        for k, v in list(resp.items()):
+            table.add_row([k, json.dumps(v, indent=2)])
+
     table.align = 'l'
     print(table)
     # except ClientException as e:
