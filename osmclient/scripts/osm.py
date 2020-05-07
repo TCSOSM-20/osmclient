@@ -228,6 +228,8 @@ def ns_list(ctx, filter, long):
     def summarize_deployment_status(status_dict):
         #Nets
         summary = ""
+        if not status_dict:
+            return summary
         n_nets = 0
         status_nets = {}
         net_list = status_dict.get('nets',[])
@@ -278,6 +280,9 @@ def ns_list(ctx, filter, long):
         return summary
         
     def summarize_config_status(ee_list):
+        summary = ""
+        if not ee_list:
+            return summary
         n_ee = 0
         status_ee = {}
         for ee in ee_list:
@@ -290,7 +295,6 @@ def ns_list(ctx, filter, long):
                 status_ee[ee['elementType']][ee['status']] += 1
             else:
                 status_ee[ee['elementType']][ee['status']] = 1
-        summary = ""
         for elementType in ["KDU", "VDU", "PDU", "VNF", "NS"]:
             if elementType in status_ee:
                 message = ""
@@ -341,8 +345,8 @@ def ns_list(ctx, filter, long):
             date = datetime.fromtimestamp(nsr['create-time']).strftime("%Y-%m-%dT%H:%M:%S")
             ns_state = nsr.get('nsState', nsr['_admin']['nsState'])
             if long:
-                deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
-                config_status = summarize_config_status(nsr['configurationStatus'])
+                deployment_status = summarize_deployment_status(nsr.get('deploymentStatus'))
+                config_status = summarize_config_status(nsr.get('configurationStatus'))
                 project_id = nsr.get('_admin').get('projects_read')[0]
                 project_name = '-'
                 for p in project_list:
