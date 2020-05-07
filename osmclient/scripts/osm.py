@@ -1428,9 +1428,12 @@ def nsd_create(ctx, filename, overwrite, skip_charm_build):
               help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
 def nsd_create1(ctx, filename, overwrite, skip_charm_build):
-    """creates a new NSD/NSpkg
+    """onboards a new NSpkg (alias of nspkg-create) (TO BE DEPRECATED)
 
-    FILENAME: NSD yaml file or NSpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
     nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
@@ -1447,9 +1450,12 @@ def nsd_create1(ctx, filename, overwrite, skip_charm_build):
               help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
 def nsd_create2(ctx, filename, overwrite, skip_charm_build):
-    """creates a new NSD/NSpkg
+    """onboards a new NSpkg
 
-    FILENAME: NSD folder, NSD yaml file or NSpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
     nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
@@ -1484,9 +1490,12 @@ def vnfd_create(ctx, filename, overwrite, skip_charm_build, override_epa, overri
               help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
 def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
-    """creates a new VNFD/VNFpkg
+    """onboards a new NFpkg (alias of nfpkg-create) (TO BE DEPRECATED)
 
-    FILENAME: VNFD yaml file or VNFpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
     vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
@@ -1510,9 +1519,12 @@ def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, overr
               help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
 def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
-    """creates a new VNFD/VNFpkg
+    """onboards a new NFpkg (alias of nfpkg-create)
 
-    FILENAME: NF Package Folder, NF Descriptor yaml file or NFpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
     vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
@@ -1536,9 +1548,12 @@ def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, overr
               help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
 def nfpkg_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
-    """creates a new NFpkg
+    """onboards a new NFpkg (alias of nfpkg-create)
 
-    FILENAME: NF Package Folder, NF Descriptor yaml file or NFpkg tar.gz filems to build
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
     vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
