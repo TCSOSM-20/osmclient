@@ -1634,13 +1634,13 @@ def nst_create(ctx, filename, overwrite):
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
 @click.pass_context
-def nst_create1(ctx, charm_folder, overwrite):
+def nst_create1(ctx, filename, overwrite):
     """creates a new Network Slice Template (NST)
 
     FILENAME: NST package folder, NST yaml file or NSTpkg tar.gz file
     """
     logger.debug("")
-    nst_create(ctx, charm_folder, overwrite)
+    nst_create(ctx, filename, overwrite)
 
 
 @cli_osm.command(name='netslice-template-create', short_help='creates a new Network Slice Template (NST)')

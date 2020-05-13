@@ -127,8 +127,15 @@ class Client(object):
 
     def get_version(self):
         _, resp = self._http_client.get2_cmd(endpoint="/version", skip_query_admin=True)
-        resp = json.loads(resp)
-        return "{} {}".format(resp.get("version"), resp.get("date"))
+        #print(http_code, resp)
+        try:
+            resp = json.loads(resp)
+            version = resp.get("version")
+            date = resp.get("date")
+        except ValueError:
+            version = resp.split()[2]
+            date = resp.split()[4]
+        return "{} {}".format(version, date)
 
     def set_default_params(self, **kwargs):
         host = kwargs.pop('host', None)
