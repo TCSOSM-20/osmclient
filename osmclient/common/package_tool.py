@@ -290,7 +290,7 @@ class PackageTool(object):
                 if os.path.isdir('{}/charms/layers/{}'.format(package_folder,charmName)):
                     print('Building charm {}/charms/layers/{}'.format(package_folder, charmName))
                     self.charm_build(package_folder, charmName)
-                    print('Charm built'.format(charmName))
+                    print('Charm built {}'.format(charmName))
                 else:
                     if not os.path.isdir('{}/charms/{}'.format(package_folder,charmName)):
                         raise ClientException ('The charm: {} referenced in the descriptor file '
@@ -392,7 +392,7 @@ class PackageTool(object):
         ignore_patterns = ('.gitignore')
         ignore = shutil.ignore_patterns(ignore_patterns)
         directory_name = os.path.abspath("{}/tmp".format(package_folder))
-        os.makedirs("{}/{}".format(directory_name, os.path.basename(package_folder),exist_ok=True))
+        os.makedirs("{}/{}".format(directory_name, os.path.basename(package_folder)),exist_ok=True)
         self._logger.debug("Makedirs DONE: {}/{}".format(directory_name, os.path.basename(package_folder)))
         for item in os.listdir(package_folder):
             self._logger.debug("Item: {}".format(item))

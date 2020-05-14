@@ -201,7 +201,7 @@ class User(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string,skip_query_admin=True))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string), skip_query_admin=True)
         #print('RESP: {}'.format(resp))
         if resp:
             return json.loads(resp)

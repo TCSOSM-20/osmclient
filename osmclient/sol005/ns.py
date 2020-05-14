@@ -294,7 +294,7 @@ class Ns(object):
             filter_string = ''
             if filter:
                  filter_string = '&{}'.format(filter)
-            http_code, resp = self._http.get2_cmd('{}?nsInstanceId={}'.format(
+            http_code, resp = self._http.get2_cmd('{}?nsInstanceId={}{}'.format(
                                                        self._apiBase, ns['_id'],
                                                        filter_string) )
             #print('HTTP CODE: {}'.format(http_code))

@@ -129,7 +129,7 @@ class Repo(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or '_id' not in resp:
-                raise ClientException('failed to get repo info: '.format(resp))
+                raise ClientException('failed to get repo info: {}'.format(resp))
             return resp
         except NotFound:
             raise NotFound("Repo {} not found".format(name))

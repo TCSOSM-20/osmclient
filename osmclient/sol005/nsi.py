@@ -271,7 +271,7 @@ class Nsi(object):
             filter_string = ''
             if filter:
                 filter_string = '&{}'.format(filter)
-            http_code, resp = self._http.get2_cmd('{}?netsliceInstanceId={}'.format(
+            http_code, resp = self._http.get2_cmd('{}?netsliceInstanceId={}{}'.format(
                                                        self._apiBase, nsi['_id'],
                                                        filter_string) )
             #print('HTTP CODE: {}'.format(http_code))

@@ -236,7 +236,7 @@ class Wim(object):
             if resp:
                 resp =  json.loads(resp)
             if not resp or '_id' not in resp:
-                raise ClientException('failed to get wim info: '.format(resp))
+                raise ClientException('failed to get wim info: {}'.format(resp))
             return resp
         except NotFound:
             raise NotFound("wim '{}' not found".format(name))

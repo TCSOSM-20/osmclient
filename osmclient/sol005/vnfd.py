@@ -253,7 +253,7 @@ class Vnfd(object):
                 if resp:
                     resp = json.loads(resp)
                 if not resp or 'id' not in resp:
-                     raise ClientException('unexpected response from server: '.format(resp))
+                     raise ClientException('unexpected response from server: {}'.format(resp))
                 print(resp['id'])
             elif http_code == 204:
                 print('Updated')
