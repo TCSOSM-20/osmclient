@@ -40,15 +40,17 @@ class Ns(object):
                                         self._apiVersion, self._apiResource)
 
     # NS '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/ns_lcm_op_occs')
         # Wait for status for NS instance creation/update/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_NS_OPERATION
         WaitForStatus.wait_for_status(
             'NS',
             str(id),
-            WaitForStatus.TIMEOUT_NS_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -100,21 +102,42 @@ class Ns(object):
             raise NotFound("ns '{}' not found".format(name))
         raise NotFound("ns '{}' not found".format(name))
 
-    def delete(self, name, force=False, wait=False):
+    def delete(self, name, force=False, config=None, wait=False):
+        """
+        Deletes a Network Service (NS)
+        :param name: name of network service
+        :param force: set force. Direct deletion without cleaning at VIM
+        :param config: parameters of deletion, as:
+             autoremove: Bool (default True)
+             timeout_ns_terminate: int
+             skip_terminate_primitives: Bool (default False) to not exec the terminate primitives
+        :param wait: Make synchronous. Wait until deletion is completed:
+            False to not wait (by default), True to wait a standard time, or int (time to wait)
+        :return: None. Exception if fail
+        """
         self._logger.debug("")
         ns = self.get(name)
+        querystring_list = []
         querystring = ''
+        if config:
+            ns_config = yaml.safe_load(config)
+            querystring_list += ["{}={}".format(k, v) for k, v in ns_config.items()]
         if force:
-            querystring = '?FORCE=True'
+            querystring_list.append('FORCE=True')
+        if querystring_list:
+            querystring = "?" + "&".join(querystring_list)
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
                                                  ns['_id'], querystring))
+        # TODO change to use a POST self._http.post_cmd('{}/{}/terminate{}'.format(_apiBase, ns['_id'], querystring),
+        #                                               postfields_dict=ns_config)
+        # seting autoremove as True by default
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code == 202:
             if wait and resp:
                 resp = json.loads(resp)
                 # For the 'delete' operation, '_id' is used
-                self._wait(resp.get('_id'), deleteFlag=True)
+                self._wait(resp.get('_id'), wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:
@@ -180,42 +203,44 @@ class Ns(object):
             if "vim-network-name" in ns_config:
                 ns_config["vld"] = ns_config.pop("vim-network-name")
             if "vld" in ns_config:
+                if not isinstance(ns_config["vld"], list):
+                    raise ClientException("Error at --config 'vld' must be a list of dictionaries")
                 for vld in ns_config["vld"]:
+                    if not isinstance(vld, dict):
+                        raise ClientException("Error at --config 'vld' must be a list of dictionaries")
                     if vld.get("vim-network-name"):
                         if isinstance(vld["vim-network-name"], dict):
                             vim_network_name_dict = {}
-                            for vim_account, vim_net in list(vld["vim-network-name"].items()):
+                            for vim_account, vim_net in vld["vim-network-name"].items():
                                 vim_network_name_dict[get_vim_account_id(vim_account)] = vim_net
                             vld["vim-network-name"] = vim_network_name_dict
                     if "wim_account" in vld and vld["wim_account"] is not None:
                         vld["wimAccountId"] = get_wim_account_id(vld.pop("wim_account"))
-                ns["vld"] = ns_config["vld"]
             if "vnf" in ns_config:
                 for vnf in ns_config["vnf"]:
                     if vnf.get("vim_account"):
                         vnf["vimAccountId"] = get_vim_account_id(vnf.pop("vim_account"))
-                ns["vnf"] = ns_config["vnf"]
 
             if "additionalParamsForNs" in ns_config:
-                ns["additionalParamsForNs"] = ns_config.pop("additionalParamsForNs")
-                if not isinstance(ns["additionalParamsForNs"], dict):
-                    raise ValueError("Error at --config 'additionalParamsForNs' must be a dictionary")
+                if not isinstance(ns_config["additionalParamsForNs"], dict):
+                    raise ClientException("Error at --config 'additionalParamsForNs' must be a dictionary")
             if "additionalParamsForVnf" in ns_config:
-                ns["additionalParamsForVnf"] = ns_config.pop("additionalParamsForVnf")
-                if not isinstance(ns["additionalParamsForVnf"], list):
-                    raise ValueError("Error at --config 'additionalParamsForVnf' must be a list")
-                for additional_param_vnf in ns["additionalParamsForVnf"]:
+                if not isinstance(ns_config["additionalParamsForVnf"], list):
+                    raise ClientException("Error at --config 'additionalParamsForVnf' must be a list")
+                for additional_param_vnf in ns_config["additionalParamsForVnf"]:
                     if not isinstance(additional_param_vnf, dict):
-                        raise ValueError("Error at --config 'additionalParamsForVnf' items must be dictionaries")
+                        raise ClientException("Error at --config 'additionalParamsForVnf' items must be dictionaries")
                     if not additional_param_vnf.get("member-vnf-index"):
-                        raise ValueError("Error at --config 'additionalParamsForVnf' items must contain "
+                        raise ClientException("Error at --config 'additionalParamsForVnf' items must contain "
                                          "'member-vnf-index'")
             if "wim_account" in ns_config:
                 wim_account = ns_config.pop("wim_account")
                 if wim_account is not None:
                     ns['wimAccountId'] = get_wim_account_id(wim_account)
-            if "timeout_ns_deploy" in ns_config:
-                ns["timeout_ns_deploy"] = ns_config.pop("timeout_ns_deploy")
+            # rest of parameters without any transformation or checking
+            # "timeout_ns_deploy"
+            # "placement-engine"
+            ns.update(ns_config)
 
         # print(yaml.safe_dump(ns))
         try:
@@ -239,7 +264,7 @@ class Ns(object):
                                       resp))
             if wait:
                 # Wait for status for NS instance creation
-                self._wait(resp.get('nslcmop_id'))
+                self._wait(resp.get('nslcmop_id'), wait)
             print(resp['id'])
             return resp['id']
             #else:
@@ -269,7 +294,7 @@ class Ns(object):
             filter_string = ''
             if filter:
                  filter_string = '&{}'.format(filter)
-            http_code, resp = self._http.get2_cmd('{}?nsInstanceId={}'.format(
+            http_code, resp = self._http.get2_cmd('{}?nsInstanceId={}{}'.format(
                                                        self._apiBase, ns['_id'],
                                                        filter_string) )
             #print('HTTP CODE: {}'.format(http_code))
@@ -353,7 +378,7 @@ class Ns(object):
             if wait:
                 # Wait for status for NS instance action
                 # For the 'action' operation, 'id' is used
-                self._wait(resp.get('id'))
+                self._wait(resp.get('id'), wait)
             return resp['id']
             #else:
             #    msg = ""
@@ -369,7 +394,7 @@ class Ns(object):
                     str(exc))
             raise ClientException(message)
 
-    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False):
+    def scale_vnf(self, ns_name, vnf_name, scaling_group, scale_in, scale_out, wait=False, timeout=None):
         """Scales a VNF by adding/removing VDUs
         """
         self._logger.debug("")
@@ -378,14 +403,18 @@ class Ns(object):
             op_data={}
             op_data["scaleType"] = "SCALE_VNF"
             op_data["scaleVnfData"] = {}
-            if scale_in:
+            if scale_in and not scale_out:
                 op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_IN"
-            else:
+            elif not scale_in and scale_out:
                 op_data["scaleVnfData"]["scaleVnfType"] = "SCALE_OUT"
+            else:
+                raise ClientException("you must set either 'scale_in' or 'scale_out'")
             op_data["scaleVnfData"]["scaleByStepData"] = {
                 "member-vnf-index": vnf_name,
                 "scaling-group-descriptor": scaling_group,
             }
+            if timeout:
+                op_data["timeout_ns_scale"] = timeout
             op_id = self.exec_op(ns_name, op_name='scale', op_data=op_data, wait=wait)
             print(str(op_id))
         except ClientException as exc:

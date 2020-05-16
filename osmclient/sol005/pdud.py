@@ -118,7 +118,7 @@ class Pdu(object):
         if resp:
             resp = json.loads(resp)
         if not resp or 'id' not in resp:
-            raise ClientException('unexpected response from server: '.format(
+            raise ClientException('unexpected response from server: {}'.format(
                                   resp))
         print(resp['id'])
         #else:

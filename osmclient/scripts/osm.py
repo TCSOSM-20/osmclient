@@ -97,6 +97,22 @@ def check_client_version(obj, what, version='sol005'):
                    'Also can set OSM_PROJECT in environment')
 @click.option('-v', '--verbose', count=True,
               help='increase verbosity (-v INFO, -vv VERBOSE, -vvv DEBUG)')
+@click.option('--all-projects',
+              default=None,
+              is_flag=True,
+              help='include all projects')
+@click.option('--public/--no-public', default=None,
+              help='flag for public items (packages, instances, VIM accounts, etc.)')
+@click.option('--project-domain-name', 'project_domain_name',
+              default=None,
+              envvar='OSM_PROJECT_DOMAIN_NAME',
+              help='project domain name for keystone authentication (default to None). ' +
+                   'Also can set OSM_PROJECT_DOMAIN_NAME in environment')
+@click.option('--user-domain-name', 'user_domain_name',
+              default=None,
+              envvar='OSM_USER_DOMAIN_NAME',
+              help='user domain name for keystone authentication (default to None). ' +
+                   'Also can set OSM_USER_DOMAIN_NAME in environment')
 #@click.option('--so-port',
 #              default=None,
 #              envvar='OSM_SO_PORT',
@@ -118,14 +134,16 @@ def check_client_version(obj, what, version='sol005'):
 #              help='hostname of RO server.  ' +
 #                   'Also can set OSM_RO_PORT in environment')
 @click.pass_context
-def cli_osm(ctx, hostname, user, password, project, verbose):
+def cli_osm(ctx, **kwargs):
     global logger
+    hostname = kwargs.pop("hostname", None)
     if hostname is None:
         print((
             "either hostname option or OSM_HOSTNAME " +
             "environment variable needs to be specified"))
         exit(1)
-    kwargs = {'verbose': verbose}
+    # Remove None values
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
 #    if so_port is not None:
 #        kwargs['so_port']=so_port
 #    if so_project is not None:
@@ -135,12 +153,16 @@ def cli_osm(ctx, hostname, user, password, project, verbose):
 #    if ro_port is not None:
 #        kwargs['ro_port']=ro_port
     sol005 = os.getenv('OSM_SOL005', True)
-    if user is not None:
-        kwargs['user']=user
-    if password is not None:
-        kwargs['password']=password
-    if project is not None:
-        kwargs['project']=project
+#    if user is not None:
+#        kwargs['user']=user
+#    if password is not None:
+#        kwargs['password']=password
+#    if project is not None:
+#        kwargs['project']=project
+#    if all_projects:
+#        kwargs['all_projects']=all_projects
+#    if public is not None:
+#        kwargs['public']=public
     ctx.obj = client.Client(host=hostname, sol005=sol005, **kwargs)
     logger = logging.getLogger('osmclient')
 
@@ -206,9 +228,11 @@ def ns_list(ctx, filter, long):
     def summarize_deployment_status(status_dict):
         #Nets
         summary = ""
+        if not status_dict:
+            return summary
         n_nets = 0
         status_nets = {}
-        net_list = status_dict['nets']
+        net_list = status_dict.get('nets',[])
         for net in net_list:
             n_nets += 1
             if net['status'] not in status_nets:
@@ -256,6 +280,9 @@ def ns_list(ctx, filter, long):
         return summary
         
     def summarize_config_status(ee_list):
+        summary = ""
+        if not ee_list:
+            return summary
         n_ee = 0
         status_ee = {}
         for ee in ee_list:
@@ -268,7 +295,6 @@ def ns_list(ctx, filter, long):
                 status_ee[ee['elementType']][ee['status']] += 1
             else:
                 status_ee[ee['elementType']][ee['status']] = 1
-        summary = ""
         for elementType in ["KDU", "VDU", "PDU", "VNF", "NS"]:
             if elementType in status_ee:
                 message = ""
@@ -280,6 +306,7 @@ def ns_list(ctx, filter, long):
                 summary += "{}: {}".format(elementType, message)
         summary += "TOTAL Exec. Env.: {}".format(n_ee)
         return summary
+
     logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
@@ -312,13 +339,14 @@ def ns_list(ctx, filter, long):
         fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
         if fullclassname == 'osmclient.sol005.client.Client':
             nsr = ns
+            logger.debug('NS info: {}'.format(nsr))
             nsr_name = nsr['name']
             nsr_id = nsr['_id']
             date = datetime.fromtimestamp(nsr['create-time']).strftime("%Y-%m-%dT%H:%M:%S")
-            ns_state = nsr['nsState']
+            ns_state = nsr.get('nsState', nsr['_admin']['nsState'])
             if long:
-                deployment_status = summarize_deployment_status(nsr['deploymentStatus'])
-                config_status = summarize_config_status(nsr['configurationStatus'])
+                deployment_status = summarize_deployment_status(nsr.get('deploymentStatus'))
+                config_status = summarize_config_status(nsr.get('configurationStatus'))
                 project_id = nsr.get('_admin').get('projects_read')[0]
                 project_name = '-'
                 for p in project_list:
@@ -335,10 +363,13 @@ def ns_list(ctx, filter, long):
                         break
                 #vim = '{} ({})'.format(vim_name, vim_id)
                 vim = vim_name
-            current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
+            if 'currentOperation' in nsr:
+                current_operation = "{} ({})".format(nsr['currentOperation'],nsr['currentOperationID'])
+            else:
+                current_operation = "{} ({})".format(nsr['_admin'].get('current-operation','-'), nsr['_admin']['nslcmop'])
             error_details = "N/A"
-            if ns_state == "BROKEN" or ns_state == "DEGRADED":
-                error_details = "{}\nDetail: {}".format(nsr['errorDescription'],nsr['errorDetail'])
+            if ns_state == "BROKEN" or ns_state == "DEGRADED" or nsr.get('errorDescription'):
+                error_details = "{}\nDetail: {}".format(nsr['errorDescription'], nsr['errorDetail'])
         else:
             nsopdata = ctx.obj.ns.get_opdata(ns['id'])
             nsr = nsopdata['nsr:nsr']
@@ -348,9 +379,9 @@ def ns_list(ctx, filter, long):
             project = '-'
             deployment_status = nsr['operational-status'] if 'operational-status' in nsr else 'Not found'
             ns_state = deployment_status
-            config_status = nsr['config-status'] if 'config-status' in nsr else 'Not found'
+            config_status = nsr.get('config-status', 'Not found')
             current_operation = "Unknown"
-            error_details = nsr['detailed-status'] if 'detailed-status' in nsr else 'Not found'
+            error_details = nsr.get('detailed-status', 'Not found')
             if config_status == "config_not_needed":
                 config_status = "configured (no charms)"
 
@@ -379,7 +410,7 @@ def ns_list(ctx, filter, long):
     print('To get the history of all operations over a NS, run "osm ns-op-list NS_ID"')
     print('For more details on the current operation, run "osm ns-op-show OPERATION_ID"')
 
-def nsd_list(ctx, filter):
+def nsd_list(ctx, filter, long):
     logger.debug("")
     if filter:
         check_client_version(ctx.obj, '--filter')
@@ -387,15 +418,28 @@ def nsd_list(ctx, filter):
     else:
         resp = ctx.obj.nsd.list()
     # print(yaml.safe_dump(resp))
-    table = PrettyTable(['nsd name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
-        for ns in resp:
-            name = ns['name'] if 'name' in ns else '-'
-            table.add_row([name, ns['_id']])
+        if long:
+            table = PrettyTable(['nsd name', 'id', 'onboarding state', 'operational state',
+                                 'usage state', 'date', 'last update'])
+        else:
+            table = PrettyTable(['nsd name', 'id'])
+        for nsd in resp:
+            name = nsd.get('name','-')
+            if long:
+                onb_state = nsd['_admin'].get('onboardingState','-')
+                op_state = nsd['_admin'].get('operationalState','-')
+                usage_state = nsd['_admin'].get('usageState','-')
+                date = datetime.fromtimestamp(nsd['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
+                last_update = datetime.fromtimestamp(nsd['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
+                table.add_row([name, nsd['_id'], onb_state, op_state, usage_state, date, last_update])
+            else:
+                table.add_row([name, nsd['_id']])
     else:
-        for ns in resp:
-            table.add_row([ns['name'], ns['id']])
+        table = PrettyTable(['nsd name', 'id'])
+        for nsd in resp:
+            table.add_row([nsd['name'], nsd['id']])
     table.align = 'l'
     print(table)
 
@@ -403,24 +447,26 @@ def nsd_list(ctx, filter):
 @cli_osm.command(name='nsd-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nsd_list1(ctx, filter):
+def nsd_list1(ctx, filter, long):
     """list all NSD/NS pkg in the system"""
     logger.debug("")
-    nsd_list(ctx, filter)
+    nsd_list(ctx, filter, long)
 
 
 @cli_osm.command(name='nspkg-list', short_help='list all NS packages')
 @click.option('--filter', default=None,
               help='restricts the list to the NSD/NSpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nsd_list2(ctx, filter):
+def nsd_list2(ctx, filter, long):
     """list all NS packages"""
     logger.debug("")
-    nsd_list(ctx, filter)
+    nsd_list(ctx, filter, long)
 
 
-def vnfd_list(ctx, nf_type, filter):
+def vnfd_list(ctx, nf_type, filter, long):
     logger.debug("")
     if nf_type:
         check_client_version(ctx.obj, '--nf_type')
@@ -444,13 +490,26 @@ def vnfd_list(ctx, nf_type, filter):
     else:
         resp = ctx.obj.vnfd.list()
     # print(yaml.safe_dump(resp))
-    table = PrettyTable(['nfpkg name', 'id'])
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
+        if long:
+            table = PrettyTable(['nfpkg name', 'id', 'onboarding state', 'operational state',
+                                  'usage state', 'date', 'last update'])
+        else:
+            table = PrettyTable(['nfpkg name', 'id'])
         for vnfd in resp:
             name = vnfd['name'] if 'name' in vnfd else '-'
-            table.add_row([name, vnfd['_id']])
+            if long:
+                onb_state = vnfd['_admin'].get('onboardingState','-')
+                op_state = vnfd['_admin'].get('operationalState','-')
+                usage_state = vnfd['_admin'].get('usageState','-')
+                date = datetime.fromtimestamp(vnfd['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
+                last_update = datetime.fromtimestamp(vnfd['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
+                table.add_row([name, vnfd['_id'], onb_state, op_state, usage_state, date, last_update])
+            else:
+                table.add_row([name, vnfd['_id']])
     else:
+        table = PrettyTable(['nfpkg name', 'id'])
         for vnfd in resp:
             table.add_row([vnfd['name'], vnfd['id']])
     table.align = 'l'
@@ -461,41 +520,44 @@ def vnfd_list(ctx, nf_type, filter):
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NF pkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnfd_list1(ctx, nf_type, filter):
+def vnfd_list1(ctx, nf_type, filter, long):
     """list all xNF packages (VNF, HNF, PNF)"""
     logger.debug("")
-    vnfd_list(ctx, nf_type, filter)
+    vnfd_list(ctx, nf_type, filter, long)
 
 
 @cli_osm.command(name='vnfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnfd_list2(ctx, nf_type, filter):
+def vnfd_list2(ctx, nf_type, filter, long):
     """list all xNF packages (VNF, HNF, PNF)"""
     logger.debug("")
-    vnfd_list(ctx, nf_type, filter)
+    vnfd_list(ctx, nf_type, filter, long)
 
 
 @cli_osm.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nfpkg_list(ctx, nf_type, filter):
+def nfpkg_list(ctx, nf_type, filter, long):
     """list all xNF packages (VNF, HNF, PNF)"""
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    vnfd_list(ctx, nf_type, filter)
+    vnfd_list(ctx, nf_type, filter, long)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
 
 
-def vnf_list(ctx, ns, filter):
+def vnf_list(ctx, ns, filter, long):
     # try:
     if ns or filter:
         if ns:
@@ -510,24 +572,23 @@ def vnf_list(ctx, ns, filter):
     #     exit(1)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname == 'osmclient.sol005.client.Client':
-        table = PrettyTable(
-            ['vnf id',
-             'name',
-             'ns id',
-             'vnf member index',
-             'vnfd name',
-             'vim account id',
-             'ip address'])
+        field_names = ['vnf id', 'name', 'ns id', 'vnf member index',
+                       'vnfd name', 'vim account id', 'ip address']
+        if long:
+            field_names = ['vnf id', 'name', 'ns id', 'vnf member index',
+                           'vnfd name', 'vim account id', 'ip address',
+                           'date', 'last update']
+        table = PrettyTable(field_names)
         for vnfr in resp:
             name = vnfr['name'] if 'name' in vnfr else '-'
-            table.add_row(
-                [vnfr['_id'],
-                 name,
-                 vnfr['nsr-id-ref'],
-                 vnfr['member-vnf-index-ref'],
-                 vnfr['vnfd-ref'],
-                 vnfr['vim-account-id'],
-                 vnfr['ip-address']])
+            new_row = [vnfr['_id'], name, vnfr['nsr-id-ref'],
+                       vnfr['member-vnf-index-ref'], vnfr['vnfd-ref'],
+                       vnfr['vim-account-id'], vnfr['ip-address']]
+            if long:
+                date = datetime.fromtimestamp(vnfr['_admin']['created']).strftime("%Y-%m-%dT%H:%M:%S")
+                last_update = datetime.fromtimestamp(vnfr['_admin']['modified']).strftime("%Y-%m-%dT%H:%M:%S")
+                new_row.extend([date, last_update])
+            table.add_row(new_row)
     else:
         table = PrettyTable(
             ['vnf name',
@@ -551,19 +612,21 @@ def vnf_list(ctx, ns, filter):
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnf_list1(ctx, ns, filter):
+def vnf_list1(ctx, ns, filter, long):
     """list all NF instances"""
     logger.debug("")
-    vnf_list(ctx, ns, filter)
+    vnf_list(ctx, ns, filter, long)
 
 
 @cli_osm.command(name='nf-list', short_help='list all NF instances')
 @click.option('--ns', default=None, help='NS instance id or name to restrict the NF list')
 @click.option('--filter', default=None,
               help='restricts the list to the NF instances matching the filter.')
+@click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nf_list(ctx, ns, filter):
+def nf_list(ctx, ns, filter, long):
     """list all NF instances
 
     \b
@@ -657,13 +720,13 @@ def ns_op_list(ctx, name, long):
             action_name = op['operationParams']['primitive']
         detail = "-"
         if op['operationState']=='PROCESSING':
-            if op['lcmOperationType']=='instantiate':
+            if op['lcmOperationType'] in ('instantiate', 'terminate'):
                 if op['stage']:
                     detail = op['stage']
             else:
                 detail = "In queue. Current position: {}".format(op['queuePosition'])
-        elif op['operationState']=='FAILED' or op['operationState']=='FAILED_TEMP':
-            detail = op['errorMessage']
+        elif op['operationState'] in ('FAILED', 'FAILED_TEMP'):
+            detail = op.get('errorMessage','-')
         date = datetime.fromtimestamp(op['startTime']).strftime("%Y-%m-%dT%H:%M:%S")
         last_update = datetime.fromtimestamp(op['statusEnteredTime']).strftime("%Y-%m-%dT%H:%M:%S")
         if long:
@@ -677,7 +740,7 @@ def ns_op_list(ctx, name, long):
                            wrap_text(text=detail,width=50)])
         else:
             table.add_row([op['id'], op['lcmOperationType'], action_name,
-                           op['operationState'], date, wrap_text(text=detail,width=50)])
+                           op['operationState'], date, wrap_text(text=detail or "",width=50)])
     table.align = 'l'
     print(table)
 
@@ -867,7 +930,7 @@ def nsd_show(ctx, name, literal):
 
     table = PrettyTable(['field', 'value'])
     for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
     table.align = 'l'
     print(table)
 
@@ -915,7 +978,7 @@ def vnfd_show(ctx, name, literal):
 
     table = PrettyTable(['field', 'value'])
     for k, v in list(resp.items()):
-        table.add_row([k, json.dumps(v, indent=2)])
+        table.add_row([k, wrap_text(text=json.dumps(v, indent=2),width=100)])
     table.align = 'l'
     print(table)
 
@@ -1021,7 +1084,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
             if "namespace" in op_status and "info" in op_status and \
             "last_deployed" in op_status["info"] and "status" in op_status["info"] and \
             "code" in op_status["info"]["status"] and "resources" in op_status["info"]["status"] and \
-            "notes" in op_status["info"]["status"] and "seconds" in op_status["info"]["last_deployed"]:
+            "seconds" in op_status["info"]["last_deployed"]:
                 last_deployed_time = datetime.fromtimestamp(op_status["info"]["last_deployed"]["seconds"]).strftime("%a %b %d %I:%M:%S %Y")
                 print("LAST DEPLOYED: {}".format(last_deployed_time))
                 print("NAMESPACE: {}".format(op_status["namespace"]))
@@ -1032,8 +1095,9 @@ def vnf_show(ctx, name, literal, filter, kdu):
                 print()
                 print("RESOURCES:")
                 print(op_status["info"]["status"]["resources"])
-                print("NOTES:")
-                print(op_status["info"]["status"]["notes"])
+                if "notes" in op_status["info"]["status"]:
+                    print("NOTES:")
+                    print(op_status["info"]["status"]["notes"])
             else:
                 print(op_info_status)
         except Exception:
@@ -1343,11 +1407,11 @@ def pdu_show(ctx, name, literal, filter):
 # CREATE operations
 ####################
 
-def nsd_create(ctx, filename, overwrite):
+def nsd_create(ctx, filename, overwrite, skip_charm_build):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    ctx.obj.nsd.create(filename, overwrite)
+    ctx.obj.nsd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -1360,14 +1424,19 @@ def nsd_create(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def nsd_create1(ctx, filename, overwrite):
-    """creates a new NSD/NSpkg
+def nsd_create1(ctx, filename, overwrite, skip_charm_build):
+    """onboards a new NSpkg (alias of nspkg-create) (TO BE DEPRECATED)
 
-    FILENAME: NSD yaml file or NSpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    nsd_create(ctx, filename, overwrite)
+    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
 @cli_osm.command(name='nspkg-create', short_help='creates a new NSD/NSpkg')
@@ -1377,21 +1446,28 @@ def nsd_create1(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def nsd_create2(ctx, filename, overwrite):
-    """creates a new NSD/NSpkg
+def nsd_create2(ctx, filename, overwrite, skip_charm_build):
+    """onboards a new NSpkg
 
-    FILENAME: NSD yaml file or NSpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    nsd_create(ctx, filename, overwrite)
+    nsd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build)
 
 
-def vnfd_create(ctx, filename, overwrite):
+def vnfd_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
     logger.debug("")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    ctx.obj.vnfd.create(filename, overwrite)
+    ctx.obj.vnfd.create(filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                        override_epa=override_epa, override_nonepa=override_nonepa,
+                        override_paravirt=override_paravirt)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -1404,14 +1480,26 @@ def vnfd_create(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--override-epa', required=False, default=False, is_flag=True,
+              help='adds guest-epa parameters to all VDU')
+@click.option('--override-nonepa', required=False, default=False, is_flag=True,
+              help='removes all guest-epa parameters from all VDU')
+@click.option('--override-paravirt', required=False, default=False, is_flag=True,
+              help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
-def vnfd_create1(ctx, filename, overwrite):
-    """creates a new VNFD/VNFpkg
+def vnfd_create1(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
+    """onboards a new NFpkg (alias of nfpkg-create) (TO BE DEPRECATED)
 
-    FILENAME: VNFD yaml file or VNFpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
 
 
 @cli_osm.command(name='vnfpkg-create', short_help='creates a new VNFD/VNFpkg')
@@ -1421,14 +1509,26 @@ def vnfd_create1(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--override-epa', required=False, default=False, is_flag=True,
+              help='adds guest-epa parameters to all VDU')
+@click.option('--override-nonepa', required=False, default=False, is_flag=True,
+              help='removes all guest-epa parameters from all VDU')
+@click.option('--override-paravirt', required=False, default=False, is_flag=True,
+              help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
-def vnfd_create2(ctx, filename, overwrite):
-    """creates a new VNFD/VNFpkg
+def vnfd_create2(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
+    """onboards a new NFpkg (alias of nfpkg-create)
 
-    FILENAME: VNFD yaml file or VNFpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
 
 
 @cli_osm.command(name='nfpkg-create', short_help='creates a new NFpkg')
@@ -1438,14 +1538,26 @@ def vnfd_create2(ctx, filename, overwrite):
 @click.option('--override', 'overwrite', default=None,
               help='overrides fields in descriptor, format: '
                    '"key1.key2...=value[;key3...=value;...]"')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='The charm will not be compiled, it is assumed to already exist')
+@click.option('--override-epa', required=False, default=False, is_flag=True,
+              help='adds guest-epa parameters to all VDU')
+@click.option('--override-nonepa', required=False, default=False, is_flag=True,
+              help='removes all guest-epa parameters from all VDU')
+@click.option('--override-paravirt', required=False, default=False, is_flag=True,
+              help='overrides all VDU interfaces to PARAVIRT')
 @click.pass_context
-def nfpkg_create(ctx, filename, overwrite):
-    """creates a new NFpkg
+def nfpkg_create(ctx, filename, overwrite, skip_charm_build, override_epa, override_nonepa, override_paravirt):
+    """onboards a new NFpkg (alias of nfpkg-create)
 
-    FILENAME: NF Descriptor yaml file or NFpkg tar.gz file
+    \b
+    FILENAME: NF Package tar.gz file, NF Descriptor YAML file or NF Package folder
+              If FILENAME is a file (NF Package tar.gz or NF Descriptor YAML), it is onboarded.
+              If FILENAME is an NF Package folder, it is built and then onboarded.
     """
     logger.debug("")
-    vnfd_create(ctx, filename, overwrite)
+    vnfd_create(ctx, filename, overwrite=overwrite, skip_charm_build=skip_charm_build,
+                override_epa=override_epa, override_nonepa=override_nonepa, override_paravirt=override_paravirt)
 
 
 @cli_osm.command(name='ns-create', short_help='creates a new Network Service instance')
@@ -1525,7 +1637,7 @@ def nst_create(ctx, filename, overwrite):
 def nst_create1(ctx, filename, overwrite):
     """creates a new Network Slice Template (NST)
 
-    FILENAME: NST yaml file or NSTpkg tar.gz file
+    FILENAME: NST package folder, NST yaml file or NSTpkg tar.gz file
     """
     logger.debug("")
     nst_create(ctx, filename, overwrite)
@@ -1906,6 +2018,9 @@ def nfpkg_delete(ctx, name, force):
 @cli_osm.command(name='ns-delete', short_help='deletes a NS instance')
 @click.argument('name')
 @click.option('--force', is_flag=True, help='forces the deletion bypassing pre-conditions')
+@click.option('--config', default=None,
+              help="specific yaml configuration for the termination, e.g. '{autoremove: False, timeout_ns_terminate: "
+                   "600, skip_terminate_primitives: True}'")
 @click.option('--wait',
               required=False,
               default=False,
@@ -1913,7 +2028,7 @@ def nfpkg_delete(ctx, name, force):
               help='do not return the control immediately, but keep it '
                    'until the operation is completed, or timeout')
 @click.pass_context
-def ns_delete(ctx, name, force, wait):
+def ns_delete(ctx, name, force, config, wait):
     """deletes a NS instance
 
     NAME: name or ID of the NS instance to be deleted
@@ -1921,10 +2036,10 @@ def ns_delete(ctx, name, force, wait):
     logger.debug("")
     # try:
     if not force:
-        ctx.obj.ns.delete(name, wait=wait)
+        ctx.obj.ns.delete(name, config=config, wait=wait)
     else:
         check_client_version(ctx.obj, '--force')
-        ctx.obj.ns.delete(name, force, wait=wait)
+        ctx.obj.ns.delete(name, force, config=config, wait=wait)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -2055,7 +2170,7 @@ def pdu_delete(ctx, name, force):
               default='openstack',
               help='VIM type')
 @click.option('--description',
-              default='no description',
+              default=None,
               help='human readable description')
 @click.option('--sdn_controller', default=None, help='Name or id of the SDN controller associated to this VIM account')
 @click.option('--sdn_port_mapping', default=None, help="File describing the port mapping between compute nodes' ports and switch ports")
@@ -2112,7 +2227,8 @@ def vim_create(ctx,
 @click.option('--config', help='VIM specific config parameters')
 @click.option('--account_type', help='VIM type')
 @click.option('--description', help='human readable description')
-@click.option('--sdn_controller', default=None, help='Name or id of the SDN controller associated to this VIM account')
+@click.option('--sdn_controller', default=None, help='Name or id of the SDN controller to be associated with this VIM'
+                                                     'account. Use empty string to disassociate')
 @click.option('--sdn_port_mapping', default=None, help="File describing the port mapping between compute nodes' ports and switch ports")
 @click.option('--wait',
               required=False,
@@ -2189,8 +2305,10 @@ def vim_delete(ctx, name, force, wait):
 #              help='update list from RO')
 @click.option('--filter', default=None,
               help='restricts the list to the VIM accounts matching the filter')
+@click.option('--long', is_flag=True,
+              help='get more details of the NS (project, vim, deployment status, configuration status.')
 @click.pass_context
-def vim_list(ctx, filter):
+def vim_list(ctx, filter, long):
     """list all VIM accounts"""
     logger.debug("")
     if filter:
@@ -2202,9 +2320,34 @@ def vim_list(ctx, filter):
         resp = ctx.obj.vim.list(filter)
 #    else:
 #        resp = ctx.obj.vim.list(ro_update)
-    table = PrettyTable(['vim name', 'uuid'])
+    if long:
+        table = PrettyTable(['vim name', 'uuid', 'project', 'operational state', 'error details'])
+    else:
+        table = PrettyTable(['vim name', 'uuid'])
     for vim in resp:
-        table.add_row([vim['name'], vim['uuid']])
+        if long:
+            vim_details = ctx.obj.vim.get(vim['uuid'])
+            if 'vim_password' in vim_details:
+                vim_details['vim_password']='********'
+            logger.debug('VIM details: {}'.format(yaml.safe_dump(vim_details)))
+            vim_state = vim_details['_admin'].get('operationalState', '-')
+            error_details = 'N/A'
+            if vim_state == 'ERROR':
+                error_details = vim_details['_admin'].get('detailed-status', 'Not found')
+            project_list = ctx.obj.project.list()
+            vim_project_list = vim_details.get('_admin').get('projects_read')
+            project_id = 'None'
+            project_name = 'None'
+            if vim_project_list:
+                project_id = vim_project_list[0]
+                for p in project_list:
+                    if p['_id'] == project_id:
+                        project_name = p['name']
+                        break
+            table.add_row([vim['name'], vim['uuid'], '{} ({})'.format(project_name, project_id),
+                          vim_state, wrap_text(text=error_details, width=80)])
+        else:
+            table.add_row([vim['name'], vim['uuid']])
     table.align = 'l'
     print(table)
 
@@ -2256,7 +2399,7 @@ def vim_show(ctx, name):
 @click.option('--wim_type',
               help='WIM type')
 @click.option('--description',
-              default='no description',
+              default=None,
               help='human readable description')
 @click.option('--wim_port_mapping', default=None,
               help="File describing the port mapping between DC edge (datacenters, switches, ports) and WAN edge "
@@ -2440,9 +2583,10 @@ def wim_show(ctx, name):
 @click.option('--port',  # hidden=True,
               help='Deprecated. Use --url')
 @click.option('--switch_dpid',  # hidden=True,
-              help='Deprecated. Use --config {dpid: DPID}')
+              help='Deprecated. Use --config {switch_id: DPID}')
 @click.option('--config',
-              help='Extra information for SDN in yaml format, as {dpid: (Openflow Datapath ID), version: version}')
+              help='Extra information for SDN in yaml format, as {switch_id: identity used for the plugin (e.g. DPID: '
+             'Openflow Datapath ID), version: version}')
 @click.option('--user',
               help='SDN controller username')
 @click.option('--password',
@@ -2462,16 +2606,16 @@ def sdnc_create(ctx, **kwargs):
     sdncontroller = {x: kwargs[x] for x in kwargs if kwargs[x] and
                      x not in ("wait", "ip_address", "port", "switch_dpid")}
     if kwargs.get("port"):
-        print("option '--port' is deprecated, use '-url' instead")
+        print("option '--port' is deprecated, use '--url' instead")
         sdncontroller["port"] = int(kwargs["port"])
     if kwargs.get("ip_address"):
-        print("option '--ip_address' is deprecated, use '-url' instead")
+        print("option '--ip_address' is deprecated, use '--url' instead")
         sdncontroller["ip"] = kwargs["ip_address"]
     if kwargs.get("switch_dpid"):
-        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        print("option '--switch_dpid' is deprecated, use '--config={switch_id: id|DPID}' instead")
         sdncontroller["dpid"] = kwargs["switch_dpid"]
     if kwargs.get("sdn_controller_version"):
-        print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
+        print("option '--sdn_controller_version' is deprecated, use '--config={version: SDN_CONTROLLER_VERSION}'"
               " instead")
     # try:
     check_client_version(ctx.obj, ctx.command.name)
@@ -2487,7 +2631,8 @@ def sdnc_create(ctx, **kwargs):
 @click.option('--type', help='SDN controller type')
 @click.option('--url', help='URL in format http[s]://HOST:IP/')
 @click.option('--config', help='Extra information for SDN in yaml format, as '
-                               '{dpid: (Openflow Datapath ID), version: version}')
+                               '{switch_id: identity used for the plugin (e.g. DPID: '
+                               'Openflow Datapath ID), version: version}')
 @click.option('--user', help='SDN controller username')
 @click.option('--password', help='SDN controller password')
 @click.option('--ip_address', help='Deprecated. Use --url')  # hidden=True
@@ -2508,13 +2653,13 @@ def sdnc_update(ctx, **kwargs):
     if kwargs.get("newname"):
         sdncontroller["name"] = kwargs["newname"]
     if kwargs.get("port"):
-        print("option '--port' is deprecated, use '-url' instead")
+        print("option '--port' is deprecated, use '--url' instead")
         sdncontroller["port"] = int(kwargs["port"])
     if kwargs.get("ip_address"):
-        print("option '--ip_address' is deprecated, use '-url' instead")
+        print("option '--ip_address' is deprecated, use '--url' instead")
         sdncontroller["ip"] = kwargs["ip_address"]
     if kwargs.get("switch_dpid"):
-        print("option '--switch_dpid' is deprecated, use '---config={dpid: DPID}' instead")
+        print("option '--switch_dpid' is deprecated, use '--config={switch_id: id|DPID}' instead")
         sdncontroller["dpid"] = kwargs["switch_dpid"]
     if kwargs.get("sdn_controller_version"):
         print("option '--sdn_controller_version' is deprecated, use '---config={version: SDN_CONTROLLER_VERSION}'"
@@ -2610,7 +2755,7 @@ def sdnc_show(ctx, name):
               prompt=True,
               help='list of VIM networks, in JSON inline format, where the cluster is accessible via L3 routing, e.g. "{(k8s_net1:vim_network1) [,(k8s_net2:vim_network2) ...]}"')
 @click.option('--description',
-              default='',
+              default=None,
               help='human readable description')
 @click.option('--namespace',
               default='kube-system',
@@ -2647,7 +2792,8 @@ def k8scluster_add(ctx,
     cluster['k8s_version'] = version
     cluster['vim_account'] = vim
     cluster['nets'] = yaml.safe_load(k8s_nets)
-    cluster['description'] = description
+    if description:
+        cluster['description'] = description
     if namespace: cluster['namespace'] = namespace
     if cni: cluster['cni'] = yaml.safe_load(cni)
     ctx.obj.k8scluster.create(name, cluster)
@@ -2784,7 +2930,7 @@ def k8scluster_show(ctx, name, literal):
               prompt=True,
               help='type of repo (helm-chart for Helm Charts, juju-bundle for Juju Bundles)')
 @click.option('--description',
-              default='',
+              default=None,
               help='human readable description')
 #@click.option('--wait',
 #              is_flag=True,
@@ -2806,7 +2952,8 @@ def repo_add(ctx,
     repo['name'] = name
     repo['url'] = uri
     repo['type'] = type
-    repo['description'] = description
+    if description:
+        repo['description'] = description
     ctx.obj.repo.create(name, repo)
     # except ClientException as e:
     #     print(str(e))
@@ -2927,15 +3074,21 @@ def repo_show(ctx, name, literal):
 #@click.option('--description',
 #              default='no description',
 #              help='human readable description')
+@click.option('--domain-name', 'domain_name',
+              default=None,
+              help='assign to a domain')
 @click.pass_context
-def project_create(ctx, name):
+def project_create(ctx, name, domain_name):
     """Creates a new project
 
     NAME: name of the project
+    DOMAIN_NAME: optional domain name for the project when keystone authentication is used
     """
     logger.debug("")
     project = {}
     project['name'] = name
+    if domain_name:
+        project['domain_name'] = domain_name
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.project.create(name, project)
@@ -3050,9 +3203,12 @@ def project_update(ctx, project, name):
               help='list of project ids that the user belongs to')
 @click.option('--project-role-mappings', 'project_role_mappings',
               default=None, multiple=True,
-              help='creating user project/role(s) mapping')
+              help="assign role(s) in a project. Can be used several times: 'project,role1[,role2,...]'")
+@click.option('--domain-name', 'domain_name',
+              default=None,
+              help='assign to a domain')
 @click.pass_context
-def user_create(ctx, username, password, projects, project_role_mappings):
+def user_create(ctx, username, password, projects, project_role_mappings, domain_name):
     """Creates a new user
 
     \b
@@ -3060,6 +3216,7 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     PASSWORD: password of the user
     PROJECTS: projects assigned to user (internal only)
     PROJECT_ROLE_MAPPING: roles in projects assigned to user (keystone)
+    DOMAIN_NAME: optional domain name for the user when keystone authentication is used
     """
     logger.debug("")
     user = {}
@@ -3067,7 +3224,9 @@ def user_create(ctx, username, password, projects, project_role_mappings):
     user['password'] = password
     user['projects'] = projects
     user['project_role_mappings'] = project_role_mappings
-    
+    if domain_name:
+        user['domain_name'] = domain_name
+
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.user.create(username, user)
@@ -3088,16 +3247,16 @@ def user_create(ctx, username, password, projects, project_role_mappings):
               help='change username')
 @click.option('--set-project', 'set_project',
               default=None, multiple=True,
-              help='create/replace the project,role(s) mapping for this project: \'project,role1,role2,...\'')
+              help="create/replace the roles for this project: 'project,role1[,role2,...]'")
 @click.option('--remove-project', 'remove_project',
               default=None, multiple=True,
-              help='removes project from user: \'project\'')
+              help="removes project from user: 'project'")
 @click.option('--add-project-role', 'add_project_role',
               default=None, multiple=True,
-              help='adds project,role(s) mapping: \'project,role1,role2,...\'')
+              help="assign role(s) in a project. Can be used several times: 'project,role1[,role2,...]'")
 @click.option('--remove-project-role', 'remove_project_role',
               default=None, multiple=True,
-              help='removes project,role(s) mapping: \'project,role1,role2,...\'')
+              help="remove role(s) in a project. Can be used several times: 'project,role1[,role2,...]'")
 @click.pass_context
 def user_update(ctx, username, password, set_username, set_project, remove_project,
                 add_project_role, remove_project_role):
@@ -3319,15 +3478,17 @@ def get_version(ctx):
 
 @cli_osm.command(name='upload-package', short_help='uploads a VNF package or NS package')
 @click.argument('filename')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='the charm will not be compiled, it is assumed to already exist')
 @click.pass_context
-def upload_package(ctx, filename):
-    """uploads a VNF package or NS package
+def upload_package(ctx, filename, skip_charm_build):
+    """uploads a vnf package or ns package
 
-    FILENAME: VNF or NS package file (tar.gz)
+    filename: vnf or ns package folder, or vnf or ns package file (tar.gz)
     """
     logger.debug("")
     # try:
-    ctx.obj.package.upload(filename)
+    ctx.obj.package.upload(filename, skip_charm_build=skip_charm_build)
     fullclassname = ctx.obj.__module__ + "." + ctx.obj.__class__.__name__
     if fullclassname != 'osmclient.sol005.client.Client':
         ctx.obj.package.wait_for_upload(filename)
@@ -3495,6 +3656,7 @@ def upload_package(ctx, filename):
 @click.option('--action_name', prompt=True, help='action name')
 @click.option('--params', default=None, help='action params in YAML/JSON inline string')
 @click.option('--params_file', default=None, help='YAML/JSON file with action params')
+@click.option('--timeout', required=False, default=None, type=int, help='timeout in seconds')
 @click.option('--wait',
               required=False,
               default=False,
@@ -3510,6 +3672,7 @@ def ns_action(ctx,
               action_name,
               params,
               params_file,
+              timeout,
               wait):
     """executes an action/primitive over a NS instance
 
@@ -3527,6 +3690,8 @@ def ns_action(ctx,
         op_data['vdu_id'] = vdu_id
     if vdu_count:
         op_data['vdu_count_index'] = vdu_count
+    if timeout:
+        op_data['timeout_ns_action'] = timeout
     op_data['primitive'] = action_name
     if params_file:
         with open(params_file, 'r') as pf:
@@ -3548,13 +3713,18 @@ def ns_action(ctx,
 @click.option('--scaling-group', prompt=True, help="scaling-group-descriptor name to use")
 @click.option('--scale-in', default=False, is_flag=True, help="performs a scale in operation")
 @click.option('--scale-out', default=False, is_flag=True, help="performs a scale out operation (by default)")
+@click.option('--timeout', required=False, default=None, type=int, help='timeout in seconds')
+@click.option('--wait', required=False, default=False, is_flag=True,
+              help='do not return the control immediately, but keep it until the operation is completed, or timeout')
 @click.pass_context
 def vnf_scale(ctx,
               ns_name,
               vnf_name,
               scaling_group,
               scale_in,
-              scale_out):
+              scale_out,
+              timeout,
+              wait):
     """
     Executes a VNF scale (adding/removing VDUs)
 
@@ -3567,7 +3737,7 @@ def vnf_scale(ctx,
     check_client_version(ctx.obj, ctx.command.name)
     if not scale_in and not scale_out:
         scale_out = True
-    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out)
+    ctx.obj.ns.scale_vnf(ns_name, vnf_name, scaling_group, scale_in, scale_out, wait, timeout)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
@@ -3794,9 +3964,14 @@ def package_create(ctx,
 @click.argument('base-directory',
                 default=".",
                 required=False)
+@click.option('--recursive/--no-recursive',
+              default=True,
+              help='The activated recursive option will validate the yaml files'
+                   ' within the indicated directory and in its subdirectories')
 @click.pass_context
 def package_validate(ctx,
-                     base_directory):
+                     base_directory,
+                     recursive):
     """
     Validate descriptors given a base directory.
 
@@ -3805,7 +3980,7 @@ def package_validate(ctx,
     """
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    results = ctx.obj.package_tool.validate(base_directory)
+    results = ctx.obj.package_tool.validate(base_directory, recursive)
     table = PrettyTable()
     table.field_names = ["TYPE", "PATH", "VALID", "ERROR"]
     # Print the dictionary generated by the validation function
@@ -3827,10 +4002,13 @@ def package_validate(ctx,
               default=False,
               is_flag=True,
               help='skip package validation')
+@click.option('--skip-charm-build', default=False, is_flag=True,
+              help='the charm will not be compiled, it is assumed to already exist')
 @click.pass_context
 def package_build(ctx,
                   package_folder,
-                  skip_validation):
+                  skip_validation,
+                  skip_charm_build):
     """
     Build the package NS, VNF given the package_folder.
 
@@ -3839,7 +4017,9 @@ def package_build(ctx,
     """
     # try:
     check_client_version(ctx.obj, ctx.command.name)
-    results = ctx.obj.package_tool.build(package_folder, skip_validation)
+    results = ctx.obj.package_tool.build(package_folder,
+                                         skip_validation=skip_validation,
+                                         skip_charm_build=skip_charm_build)
     print(results)
     # except ClientException as inst:
     #     print("ERROR: {}".format(inst))

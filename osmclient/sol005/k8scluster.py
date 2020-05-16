@@ -135,7 +135,7 @@ class K8scluster(object):
             if resp:
                 resp = json.loads(resp)
             if not resp or '_id' not in resp:
-                raise ClientException('failed to get K8s cluster info: '.format(resp))
+                raise ClientException('failed to get K8s cluster info: {}'.format(resp))
             return resp
         except NotFound:
             raise NotFound("K8s cluster {} not found".format(name))
