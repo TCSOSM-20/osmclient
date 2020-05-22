@@ -150,7 +150,7 @@ class PackageTool(object):
             :returns: None
         """
         self._logger.debug("")
-        files = [f for f in glob.glob(package_folder + "/**/*.*", recursive=True)]
+        files = [f for f in glob.glob(package_folder + "/**/*.*", recursive=True) if os.path.isfile(f)]
         with open("{}/checksums.txt".format(package_folder), "w+") as checksum:
             for file_item in files:
                 if "checksums.txt" in file_item:
