@@ -22,10 +22,14 @@ from osmclient.common.exceptions import NotFound
 from osmclient.common.exceptions import ClientException
 from osmclient.common import utils
 import json
+import yaml
 import magic
 from os.path import basename
 import logging
-#from os import stat
+import os.path
+from urllib.parse import quote
+import tarfile
+from osm_im.validation import Validation as validation_im
 
 
 class Vnfd(object):
@@ -136,62 +140,131 @@ class Vnfd(object):
             #         msg = resp
             raise ClientException("failed to delete vnfd {} - {}".format(name, msg))
 
-    def create(self, filename, overwrite=None, update_endpoint=None):
+    def create(self, filename, overwrite=None, update_endpoint=None, skip_charm_build=False,
+               override_epa=False, override_nonepa=False, override_paravirt=False):
         self._logger.debug("")
-        self._client.get_token()
-        mime_type = magic.from_file(filename, mime=True)
-        if mime_type is None:
-            raise ClientException(
-                     "failed to guess MIME type for file '{}'".format(filename))
-        headers= self._client._headers
-        headers['Content-Filename'] = basename(filename)
-        if mime_type in ['application/yaml', 'text/plain', 'application/json']:
-            headers['Content-Type'] = 'text/plain'
-        elif mime_type in ['application/gzip', 'application/x-gzip']:
-            headers['Content-Type'] = 'application/gzip'
-            #headers['Content-Type'] = 'application/binary'
-            # Next three lines are to be removed in next version
-            #headers['Content-Filename'] = basename(filename)
-            #file_size = stat(filename).st_size
-            #headers['Content-Range'] = 'bytes 0-{}/{}'.format(file_size - 1, file_size)
+        if os.path.isdir(filename):
+            filename = filename.rstrip('/')
+            filename = self._client.package_tool.build(filename, skip_validation=False, skip_charm_build=skip_charm_build)
+            print('Uploading package {}'.format(filename))
+            self.create(filename, overwrite=overwrite, update_endpoint=update_endpoint,
+                        override_epa=override_epa, override_nonepa=override_nonepa,
+                        override_paravirt=override_paravirt)
         else:
-            raise ClientException(
-                     "Unexpected MIME type for file {}: MIME type {}".format(
-                         filename, mime_type)
-                  )
-        headers["Content-File-MD5"] = utils.md5(filename)
-        http_header = ['{}: {}'.format(key,val)
-                      for (key,val) in list(headers.items())]
-        self._http.set_http_header(http_header)
-        if update_endpoint:
-            http_code, resp = self._http.put_cmd(endpoint=update_endpoint, filename=filename)
-        else:
-            ow_string = ''
-            if overwrite:
-                ow_string = '?{}'.format(overwrite)
-            self._apiResource = '/vnf_packages_content'
-            self._apiBase = '{}{}{}'.format(self._apiName,
-                                            self._apiVersion, self._apiResource)
-            endpoint = '{}{}'.format(self._apiBase,ow_string)
-            http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
-        if http_code in (200, 201, 202):
-            if resp:
-                resp = json.loads(resp)
-            if not resp or 'id' not in resp:
-                raise ClientException('unexpected response from server: '.format(resp))
-            print(resp['id'])
-        elif http_code == 204:
-            print('Updated')
-        # else:
-        #     msg = "Error {}".format(http_code)
-        #     if resp:
-        #         try:
-        #             msg = "{} - {}".format(msg, json.loads(resp))
-        #         except ValueError:
-        #             msg = "{} - {}".format(msg, resp)
-        #     raise ClientException("failed to create/update vnfd - {}".format(msg))
+            self._client.get_token()
+            mime_type = magic.from_file(filename, mime=True)
+            if mime_type is None:
+                raise ClientException(
+                    "Unexpected MIME type for file {}: MIME type {}".format(
+                        filename, mime_type)
+                )
+            headers = self._client._headers
+            headers['Content-Filename'] = basename(filename)
+            if mime_type in ['application/yaml', 'text/plain', 'application/json']:
+                headers['Content-Type'] = 'text/plain'
+            elif mime_type in ['application/gzip', 'application/x-gzip']:
+                headers['Content-Type'] = 'application/gzip'
+                #headers['Content-Type'] = 'application/binary'
+                # Next three lines are to be removed in next version
+                #headers['Content-Filename'] = basename(filename)
+                #file_size = stat(filename).st_size
+                #headers['Content-Range'] = 'bytes 0-{}/{}'.format(file_size - 1, file_size)
+            else:
+                raise ClientException(
+                         "Unexpected MIME type for file {}: MIME type {}".format(
+                             filename, mime_type)
+                      )
+            special_ow_string = ''
+            if override_epa or override_nonepa or override_paravirt:
+                # If override for EPA, non-EPA or paravirt is required, get the descriptor data 
+                descriptor_data = None
+                if mime_type in ['application/yaml', 'text/plain', 'application/json']:
+                    with open(filename) as df:
+                        descriptor_data = df.read()
+                elif mime_type in ['application/gzip', 'application/x-gzip']:
+                    tar_object = tarfile.open(filename, "r:gz")
+                    descriptor_list = []
+                    for member in tar_object:
+                        if member.isreg():
+                            if '/' not in os.path.dirname(member.name) and member.name.endswith('.yaml'):
+                                descriptor_list.append(member.name)
+                    if len(descriptor_list) > 1:
+                        raise ClientException('Found more than one potential descriptor in the tar.gz file')
+                    elif len(descriptor_list) == 0:
+                        raise ClientException('No descriptor was found in the tar.gz file')
+                    with tar_object.extractfile(descriptor_list[0]) as df:
+                        descriptor_data = df.read()
+                    tar_object.close()
+                if not descriptor_data:
+                    raise ClientException('Descriptor could not be read')
+                desc_type, vnfd = validation_im.yaml_validation(self, descriptor_data)
+                validation_im.pyangbind_validation(self, desc_type, vnfd)
+                vnfd = yaml.safe_load(descriptor_data)
+                vdu_list = []
+                for k in vnfd:
+                    # Get only the first descriptor in case there are many in the yaml file
+                    # k can be vnfd:vnfd-catalog or vnfd-catalog. This check is skipped
+                    vdu_list = vnfd[k]['vnfd'][0]['vdu']
+                    break;
+                for vdu_number, vdu in enumerate(vdu_list):
+                    if override_epa:
+                        guest_epa = {}
+                        guest_epa["mempage-size"] = "LARGE"
+                        guest_epa["cpu-pinning-policy"] = "DEDICATED"
+                        guest_epa["cpu-thread-pinning-policy"] = "PREFER"
+                        guest_epa["numa-node-policy"] = {}
+                        guest_epa["numa-node-policy"]["node-cnt"] = 1
+                        guest_epa["numa-node-policy"]["mem-policy"] = "STRICT"
+                        #guest_epa["numa-node-policy"]["node"] = []
+                        #guest_epa["numa-node-policy"]["node"].append({"id": "0", "paired-threads": {"num-paired-threads": 1} })
+                        special_ow_string = "{}vdu.{}.guest-epa={};".format(special_ow_string,vdu_number,quote(yaml.safe_dump(guest_epa)))
+                        headers['Query-String-Format'] = 'yaml'
+                    if override_nonepa:
+                        special_ow_string = "{}vdu.{}.guest-epa=;".format(special_ow_string,vdu_number)
+                    if override_paravirt:
+                        for iface_number in range(len(vdu['interface'])):
+                            special_ow_string = "{}vdu.{}.interface.{}.virtual-interface.type=PARAVIRT;".format(
+                                                special_ow_string,vdu_number,iface_number)
+                special_ow_string = special_ow_string.rstrip(";")
+
+            headers["Content-File-MD5"] = utils.md5(filename)
+            http_header = ['{}: {}'.format(key,val)
+                             for (key,val) in list(headers.items())]
+            self._http.set_http_header(http_header)
+            if update_endpoint:
+                http_code, resp = self._http.put_cmd(endpoint=update_endpoint, filename=filename)
+            else:
+                ow_string = ''
+                if special_ow_string:
+                    if overwrite:
+                        overwrite = "{};{}".format(overwrite,special_ow_string)
+                    else:
+                        overwrite = special_ow_string
+                if overwrite:
+                    ow_string = '?{}'.format(overwrite)
+                self._apiResource = '/vnf_packages_content'
+                self._apiBase = '{}{}{}'.format(self._apiName,
+                                                self._apiVersion, self._apiResource)
+                endpoint = '{}{}'.format(self._apiBase,ow_string)
+                http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
+            if http_code in (200, 201, 202):
+                if resp:
+                    resp = json.loads(resp)
+                if not resp or 'id' not in resp:
+                     raise ClientException('unexpected response from server: {}'.format(resp))
+                print(resp['id'])
+            elif http_code == 204:
+                print('Updated')
+            # else:
+            #     msg = "Error {}".format(http_code)
+            #     if resp:
+            #         try:
+            #             msg = "{} - {}".format(msg, json.loads(resp))
+            #         except ValueError:
+            #             msg = "{} - {}".format(msg, resp)
+            #     raise ClientException("failed to create/update vnfd - {}".format(msg))
 
     def update(self, name, filename):
         self._logger.debug("")

@@ -24,6 +24,7 @@ from osmclient.common import utils
 import json
 import magic
 import logging
+import os.path
 #from os import stat
 #from os.path import basename
 
@@ -139,57 +140,75 @@ class Nst(object):
 
     def create(self, filename, overwrite=None, update_endpoint=None):
         self._logger.debug("")
-        self._client.get_token()
-        mime_type = magic.from_file(filename, mime=True)
-        if mime_type is None:
-            raise ClientException(
-                     "failed to guess MIME type for file '{}'".format(filename))
-        headers= self._client._headers
-        if mime_type in ['application/yaml', 'text/plain']:
-            headers['Content-Type'] = 'application/yaml'
-        elif mime_type in ['application/gzip', 'application/x-gzip']:
-            headers['Content-Type'] = 'application/gzip'
-            #headers['Content-Type'] = 'application/binary'
-            # Next three lines are to be removed in next version
-            #headers['Content-Filename'] = basename(filename)
-            #file_size = stat(filename).st_size
-            #headers['Content-Range'] = 'bytes 0-{}/{}'.format(file_size - 1, file_size)
+        if os.path.isdir(filename):
+            charm_folder = filename.rstrip('/')
+            for files in os.listdir(charm_folder):
+                if "nst.yaml" in files:
+                    results = self._client.package_tool.validate(charm_folder, recursive=False)
+                    for result in results:
+                        if result["valid"] != "OK":
+                            raise ClientException('There was an error validating the file: {} '
+                                                  'with error: {}'.format(result["path"], result["error"]))
+            result = self._client.package_tool.build(charm_folder)
+            if 'Created' in result:
+                filename = "{}.tar.gz".format(charm_folder)
+            else:
+                raise ClientException('Failed in {}tar.gz creation'.format(charm_folder))
+            self.create(filename, overwrite, update_endpoint)
         else:
-            raise ClientException(
-                     "Unexpected MIME type for file {}: MIME type {}".format(
-                         filename, mime_type)
-                  )
-        headers["Content-File-MD5"] = utils.md5(filename)
-        http_header = ['{}: {}'.format(key,val)
-                      for (key,val) in list(headers.items())]
-        self._http.set_http_header(http_header)
-        if update_endpoint:
-            http_code, resp = self._http.put_cmd(endpoint=update_endpoint, filename=filename)
-        else:
-            ow_string = ''
-            if overwrite:
-                ow_string = '?{}'.format(overwrite)
-            self._apiResource = '/netslice_templates_content'
-            self._apiBase = '{}{}{}'.format(self._apiName,
-                                            self._apiVersion, self._apiResource)
-            endpoint = '{}{}'.format(self._apiBase,ow_string)
-            http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
-        # if http_code in (200, 201, 202, 204):
-        if resp:
-            resp = json.loads(resp)
-        if not resp or 'id' not in resp:
-            raise ClientException('unexpected response from server - {}'.format(resp))
-        print(resp['id'])
-        # else:
-        #     msg = "Error {}".format(http_code)
-        #     if resp:
-        #         try:
-        #             msg = "{} - {}".format(msg, json.loads(resp))
-        #         except ValueError:
-        #             msg = "{} - {}".format(msg, resp)
-        #     raise ClientException("failed to create/update nst - {}".format(msg))
+            self._client.get_token()
+            mime_type = magic.from_file(filename, mime=True)
+            if mime_type is None:
+                raise ClientException(
+                         "Unexpected MIME type for file {}: MIME type {}".format(
+                             filename, mime_type)
+                      )
+            headers= self._client._headers
+            if mime_type in ['application/yaml', 'text/plain']:
+                headers['Content-Type'] = 'application/yaml'
+            elif mime_type in ['application/gzip', 'application/x-gzip']:
+                headers['Content-Type'] = 'application/gzip'
+                #headers['Content-Type'] = 'application/binary'
+                # Next three lines are to be removed in next version
+                #headers['Content-Filename'] = basename(filename)
+                #file_size = stat(filename).st_size
+                #headers['Content-Range'] = 'bytes 0-{}/{}'.format(file_size - 1, file_size)
+            else:
+                raise ClientException(
+                         "Unexpected MIME type for file {}: MIME type {}".format(
+                             filename, mime_type)
+                      )
+            headers["Content-File-MD5"] = utils.md5(filename)
+            http_header = ['{}: {}'.format(key,val)
+                          for (key,val) in list(headers.items())]
+            self._http.set_http_header(http_header)
+            if update_endpoint:
+                http_code, resp = self._http.put_cmd(endpoint=update_endpoint, filename=filename)
+            else:
+                ow_string = ''
+                if overwrite:
+                    ow_string = '?{}'.format(overwrite)
+                self._apiResource = '/netslice_templates_content'
+                self._apiBase = '{}{}{}'.format(self._apiName,
+                                                self._apiVersion, self._apiResource)
+                endpoint = '{}{}'.format(self._apiBase,ow_string)
+                http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
+            # if http_code in (200, 201, 202, 204):
+            if resp:
+                resp = json.loads(resp)
+            if not resp or 'id' not in resp:
+                raise ClientException('unexpected response from server - {}'.format(resp))
+            print(resp['id'])
+            # else:
+            #     msg = "Error {}".format(http_code)
+            #     if resp:
+            #         try:
+            #             msg = "{} - {}".format(msg, json.loads(resp))
+            #         except ValueError:
+            #             msg = "{} - {}".format(msg, resp)
+            #     raise ClientException("failed to create/update nst - {}".format(msg))
 
     def update(self, name, filename):
         self._logger.debug("")

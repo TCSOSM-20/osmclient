@@ -39,16 +39,18 @@ class Vim(object):
                                         self._apiVersion, self._apiResource)
 
     # VIM '--wait' option
-    def _wait(self, id, deleteFlag=False):
+    def _wait(self, id, wait_time, deleteFlag=False):
         self._logger.debug("")
         self._client.get_token()
         # Endpoint to get operation status
         apiUrlStatus = '{}{}{}'.format(self._apiName, self._apiVersion, '/vim_accounts')
         # Wait for status for VIM instance creation/deletion
+        if isinstance(wait_time, bool):
+            wait_time = WaitForStatus.TIMEOUT_VIM_OPERATION
         WaitForStatus.wait_for_status(
             'VIM',
             str(id),
-            WaitForStatus.TIMEOUT_VIM_OPERATION,
+            wait_time,
             apiUrlStatus,
             self._http.get2_cmd,
             deleteFlag=deleteFlag)
@@ -102,7 +104,7 @@ class Vim(object):
                                   resp))
         if wait:
             # Wait for status for VIM instance creation
-            self._wait(resp.get('id'))
+            self._wait(resp.get('id'), wait)
         print(resp['id'])
         #else:
         #    msg = ""
@@ -126,12 +128,16 @@ class Vim(object):
                 vim_config = None
             else:
                 vim_config = yaml.safe_load(vim_account['config'])
-        if sdn_controller:
-            sdnc = self._client.sdnc.get(sdn_controller)
-            vim_config['sdn-controller'] = sdnc['_id']
-        if sdn_port_mapping:
-            with open(sdn_port_mapping, 'r') as f:
-                vim_config['sdn-port-mapping'] = yaml.safe_load(f.read())
+        if sdn_controller == "":
+            vim_config['sdn-controller'] = None
+            vim_config['sdn-port-mapping'] = None
+        else:
+            if sdn_controller:
+                sdnc = self._client.sdnc.get(sdn_controller)
+                vim_config['sdn-controller'] = sdnc['_id']
+            if sdn_port_mapping:
+                with open(sdn_port_mapping, 'r') as f:
+                    vim_config['sdn-port-mapping'] = yaml.safe_load(f.read())
         vim_account['config'] = vim_config
         #vim_account['config'] = json.dumps(vim_config)
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase,vim['_id']),
@@ -144,7 +150,7 @@ class Vim(object):
             # Use the previously obtained id instead.
             wait_id = vim_id_for_wait
             # Wait for status for VI instance update
-            self._wait(wait_id)
+            self._wait(wait_id, wait)
         # else:
         #     pass
         #else:
@@ -197,7 +203,7 @@ class Vim(object):
                     resp = json.loads(resp)
                     wait_id = resp.get('id')
                 # Wait for status for VIM account deletion
-                self._wait(wait_id, deleteFlag=True)
+                self._wait(wait_id, wait, deleteFlag=True)
             else:
                 print('Deletion in progress')
         elif http_code == 204:

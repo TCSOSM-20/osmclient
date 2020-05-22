@@ -43,7 +43,8 @@ class Project(object):
         self._logger.debug("")
         self._client.get_token()
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                              postfields_dict=project)
+                                              postfields_dict=project,
+                                              skip_query_admin=True)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         #if http_code in (200, 201, 202, 204):
@@ -69,7 +70,8 @@ class Project(object):
         self._client.get_token()
         proj = self.get(project)
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, proj['_id']),
-                                             postfields_dict=project_changes)
+                                             postfields_dict=project_changes,
+                                             skip_query_admin=True)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202):
@@ -100,7 +102,8 @@ class Project(object):
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                                project['_id'], querystring))
+                                                project['_id'], querystring),
+                                                skip_query_admin=True)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         if http_code == 202:
@@ -126,7 +129,8 @@ class Project(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string),
+                                                    skip_query_admin=True)
         #print('RESP: {}'.format(resp))
         if resp:
             return json.loads(resp)

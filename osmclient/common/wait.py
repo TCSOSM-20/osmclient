@@ -18,10 +18,10 @@
 OSM API handling for the '--wait' option
 """
 
-from osmclient.common.exceptions import ClientException
+from osmclient.common.exceptions import ClientException, NotFound
 import json
-from time import sleep
-import sys
+from time import sleep, time
+from sys import stderr
 
 # Declare a constant for each module, to allow customizing each timeout in the future
 TIMEOUT_GENERIC_OPERATION = 600
@@ -34,165 +34,150 @@ TIMEOUT_NS_OPERATION = 3600
 POLLING_TIME_INTERVAL = 5
 MAX_DELETE_ATTEMPTS = 3
 
+
 def _show_detailed_status(old_detailed_status, new_detailed_status):
     if new_detailed_status is not None and new_detailed_status != old_detailed_status:
-        sys.stderr.write("detailed-status: {}\n".format(new_detailed_status))
+        stderr.write("detailed-status: {}\n".format(new_detailed_status))
         return new_detailed_status
     else:
         return old_detailed_status
 
+
 def _get_finished_states(entity):
-    # Note that the member name is either:
-    # 'operationState' (NS, NSI)
-    # '_admin.'operationalState' (VIM, WIM, SDN)
-    # For NS and NSI, 'operationState' may be one of:
-    # PROCESSING, COMPLETED,PARTIALLY_COMPLETED, FAILED_TEMP,FAILED,ROLLING_BACK,ROLLED_BACK
-    # For VIM, WIM, SDN: '_admin.operationalState' may be one of:
-    # operationalState: ENABLED, DISABLED, ERROR, PROCESSING
+    """
+    Member name is either:
+    operationState' (NS, NSI)
+    '_admin.'operationalState' (VIM, WIM, SDN)
+    For NS and NSI, 'operationState' may be one of:
+    PROCESSING, COMPLETED,PARTIALLY_COMPLETED, FAILED_TEMP,FAILED,ROLLING_BACK,ROLLED_BACK
+    For VIM, WIM, SDN: '_admin.operationalState' may be one of:
+    ENABLED, DISABLED, ERROR, PROCESSING
+
+    :param entity: can be NS, NSI, or other
+    :return: two tuples with status completed strings, status failed string
+    """
     if entity == 'NS' or entity == 'NSI':
-        return ['COMPLETED', 'PARTIALLY_COMPLETED', 'FAILED_TEMP', 'FAILED']
+        return ('COMPLETED', 'PARTIALLY_COMPLETED'), ('FAILED_TEMP', 'FAILED')
     else:
-        return ['ENABLED', 'ERROR']
+        return ('ENABLED', ), ('ERROR', )
+
 
 def _get_operational_state(resp, entity):
-    # Note that the member name is either:
-    # 'operationState' (NS)
-    # 'operational-status' (NSI)
-    # '_admin.'operationalState' (other)
+    """
+    The member name is either:
+    'operationState' (NS)
+    'operational-status' (NSI)
+    '_admin.'operationalState' (other)
+    :param resp: descriptor of the get response
+    :param entity: can be NS, NSI, or other
+    :return: status of the operation
+    """
     if entity == 'NS' or entity == 'NSI':
         return resp.get('operationState')
     else:
         return resp.get('_admin', {}).get('operationalState')
 
-def _op_has_finished(resp, entity):
-    # This function returns:
-    # 0 on success (operation has finished)
-    # 1 on pending (operation has not finished)
-    # -1 on error (bad response)
-    #
-    finished_states = _get_finished_states(entity)
-    if resp:
-        operationalState = _get_operational_state(resp, entity)
-        if operationalState:
-            if operationalState in finished_states:
-                return 0
-            return 1
-    return -1
 
-def _get_detailed_status(resp, entity, detailed_status_deleted):
-    if detailed_status_deleted:
-        return detailed_status_deleted
-    if entity == 'NS' or entity == 'NSI':
+def _op_has_finished(resp, entity):
+    """
+    Indicates if operation has finished ok or is processing
+    :param resp: descriptor of the get response
+    :param entity: can be NS, NSI, or other
+    :return:
+        True on success (operation has finished)
+        False on pending (operation has not finished)
+        raise Exception if unexpected response, or ended with error
+    """
+    finished_states_ok, finished_states_error = _get_finished_states(entity)
+    if resp:
+        op_state = _get_operational_state(resp, entity)
+        if op_state:
+            if op_state in finished_states_ok:
+                return True
+            elif op_state in finished_states_error:
+                raise ClientException("Operation failed with status '{}'".format(op_state))
+            return False
+    raise ClientException('Unexpected response from server: {} '.format(resp))
+
+
+def _get_detailed_status(resp, entity):
+    """
+    For VIM, WIM, SDN, 'detailed-status' is either:
+    - a leaf node to '_admin' (operations NOT supported)
+    - a leaf node of the Nth element in the list '_admin.operations[]' (operations supported by LCM and NBI)
+    :param resp: content of the get response
+    :param entity: can be NS, NSI, or other
+    :return:
+    """
+    if entity in ('NS', 'NSI'):
         # For NS and NSI, 'detailed-status' is a JSON "root" member:
         return resp.get('detailed-status')
     else:
-        # For VIM, WIM, SDN, 'detailed-status' is either:
-        # - a leaf node to '_admin' (operations NOT supported)
-        # - a leaf node of the Nth element in the list '_admin.operations[]' (operations supported by LCM and NBI)
-        # https://osm.etsi.org/gerrit/#/c/7767 : LCM support for operations
-        # https://osm.etsi.org/gerrit/#/c/7734 : NBI support for current_operation
         ops = resp.get('_admin', {}).get('operations')
-        op_index = resp.get('_admin', {}).get('current_operation')
-        if ops and op_index:
+        current_op = resp.get('_admin', {}).get('current_operation')
+        if ops and current_op is not None:
             # Operations are supported, verify operation index
-            if isinstance(op_index, (int)) or op_index.isdigit():
-                op_index = int(op_index)
-                if op_index > 0 and op_index < len(ops) and ops[op_index] and ops[op_index]["detailed-status"]:
-                    return ops[op_index]["detailed-status"]
+            if isinstance(ops, dict) and current_op in ops:
+                return ops[current_op].get("detailed-status")
+            elif isinstance(ops, list) and isinstance(current_op, int) or current_op.isdigit():
+                current_op = int(current_op)
+                if current_op >= 0 and current_op < len(ops) and ops[current_op] and ops[current_op]["detailed-status"]:
+                    return ops[current_op]["detailed-status"]
             # operation index is either non-numeric or out-of-range
             return 'Unexpected error when getting detailed-status!'
         else:
             # Operations are NOT supported
             return resp.get('_admin', {}).get('detailed-status')
 
-def _has_delete_error(resp, entity, deleteFlag, delete_attempts_left):
-    if deleteFlag and delete_attempts_left:
-        state = _get_operational_state(resp, entity)
-        if state and state == 'ERROR':
-            return True
-    return False
 
 def wait_for_status(entity_label, entity_id, timeout, apiUrlStatus, http_cmd, deleteFlag=False):
-    # Arguments:
-    # entity_label: String describing the entities using '--wait':
-    # 'NS', 'NSI', 'SDNC', 'VIM', 'WIM'
-    # entity_id: The ID for an existing entity, the operation ID for an entity to create.
-    # timeout: See section at top of this file for each value of TIMEOUT_<ENTITY>_OPERATION
-    # apiUrlStatus: The endpoint to get the Response including 'detailed-status'
-    # http_cmd: callback to HTTP command.
-    # Passing this callback as an argument avoids importing the 'http' module here.
+    """
+    Wait until operation ends, making polling every 5s. Prints detailed status when it changes
+    :param entity_label: String describing the entities using '--wait': 'NS', 'NSI', 'SDNC', 'VIM', 'WIM'
+    :param entity_id: The ID for an existing entity, the operation ID for an entity to create.
+    :param timeout: Timeout in seconds
+    :param apiUrlStatus: The endpoint to get the Response including 'detailed-status'
+    :param http_cmd: callback to HTTP command. (Normally the get method)
+    :param deleteFlag: If this is a delete operation
+    :return: None, exception if operation fails or timeout
+    """
 
     # Loop here until the operation finishes, or a timeout occurs.
-    time_left = timeout
+    time_to_finish = time() + timeout
     detailed_status = None
-    detailed_status_deleted = None
-    time_to_return = False
-    delete_attempts_left = MAX_DELETE_ATTEMPTS
-    wait_for_404 = False
-    try:
-        while True:
+    retries = 0
+    max_retries = 1
+    while True:
+        try:
             http_code, resp_unicode = http_cmd('{}/{}'.format(apiUrlStatus, entity_id))
-            resp = ''
-            if resp_unicode:
-                resp = json.loads(resp_unicode)
-            # print('HTTP CODE: {}'.format(http_code))
-            # print('RESP: {}'.format(resp))
-            # print('URL: {}/{}'.format(apiUrlStatus, entity_id))
-            if deleteFlag and http_code == 404:
-                # In case of deletion, '404 Not Found' means successfully deleted
-                # Display 'detailed-status: Deleted' and return
-                time_to_return = True
-                detailed_status_deleted = 'Deleted'
-            elif deleteFlag and http_code in (200, 201, 202, 204):
-                # In case of deletion and HTTP Status = 20* OK, deletion may be PROCESSING or COMPLETED
-                # If this is the case, we should keep on polling until 404 (deleted) is returned.
-                wait_for_404 = True
-            elif http_code not in (200, 201, 202, 204):
-                raise ClientException(str(resp))
-            if not time_to_return:
-                # Get operation status
-                op_status = _op_has_finished(resp, entity_label)
-                if op_status == -1:
-                    # An error occurred
-                    raise ClientException('unexpected response from server - {} '.format(
-                        str(resp)))
-                elif op_status == 0:
-                    # If there was an error upon deletion, try again to delete the same instance
-                    # If the error is the same, there is probably nothing we can do but exit with error.
-                    # If the error is different (i.e. 404), the instance was probably already corrupt, that is,
-                    # operation(al)State was probably ERROR before deletion.
-                    # In such a case, even if the previous state was ERROR, the deletion was successful,
-                    # so detailed-status should be set to Deleted.
-                    if _has_delete_error(resp, entity_label, deleteFlag, delete_attempts_left):
-                        delete_attempts_left -= 1
-                    else:
-                        # Operation has finished, either with success or error
-                        if deleteFlag:
-                            delete_attempts_left -= 1
-                            if not wait_for_404 and delete_attempts_left < MAX_DELETE_ATTEMPTS:
-                                time_to_return = True
-                        else:
-                            time_to_return = True
-            new_detailed_status = _get_detailed_status(resp, entity_label, detailed_status_deleted)
-            # print('DETAILED-STATUS: {}'.format(new_detailed_status))
-            # print('DELETE-ATTEMPTS-LEFT: {}'.format(delete_attempts_left))
-            if not new_detailed_status:
-                new_detailed_status = 'In progress'
-            # TODO: Change LCM to provide detailed-status more up to date
-            # At the moment of this writing, 'detailed-status' may return different strings
-            # from different resources:
-            # /nslcm/v1/ns_lcm_op_occs/<id>       ---> ''
-            # /nslcm/v1/ns_instances_content/<id> ---> 'deleting charms'
-            detailed_status = _show_detailed_status(detailed_status, new_detailed_status)
-            if time_to_return:
+            retries = 0
+        except NotFound:
+            if deleteFlag:
+                _show_detailed_status(detailed_status, 'Deleted')
                 return
-            time_left -= POLLING_TIME_INTERVAL
+            raise
+        except ClientException:
+            if retries >= max_retries or time() < time_to_finish:
+                raise
+            retries += 1
             sleep(POLLING_TIME_INTERVAL)
-            if time_left <= 0:
-                # There was a timeout, so raise an exception
-                raise ClientException('operation timeout, waited for {} seconds'.format(timeout))
-    except ClientException as exc:
-        message="Operation failed for {}:\nerror:\n{}".format(
-            entity_label,
-            str(exc))
-        raise ClientException(message)
+            continue
+
+        resp = ''
+        if resp_unicode:
+            resp = json.loads(resp_unicode)
+
+        new_detailed_status = _get_detailed_status(resp, entity_label)
+        # print('DETAILED-STATUS: {}'.format(new_detailed_status))
+        if not new_detailed_status:
+            new_detailed_status = 'In progress'
+        detailed_status = _show_detailed_status(detailed_status, new_detailed_status)
+
+        # Get operation status
+        if _op_has_finished(resp, entity_label):
+            return
+
+        if time() >= time_to_finish:
+            # There was a timeout, so raise an exception
+            raise ClientException('operation timeout after {} seconds'.format(timeout))
+        sleep(POLLING_TIME_INTERVAL)

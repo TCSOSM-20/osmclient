@@ -25,6 +25,7 @@ from osmclient.common.exceptions import NotFound
 from osmclient.common import utils
 import json
 import logging
+import os.path
 
 
 class Package(object):
@@ -74,44 +75,49 @@ class Package(object):
             raise ClientException("package {} failed to upload"
                                   .format(filename))
 
-    def upload(self, filename):
+    def upload(self, filename, skip_charm_build=False):
         self._logger.debug("")
-        self._client.get_token()
-        pkg_type = utils.get_key_val_from_pkg(filename)
-        if pkg_type is None:
-            raise ClientException("Cannot determine package type")
-        if pkg_type['type'] == 'nsd':
-            endpoint = '/nsd/v1/ns_descriptors_content'
+        if os.path.isdir(filename):
+            filename = filename.rstrip('/')
+            filename = self._client.package_tool.build(filename, skip_validation=False, skip_charm_build=skip_charm_build)
+            self.upload(filename)
         else:
-            endpoint = '/vnfpkgm/v1/vnf_packages_content'
-        #endpoint = '/nsds' if pkg_type['type'] == 'nsd' else '/vnfds'
-        #print('Endpoint: {}'.format(endpoint))
-        headers = self._client._headers
-        headers['Content-Type'] = 'application/gzip'
-        #headers['Content-Type'] = 'application/binary'
-        # Next three lines are to be removed in next version
-        #headers['Content-Filename'] = basename(filename)
-        #file_size = stat(filename).st_size
-        #headers['Content-Range'] = 'bytes 0-{}/{}'.format(file_size - 1, file_size)
-        headers["Content-File-MD5"] = utils.md5(filename)
-        http_header = ['{}: {}'.format(key,val)
-                      for (key,val) in list(headers.items())]
-        self._http.set_http_header(http_header)
-        http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
-        #print('HTTP CODE: {}'.format(http_code))
-        #print('RESP: {}'.format(resp))
-        #if http_code in (200, 201, 202, 204):
-        if resp:
-            resp = json.loads(resp)
-        if not resp or 'id' not in resp:
-            raise ClientException('unexpected response from server - {}'.format(
-                                   resp))
-        print(resp['id'])
-        # else:
-        #     msg = ""
-        #     if resp:
-        #         try:
-        #              msg = json.loads(resp)
-        #         except ValueError:
-        #             msg = resp
-        #     raise ClientException("failed to upload package - {}".format(msg))
+            self._client.get_token()
+            pkg_type = utils.get_key_val_from_pkg(filename)
+            if pkg_type is None:
+                raise ClientException("Cannot determine package type")
+            if pkg_type['type'] == 'nsd':
+                endpoint = '/nsd/v1/ns_descriptors_content'
+            else:
+                endpoint = '/vnfpkgm/v1/vnf_packages_content'
+            #endpoint = '/nsds' if pkg_type['type'] == 'nsd' else '/vnfds'
+            #print('Endpoint: {}'.format(endpoint))
+            headers = self._client._headers
+            headers['Content-Type'] = 'application/gzip'
+            #headers['Content-Type'] = 'application/binary'
+            # Next three lines are to be removed in next version
+            #headers['Content-Filename'] = basename(filename)
+            #file_size = stat(filename).st_size
+            #headers['Content-Range'] = 'bytes 0-{}/{}'.format(file_size - 1, file_size)
+            headers["Content-File-MD5"] = utils.md5(filename)
+            http_header = ['{}: {}'.format(key,val)
+                          for (key,val) in list(headers.items())]
+            self._http.set_http_header(http_header)
+            http_code, resp = self._http.post_cmd(endpoint=endpoint, filename=filename)
+            #print('HTTP CODE: {}'.format(http_code))
+            #print('RESP: {}'.format(resp))
+            #if http_code in (200, 201, 202, 204):
+            if resp:
+                resp = json.loads(resp)
+            if not resp or 'id' not in resp:
+                raise ClientException('unexpected response from server - {}'.format(
+                                       resp))
+            print(resp['id'])
+            #  else:
+            #     msg = ""
+            #     if resp:
+            #         try:
+            #              msg = json.loads(resp)
+            #         except ValueError:
+            #             msg = resp
+            #     raise ClientException("failed to upload package - {}".format(msg))

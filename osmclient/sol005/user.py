@@ -19,7 +19,6 @@
 OSM user mgmt API
 """
 
-from osmclient.common import utils
 from osmclient.common.exceptions import ClientException
 from osmclient.common.exceptions import NotFound
 import json
@@ -57,15 +56,15 @@ class User(object):
                 for role in roles:
                     mapping = {"project": project, "role": role}
 
-                    if mapping not in project_role_mappings: 
+                    if mapping not in project_role_mappings:
                         project_role_mappings.append(mapping)
-            
             user["project_role_mappings"] = project_role_mappings
         else:
             del user["project_role_mappings"]
 
         http_code, resp = self._http.post_cmd(endpoint=self._apiBase,
-                                       postfields_dict=user)
+                                              postfields_dict=user,
+                                              skip_query_admin=True)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         #if http_code in (200, 201, 202, 204):
@@ -145,7 +144,7 @@ class User(object):
             raise ClientException("At least something should be changed.")
 
         http_code, resp = self._http.patch_cmd(endpoint='{}/{}'.format(self._apiBase, myuser['_id']),
-                                             postfields_dict=update_user)
+                                             postfields_dict=update_user, skip_query_admin=True)
         # print('HTTP CODE: {}'.format(http_code))
         # print('RESP: {}'.format(resp))
         if http_code in (200, 201, 202):
@@ -176,7 +175,7 @@ class User(object):
         if force:
             querystring = '?FORCE=True'
         http_code, resp = self._http.delete_cmd('{}/{}{}'.format(self._apiBase,
-                                         user['_id'], querystring))
+                                         user['_id'], querystring), skip_query_admin=True)
         #print('HTTP CODE: {}'.format(http_code))
         #print('RESP: {}'.format(resp))
         if http_code == 202:
@@ -202,7 +201,7 @@ class User(object):
         filter_string = ''
         if filter:
             filter_string = '?{}'.format(filter)
-        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string))
+        _, resp = self._http.get2_cmd('{}{}'.format(self._apiBase,filter_string), skip_query_admin=True)
         #print('RESP: {}'.format(resp))
         if resp:
             return json.loads(resp)
@@ -213,13 +212,14 @@ class User(object):
         """
         self._logger.debug("")
         self._client.get_token()
-        if utils.validate_uuid4(name):
-            for user in self.list():
-                if name == user['_id']:
-                    return user
-        else:
-            for user in self.list():
-                if name == user['username']:
-                    return user
+        # keystone with external LDAP contains large ids, not uuid format
+        # utils.validate_uuid4(name) cannot be used
+        user_list = self.list()
+        for user in user_list:
+            if name == user['_id']:
+                return user
+        for user in user_list:
+            if name == user['username']:
+                return user
         raise NotFound("User {} not found".format(name))
 
