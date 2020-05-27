@@ -195,7 +195,7 @@ class Nsi(object):
                                         vim_network_name_dict[get_vim_account_id(vim_account)] = vim_net
                                     vld["vim-network-name"] = vim_network_name_dict
                     if "vnf" in nssubnet:
-                        for vnf in nsi_config["vnf"]:
+                        for vnf in nssubnet["vnf"]:
                             if vnf.get("vim_account"):
                                 vnf["vimAccountId"] = get_vim_account_id(vnf.pop("vim_account"))
                 nsi["netslice-subnet"] = nsi_config["netslice-subnet"]
