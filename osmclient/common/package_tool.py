@@ -150,19 +150,18 @@ class PackageTool(object):
             :returns: None
         """
         self._logger.debug("")
-        files = [f for f in glob.glob(package_folder + "/**/*.*", recursive=True)]
-        checksum = open("{}/checksums.txt".format(package_folder), "w+")
-        for file_item in files:
-            if "checksums.txt" in file_item:
-                continue
-            # from https://www.quickprogrammingtips.com/python/how-to-calculate-md5-hash-of-a-file-in-python.html
-            md5_hash = hashlib.md5()
-            with open(file_item, "rb") as f:
-                # Read and update hash in chunks of 4K
-                for byte_block in iter(lambda: f.read(4096), b""):
-                    md5_hash.update(byte_block)
-                checksum.write("{}\t{}\n".format(md5_hash.hexdigest(), file_item))
-        checksum.close()
+        files = [f for f in glob.glob(package_folder + "/**/*.*", recursive=True) if os.path.isfile(f)]
+        with open("{}/checksums.txt".format(package_folder), "w+") as checksum:
+            for file_item in files:
+                if "checksums.txt" in file_item:
+                    continue
+                # from https://www.quickprogrammingtips.com/python/how-to-calculate-md5-hash-of-a-file-in-python.html
+                md5_hash = hashlib.md5()
+                with open(file_item, "rb") as f:
+                    # Read and update hash in chunks of 4K
+                    for byte_block in iter(lambda: f.read(4096), b""):
+                        md5_hash.update(byte_block)
+                    checksum.write("{}\t{}\n".format(md5_hash.hexdigest(), file_item))
 
     def create_folders(self, folders, package_type):
         """
@@ -362,27 +361,31 @@ class PackageTool(object):
         returns: .tar.gz name
         """
         self._logger.debug("")
+        cwd = None
         try:
-            directory_name = self.create_temp_dir(package_folder, charm_list)
+            directory_name, package_name = self.create_temp_dir(package_folder, charm_list)
             cwd = os.getcwd()
             os.chdir(directory_name)
-            self.calculate_checksum(package_folder)
-            with tarfile.open("{}.tar.gz".format(package_folder), mode='w:gz') as archive:
-                print("Adding File: {}".format(package_folder))
-                archive.add('{}'.format(package_folder), recursive=True)
+            self.calculate_checksum(package_name)
+            with tarfile.open("{}.tar.gz".format(package_name), mode='w:gz') as archive:
+                print("Adding File: {}".format(package_name))
+                archive.add('{}'.format(package_name), recursive=True)
             #return "Created {}.tar.gz".format(package_folder)
             #self.build("{}".format(os.path.basename(package_folder)))
             os.chdir(cwd)
         except Exception as exc:
+            if cwd:
+                os.chdir(cwd)
             shutil.rmtree(os.path.join(package_folder, "tmp"))
             raise ClientException('failure during build of targz file (create temp dir, calculate checksum, tar.gz file): {}'.format(exc))
-        os.rename("{}/{}.tar.gz".format(directory_name, os.path.basename(package_folder)),
-                  "{}.tar.gz".format(os.path.basename(package_folder)))
-        os.rename("{}/{}/checksums.txt".format(directory_name, os.path.basename(package_folder)),
+        created_package = "{}/{}.tar.gz".format(package_folder, package_name)
+        os.rename("{}/{}.tar.gz".format(directory_name, package_name),
+                  created_package)
+        os.rename("{}/{}/checksums.txt".format(directory_name, package_name),
                   "{}/checksums.txt".format(package_folder))
         shutil.rmtree(os.path.join(package_folder, "tmp"))
-        print("Package created: {}.tar.gz".format(os.path.basename(package_folder)))
-        return "{}.tar.gz".format(package_folder)
+        print("Package created: {}".format(created_package))
+        return created_package
 
     def create_temp_dir(self, package_folder, charm_list=None):
         """
@@ -391,14 +394,16 @@ class PackageTool(object):
         self._logger.debug("")
         ignore_patterns = ('.gitignore')
         ignore = shutil.ignore_patterns(ignore_patterns)
-        directory_name = os.path.abspath("{}/tmp".format(package_folder))
-        os.makedirs("{}/{}".format(directory_name, os.path.basename(package_folder)),exist_ok=True)
-        self._logger.debug("Makedirs DONE: {}/{}".format(directory_name, os.path.basename(package_folder)))
+        directory_name = os.path.abspath(package_folder)
+        package_name = os.path.basename(directory_name)
+        directory_name += "/tmp"
+        os.makedirs("{}/{}".format(directory_name, package_name), exist_ok=True)
+        self._logger.debug("Makedirs DONE: {}/{}".format(directory_name, package_name))
         for item in os.listdir(package_folder):
             self._logger.debug("Item: {}".format(item))
             if item != "tmp":
                 s = os.path.join(package_folder, item)
-                d = os.path.join(os.path.join(directory_name, os.path.basename(package_folder)), item)
+                d = os.path.join(os.path.join(directory_name, package_name), item)
                 if os.path.isdir(s):
                     if item == "charms":
                         os.makedirs(d, exist_ok=True)
@@ -415,11 +420,11 @@ class PackageTool(object):
                                                       format(charm, package_folder, package_folder))
                             d_temp = os.path.join(d, charm)
                             self._logger.debug("Copying tree: {} -> {}".format(s_charm, d_temp))
-                            shutil.copytree(s_charm, d_temp, symlinks = True, ignore = ignore)
+                            shutil.copytree(s_charm, d_temp, symlinks=True, ignore=ignore)
                             self._logger.debug("DONE")
                     else:
                         self._logger.debug("Copying tree: {} -> {}".format(s,d))
-                        shutil.copytree(s, d, symlinks = True, ignore = ignore)
+                        shutil.copytree(s, d, symlinks=True, ignore=ignore)
                         self._logger.debug("DONE")
                 else:
                     if item in ignore_patterns:
@@ -427,7 +432,7 @@ class PackageTool(object):
                     self._logger.debug("Copying file: {} -> {}".format(s,d))
                     shutil.copy2(s, d)
                     self._logger.debug("DONE")
-        return directory_name
+        return directory_name, package_name
 
     def charms_search(self, descriptor_file, desc_type):
         self._logger.debug("")
