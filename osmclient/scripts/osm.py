@@ -3317,24 +3317,45 @@ def repo_show(ctx, name, literal):
 @click.option('--domain-name', 'domain_name',
               default=None,
               help='assign to a domain')
+@click.option('--quotas', 'quotas', multiple=True, default=None,
+              help="provide quotas. Can be used several times: 'quota1=number[,quota2=number,...]'. Quotas can be one "
+                   "of vnfds, nsds, nsts, pdus, nsrs, nsis, vim_accounts, wim_accounts, sdns, k8sclusters, k8srepos")
 @click.pass_context
-def project_create(ctx, name, domain_name):
+def project_create(ctx, name, domain_name, quotas):
     """Creates a new project
 
     NAME: name of the project
     DOMAIN_NAME: optional domain name for the project when keystone authentication is used
+    QUOTAS: set quotas for the project
     """
     logger.debug("")
-    project = {}
-    project['name'] = name
+    project = {'name': name}
     if domain_name:
         project['domain_name'] = domain_name
+    quotas_dict = _process_project_quotas(quotas)
+    if quotas_dict:
+        project['quotas'] = quotas_dict
+
     # try:
     check_client_version(ctx.obj, ctx.command.name)
     ctx.obj.project.create(name, project)
     # except ClientException as e:
     #     print(str(e))
     #     exit(1)
+
+
+def _process_project_quotas(quota_list):
+    quotas_dict = {}
+    if not quota_list:
+        return quotas_dict
+    try:
+        for quota in quota_list:
+            for single_quota in quota.split(","):
+                k, v = single_quota.split("=")
+                quotas_dict[k] = None if v in ('None', 'null', '') else int(v)
+    except (ValueError, TypeError):
+        raise ClientException("invalid format for 'quotas'. Use 'k1=v1,v1=v2'. v must be a integer or null")
+    return quotas_dict
 
 
 @cli_osm.command(name='project-delete', short_help='deletes a project')
@@ -3400,23 +3421,29 @@ def project_show(ctx, name):
 
 @cli_osm.command(name='project-update', short_help='updates a project (only the name can be updated)')
 @click.argument('project')
-@click.option('--name',
-              prompt=True,
+@click.option('--name', default=None,
               help='new name for the project')
-
+@click.option('--quotas', 'quotas', multiple=True, default=None,
+              help="change quotas. Can be used several times: 'quota1=number|empty[,quota2=...]' "
+                   "(use empty to reset quota to default")
 @click.pass_context
-def project_update(ctx, project, name):
+def project_update(ctx, project, name, quotas):
     """
     Update a project name
 
     :param ctx:
     :param project: id or name of the project to modify
     :param name:  new name for the project
+    :param quotas:  change quotas of the project
     :return:
     """
     logger.debug("")
     project_changes = {}
-    project_changes['name'] = name
+    if name:
+        project_changes['name'] = name
+    quotas_dict = _process_project_quotas(quotas)
+    if quotas_dict:
+        project_changes['quotas'] = quotas_dict
 
     # try:
     check_client_version(ctx.obj, ctx.command.name)
