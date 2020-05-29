@@ -290,7 +290,7 @@ def ns_list(ctx, filter, long):
             if ee['elementType'] not in status_ee:
                 status_ee[ee['elementType']] = {}
                 status_ee[ee['elementType']][ee['status']] = 1
-                continue;
+                continue
             if ee['status'] in status_ee[ee['elementType']]:
                 status_ee[ee['elementType']][ee['status']] += 1
             else:
@@ -992,7 +992,7 @@ def nsd_show(ctx, name, literal):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1040,7 +1040,7 @@ def vnfd_show(ctx, name, literal):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1056,7 +1056,7 @@ def pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal):
     resp = ctx.obj.osmrepo.pkg_get(pkgtype, name, repo, version, filter)
 
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
     pkgtype += 'd'
     catalog = pkgtype + '-catalog'
@@ -1218,7 +1218,7 @@ def ns_show(ctx, name, literal, filter):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(ns))
+        print(yaml.safe_dump(ns, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1307,7 +1307,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
         print ("Could not determine KDU status")
 
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1388,7 +1388,7 @@ def ns_op_show(ctx, id, filter, literal):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(op_info))
+        print(yaml.safe_dump(op_info, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1410,7 +1410,7 @@ def nst_show(ctx, name, literal):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1458,7 +1458,7 @@ def nsi_show(ctx, name, literal, filter):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(nsi))
+        print(yaml.safe_dump(nsi, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -1564,7 +1564,7 @@ def pdu_show(ctx, name, literal, filter):
     #     exit(1)
 
     if literal:
-        print(yaml.safe_dump(pdu))
+        print(yaml.safe_dump(pdu, indent=4, default_flow_style=False))
         return
 
     table = PrettyTable(['field', 'value'])
@@ -3091,7 +3091,7 @@ def k8scluster_list(ctx, filter, literal):
     check_client_version(ctx.obj, ctx.command.name)
     resp = ctx.obj.k8scluster.list(filter)
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
     table = PrettyTable(['Name', 'Id', 'Version', 'VIM', 'K8s-nets', 'Operational State', 'Description'])
     for cluster in resp:
@@ -3118,7 +3118,7 @@ def k8scluster_show(ctx, name, literal):
     # try:
     resp = ctx.obj.k8scluster.get(name)
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
     table = PrettyTable(['key', 'attribute'])
     for k, v in list(resp.items()):
@@ -3259,7 +3259,7 @@ def repo_list(ctx, filter, literal):
     resp = ctx.obj.repo.list(filter)
     resp += ctx.obj.osmrepo.list(filter)
     if literal:
-        print(yaml.safe_dump(resp))
+        print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
     table = PrettyTable(['Name', 'Id', 'Type', 'URI', 'Description'])
     for repo in resp:
@@ -3290,7 +3290,7 @@ def repo_show(ctx, name, literal):
 
     if literal:
         if resp:
-            print(yaml.safe_dump(resp))
+            print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
         return
     table = PrettyTable(['key', 'attribute'])
     if resp:

@@ -126,7 +126,7 @@ from osmclient.common.exceptions import ClientException
 hostname = "127.0.0.1"
 myclient = client.Client(host=hostname, sol005=True)
 resp = myclient.nsd.list()
-print yaml.safe_dump(resp)
+print yaml.safe_dump(resp, indent=4, default_flow_style=False)
 ```
 
 ### Simple Python code to get the list of VNF packages from a specific user and project
@@ -151,7 +151,7 @@ if project is not None:
    kwargs['project']=project
 myclient = client.Client(host=hostname, sol005=True, **kwargs)
 resp = myclient.vnfd.list()
-print yaml.safe_dump(resp)
+print yaml.safe_dump(resp, indent=4, default_flow_style=False)
 ```
 
 ## Enable autocompletion
