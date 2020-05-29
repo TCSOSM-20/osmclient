@@ -368,7 +368,8 @@ def ns_list(ctx, filter, long):
             else:
                 current_operation = "{} ({})".format(nsr['_admin'].get('current-operation','-'), nsr['_admin']['nslcmop'])
             error_details = "N/A"
-            if ns_state == "BROKEN" or ns_state == "DEGRADED" or nsr.get('errorDescription'):
+            if ns_state == "BROKEN" or ns_state == "DEGRADED" or \
+                ('currentOperation' not in nsr and nsr.get('errorDescription')):
                 error_details = "{}\nDetail: {}".format(nsr['errorDescription'], nsr['errorDetail'])
         else:
             nsopdata = ctx.obj.ns.get_opdata(ns['id'])
