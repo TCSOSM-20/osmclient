@@ -17,6 +17,7 @@ OSM Repo API handling
 """
 from osmclient.common.exceptions import ClientException
 from osmclient.sol005.repo import Repo
+from osmclient.common.package_tool import PackageTool
 import requests
 import logging
 import tempfile
@@ -193,7 +194,8 @@ class OSMRepo(Repo):
             :return: fields
         """
         fields = {}
-        base_path = '/' + package_type + '/'
+        base_path = '/{}/'.format(package_type)
+        aux_dict = {}
         if package_type == "vnf":
             if descriptor_json.get('vnfd-catalog', False):
                 aux_dict = descriptor_json.get('vnfd-catalog', {}).get('vnfd', [{}])[0]
@@ -222,26 +224,26 @@ class OSMRepo(Repo):
         fields['description'] = aux_dict.get('description')
         fields['vendor'] = aux_dict.get('vendor')
         fields['version'] = aux_dict.get('version', '1.0')
-        fields['path'] = base_path + fields['id'] + '/' + fields['version'] + '/' + fields.get('id') + "-" + \
-            fields.get('version') + '.tar.gz'
+        fields['path'] = "{}{}/{}/{}-{}.tar.gz".format(base_path, fields['id'], fields['version'], fields.get('id'), \
+                          fields.get('version'))
         return fields
 
-    def zip_extraction(self, file):
+    def zip_extraction(self, file_name):
         """
             Validation of artifact.
             :param file: file path
             :return: status details, status, fields, package_type
         """
         self._logger.debug("Decompressing package file")
-        temp_file = '/tmp/' + file.split('/')[-1]
-        if file != temp_file:
-            copyfile(file, temp_file)
+        temp_file = '/tmp/{}'.format(file_name.split('/')[-1])
+        if file_name != temp_file:
+            copyfile(file_name, temp_file)
         with tarfile.open(temp_file, "r:gz") as tar:
             folder = tar.getnames()[0].split('/')[0]
             tar.extractall()
 
         remove(temp_file)
-        descriptor_file = glob.glob(folder + "/*.y*ml")[0]
+        descriptor_file = glob.glob('{}/*.y*ml'.format(folder))[0]
         return folder, descriptor_file
 
     def validate_artifact(self, path, source):
@@ -250,11 +252,11 @@ class OSMRepo(Repo):
             :param path: file path
             :return: status details, status, fields, package_type
         """
+        package_type = ''
+        folder = ''
         try:
-            package_type = ''
-            folder = ''
             if source == 'directory':
-                descriptor_file = glob.glob(path + "/*.y*ml")[0]
+                descriptor_file = glob.glob('{}/*.y*ml'.format(path))[0]
             else:
                 folder, descriptor_file = self.zip_extraction(path)
 
@@ -283,41 +285,28 @@ class OSMRepo(Repo):
             if folder:
                 rmtree(folder, ignore_errors=True)
 
-    def compress_artifact(self, path):
-        """
-            Compress a directory for building an artifact
-            :param path: path of the directory
-            :return: file path
-        """
-        if path[-1] == '/':
-            path = path[:-1]
-        file = path + '.tar.gz'
-        with tarfile.open(file, "w:gz") as tar:
-            tar.add(path)
-
-        return file
-
     def register_artifact_in_repository(self, path, destination, source):
         """
             Registration of one artifact in a repository
             file: VNF or NS
             destination: path for index creation
         """
+        pt = PackageTool()
+        compresed = False
         try:
-            compresed = False
             fields = {}
-            res, valid, fields, package_type = self.validate_artifact(path, source)
+            _, valid, fields, package_type = self.validate_artifact(path, source)
             if not valid:
                 raise Exception('{} {} Not well configured.'.format(package_type.upper(), str(path)))
             else:
                 if source == 'directory':
-                    path = self.compress_artifact(path)
+                    path = pt.build(path)
                     compresed = True
                 fields['checksum'] = self.md5(path)
                 self.indexation(destination, path, package_type, fields)
 
         except Exception as e:
-            self._logger.debug(str(e))
+            self._logger.debug("Error registering artifact in Repository: {}".format(e))
 
         finally:
             if source == 'directory' and compresed:
