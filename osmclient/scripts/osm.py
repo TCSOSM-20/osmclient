@@ -562,18 +562,6 @@ def vnfd_list2(ctx, nf_type, filter, long):
     logger.debug("")
     vnfd_list(ctx, nf_type, filter, long)
 
-@cli_osm.command(name='vnfpkg-repo-list', short_help='list all xNF from OSM repositories')
-@click.option('--filter', default=None,
-              help='restricts the list to the NFpkg matching the filter')
-@click.option('--repo', default=None,
-              help='restricts the list to a particular OSM repository')
-@click.option('--long', is_flag=True, help='get more details')
-@click.pass_context
-def vnfd_list3(ctx, filter, repo, long):
-    """list xNF packages from OSM repositories"""
-    pkgtype = 'vnf'
-    pkg_repo_list(ctx, pkgtype, filter, repo, long)
-
 @cli_osm.command(name='nfpkg-list', short_help='list all xNF packages (VNF, HNF, PNF)')
 @click.option('--nf_type', help='type of NF (vnf, pnf, hnf)')
 @click.option('--filter', default=None,
@@ -590,6 +578,18 @@ def nfpkg_list(ctx, nf_type, filter, long):
     #     print(str(e))
     #     exit(1)
 
+@cli_osm.command(name='vnfpkg-repo-list', short_help='list all xNF from OSM repositories')
+@click.option('--filter', default=None,
+              help='restricts the list to the NFpkg matching the filter')
+@click.option('--repo', default=None,
+              help='restricts the list to a particular OSM repository')
+@click.option('--long', is_flag=True, help='get more details')
+@click.pass_context
+def nfpkg_repo_list1(ctx, filter, repo, long):
+    """list xNF packages from OSM repositories"""
+    pkgtype = 'vnf'
+    pkg_repo_list(ctx, pkgtype, filter, repo, long)
+
 @cli_osm.command(name='nfpkg-repo-list', short_help='list all xNF from OSM repositories')
 @click.option('--filter', default=None,
               help='restricts the list to the NFpkg matching the filter')
@@ -597,7 +597,7 @@ def nfpkg_list(ctx, nf_type, filter, long):
               help='restricts the list to a particular OSM repository')
 @click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def vnfd_list4(ctx, filter, repo, long):
+def nfpkg_repo_list2(ctx, filter, repo, long):
     """list xNF packages from OSM repositories"""
     pkgtype = 'vnf'
     pkg_repo_list(ctx, pkgtype, filter, repo, long)
@@ -671,7 +671,7 @@ def vnf_list1(ctx, ns, filter, long):
               help='restricts the list to a particular OSM repository')
 @click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nsd_list3(ctx, filter, repo, long):
+def nspkg_repo_list(ctx, filter, repo, long):
     """list xNF packages from OSM repositories"""
     pkgtype = 'ns'
     pkg_repo_list(ctx, pkgtype, filter, repo, long)
@@ -683,7 +683,7 @@ def nsd_list3(ctx, filter, repo, long):
               help='restricts the list to a particular OSM repository')
 @click.option('--long', is_flag=True, help='get more details')
 @click.pass_context
-def nspkg_list(ctx, filter, repo, long):
+def nspkg_repo_list2(ctx, filter, repo, long):
     """list xNF packages from OSM repositories"""
     pkgtype = 'ns'
     pkg_repo_list(ctx, pkgtype, filter, repo, long)
