@@ -1002,7 +1002,7 @@ def nsd_show(ctx, name, literal):
     print(table)
 
 
-@cli_osm.command(name='nsd-show', short_help='shows the content of a NSD')
+@cli_osm.command(name='nsd-show', short_help='shows the details of a NS package')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -1016,7 +1016,7 @@ def nsd_show1(ctx, name, literal):
     nsd_show(ctx, name, literal)
 
 
-@cli_osm.command(name='nspkg-show', short_help='shows the content of a NSD')
+@cli_osm.command(name='nspkg-show', short_help='shows the details of a NS package')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -1072,7 +1072,7 @@ def pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal):
     table.align = 'l'
     print(table)
 
-@cli_osm.command(name='vnfd-show', short_help='shows the content of a VNFD')
+@cli_osm.command(name='vnfd-show', short_help='shows the details of a NF package')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -1086,7 +1086,7 @@ def vnfd_show1(ctx, name, literal):
     vnfd_show(ctx, name, literal)
 
 
-@cli_osm.command(name='vnfpkg-show', short_help='shows the content of a VNFD')
+@cli_osm.command(name='vnfpkg-show', short_help='shows the details of a NF package')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -1099,7 +1099,7 @@ def vnfd_show2(ctx, name, literal):
     logger.debug("")
     vnfd_show(ctx, name, literal)
 
-@cli_osm.command(name='vnfpkg-repo-show', short_help='shows the content of a VNFD')
+@cli_osm.command(name='vnfpkg-repo-show', short_help='shows the details of a NF package in an OSM repository')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.option('--repo',
@@ -1121,7 +1121,7 @@ def vnfd_show3(ctx, name, repo, version, literal=None, filter=None):
     pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
 
 
-@cli_osm.command(name='nsd-repo-show', short_help='shows the content of a NSD')
+@cli_osm.command(name='nsd-repo-show', short_help='shows the details of a NS package in an OSM repository')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.option('--repo',
@@ -1142,7 +1142,7 @@ def nsd_repo_show(ctx, name, repo, version, literal=None, filter=None):
     pkgtype = 'ns'
     pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
 
-@cli_osm.command(name='nspkg-repo-show', short_help='shows the content of a NSD')
+@cli_osm.command(name='nspkg-repo-show', short_help='shows the details of a NS package in an OSM repository')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.option('--repo',
@@ -1163,7 +1163,7 @@ def nsd_repo_show2(ctx, name, repo, version, literal=None, filter=None):
     pkgtype = 'ns'
     pkg_repo_show(ctx, pkgtype, name, repo, version, filter, literal)
 
-@cli_osm.command(name='nfpkg-show', short_help='shows the content of a NF Descriptor')
+@cli_osm.command(name='nfpkg-show', short_help='shows the details of a NF package')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.argument('name')
@@ -1177,7 +1177,7 @@ def nfpkg_show(ctx, name, literal):
     vnfd_show(ctx, name, literal)
 
 
-@cli_osm.command(name='nfpkg-repo-show', short_help='shows the content of a VNFD')
+@cli_osm.command(name='nfpkg-repo-show', short_help='shows the details of a NF package in an OSM repository')
 @click.option('--literal', is_flag=True,
               help='print literally, no pretty table')
 @click.option('--repo',
