@@ -787,12 +787,12 @@ def ns_op_list(ctx, name, long):
         if op['lcmOperationType']=='action':
             action_name = op['operationParams']['primitive']
         detail = "-"
-        if op['operationState']=='PROCESSING':
-            if op['lcmOperationType'] in ('instantiate', 'terminate'):
+        if op['operationState'] == 'PROCESSING':
+            if op['queuePosition'] is not None and op['queuePosition'] > 0:
+                detail = "In queue. Current position: {}".format(op['queuePosition'])
+            elif op['lcmOperationType'] in ('instantiate', 'terminate'):
                 if op['stage']:
                     detail = op['stage']
-            else:
-                detail = "In queue. Current position: {}".format(op['queuePosition'])
         elif op['operationState'] in ('FAILED', 'FAILED_TEMP'):
             detail = op.get('errorMessage','-')
         date = datetime.fromtimestamp(op['startTime']).strftime("%Y-%m-%dT%H:%M:%S")
