@@ -3921,7 +3921,7 @@ def upload_package(ctx, filename, skip_charm_build):
 @click.option('--vnf_name', default=None, help='member-vnf-index if the target is a vnf instead of a ns)')
 @click.option('--kdu_name', default=None, help='kdu-name if the target is a kdu)')
 @click.option('--vdu_id', default=None, help='vdu-id if the target is a vdu')
-@click.option('--vdu_count', default=None, help='number of vdu instance of this vdu_id')
+@click.option('--vdu_count', default=None, type=int, help='number of vdu instance of this vdu_id')
 @click.option('--action_name', prompt=True, help='action name')
 @click.option('--params', default=None, help='action params in YAML/JSON inline string')
 @click.option('--params_file', default=None, help='YAML/JSON file with action params')
@@ -3957,7 +3957,7 @@ def ns_action(ctx,
         op_data['kdu_name'] = kdu_name
     if vdu_id:
         op_data['vdu_id'] = vdu_id
-    if vdu_count:
+    if vdu_count is not None:
         op_data['vdu_count_index'] = vdu_count
     if timeout:
         op_data['timeout_ns_action'] = timeout
