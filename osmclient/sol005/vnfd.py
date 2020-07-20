@@ -204,7 +204,8 @@ class Vnfd(object):
                 for k in vnfd:
                     # Get only the first descriptor in case there are many in the yaml file
                     # k can be vnfd:vnfd-catalog or vnfd-catalog. This check is skipped
-                    vdu_list = vnfd[k]['vnfd'][0]['vdu']
+                    first_vnfd = vnfd[k]['vnfd'][0]
+                    vdu_list = first_vnfd.get('vdu',[])
                     break;
                 for vdu_number, vdu in enumerate(vdu_list):
                     if override_epa:
