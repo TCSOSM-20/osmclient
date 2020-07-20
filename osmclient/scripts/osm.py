@@ -1306,6 +1306,7 @@ def vnf_show(ctx, name, literal, filter, kdu):
             time.sleep(5)
             t += 5
         print ("Could not determine KDU status")
+        return
 
     if literal:
         print(yaml.safe_dump(resp, indent=4, default_flow_style=False))
