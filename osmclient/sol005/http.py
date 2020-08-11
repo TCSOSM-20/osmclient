@@ -24,7 +24,7 @@ from osmclient.common.exceptions import OsmHttpException, NotFound
 
 
 class Http(http.Http):
-    TIMEOUT = 10
+    CONNECT_TIMEOUT = 15
 
     def __init__(self, url, user='admin', password='admin', **kwargs):
         self._url = url
@@ -64,7 +64,7 @@ class Http(http.Http):
             curl_cmd.setopt(pycurl.VERBOSE, True)
         if not skip_query_admin:
             endpoint = self._complete_endpoint(endpoint)
-        curl_cmd.setopt(pycurl.TIMEOUT, self.TIMEOUT)
+        curl_cmd.setopt(pycurl.CONNECTTIMEOUT, self.CONNECT_TIMEOUT)
         curl_cmd.setopt(pycurl.URL, self._url + endpoint)
         curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
         curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
