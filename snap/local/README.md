@@ -19,19 +19,24 @@
 The snapcraft.yaml located in this folder, allows to build a snap of the OSM client
 
 
-## Build
+# Build the Snap
 
 ```bash
-# Build the snap
-$ snapcraft --use-lxd
-...
-Staging client
-Priming client
-Determining the version from the project repo (version: git).
-The version has been set to 'v7.1.0+git4.a4af86f-dirty'
-Snapping 'osmclient' \
-Snapped 'osmclient_v7.1.0+git4.a4af86f-dirty_amd64.snap'
+docker run -v ${PWD}:/build -w /build snapcore/snapcraft:stable /bin/bash -c "apt update && snapcraft"
 ```
+
+
+## Working on build steps
+
+As the build can take upwards of 4 minutes, it might be easier to enter the docker
+container and perform iterative builds there.
+
+```bash
+docker run -v ${PWD}:/build -w /build snapcore/snapcraft:stable /bin/bash -c /bin/bash
+apt update
+snapcraft
+```
+
 
 ## Install
 
